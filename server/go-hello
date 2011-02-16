@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec node lib/r.js lib/hello.js
