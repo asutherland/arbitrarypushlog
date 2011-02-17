@@ -35,10 +35,23 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/**
+ * Process a stream for delineated mozmill rich failure JSON blobs.
+ **/
+
+define(
+  [
+    "fs",
+    "exports"
+  ],
+  function(
+    $fs,
+    exports
+  ) {
 
 var RE_START = /^##### MOZMILL-RICH-FAILURES-BEGIN #####$/m;
 var RE_END = /^##### MOZMILL-RICH-FAILURES-END #####$/m;
-var OVERLAP_PADDING = 16;
+var OVERLAP_PADDING = 32;
 
 /**
  * Consume
@@ -111,12 +124,16 @@ Frobber.prototype = {
     this.callback(this.jsonObjs);
   },
 };
+exports.Frobber = Frobber;
 
-var $fs = require("fs");
-var stream = $fs.createReadStream("/tmp/mozmill-log");
+exports.dummyTestRun = function() {
+  var stream = $fs.createReadStream("/tmp/mozmill-log");
 
-var frobber = new Frobber(stream, function(objs) {
-  for (var i = 0; i < objs.length; i++) {
-    console.log(objs[i].exception.message);
-  }
-});
+  var frobber = new Frobber(stream, function(objs) {
+    for (var i = 0; i < objs.length; i++) {
+      console.log(objs[i].exception.message);
+    }
+  });
+};
+
+}); // end define
