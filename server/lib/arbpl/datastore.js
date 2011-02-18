@@ -44,7 +44,7 @@
 define(
   [
     "thrift", "hbase-thrift/Hbase", "hbase-thrift/Hbase_types",
-    "q/util",
+    "q",
     "exports"
   ],
   function(
@@ -120,10 +120,12 @@ function HStore() {
   this.connection.on("connect", this._onConnect.bind(this));
   this.connection.on("error", this._errConnection.bind(this));
 
+  this.bootstrapped = false;
+
   this.state = "connecting";
   this._iNextTableSchema = 0;
 
-  this._bootstrapDeferred = null;
+  this._bootstrapDeferred = $Q.defer();
 }
 HStore.prototype = {
   _onConnect: function() {
@@ -155,7 +157,6 @@ HStore.prototype = {
   },
 
   bootstrap: function() {
-    this._bootstrapDeferred = Q.defer();
     return this._bootstrapDeferred.promise;
   },
 
@@ -163,7 +164,7 @@ HStore.prototype = {
     var deferred = $Q.defer();
     var self = this;
     this.client.scannerOpen(
-      TABLE_PUSH_RECORD, treeId + "," + ZEROES, ["s"],
+      TABLE_PUSH_FOCUSED, treeId + "," + ZEROES, ["s"],
       function(err, scannerId) {
         if (err) {
           console.error("Failed to get scanner for most recent on tree",
@@ -188,7 +189,7 @@ HStore.prototype = {
   getPushInfo: function(treeId, pushId) {
     var deferred = $Q.defer();
     this.client.get(
-      TABLE_PUSH_RECORD, treeId + "," + transformPushId(pushId),
+      TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       function(err, rowResults) {
         if (err) {
           console.error("Unhappiness getting row: " +
@@ -230,7 +231,7 @@ HStore.prototype = {
     }
 
     this.client.mutateRow(
-      TABLE_PUSH_RECORD, treeId + "," + transformPushId(pushId),
+      TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       mutations,
       function(err) {
         if (err) {

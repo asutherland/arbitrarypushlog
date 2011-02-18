@@ -16,7 +16,7 @@
 
 define(
   [
-    "q/util", "q-http",
+    "q", "q-http",
     "exports"
   ],
   function(
@@ -34,66 +34,84 @@ var when = $Q.when;
 var OS_PLATFORMS = [
   {
     regexes: [/linux.*64/i, /fedora.*64/i],
-    idiom: "desktop",
-    platform: "linux",
-    arch: "amd64",
-    ver: null,
+    plat: {
+      idiom: "desktop",
+      platform: "linux",
+      arch: "amd64",
+      ver: null,
+    },
   },
   {
     regexes: [/linux/i, /fedora/i],
-    idiom: "desktop",
-    platform: "linux",
-    arch: "ia32",
-    ver: null,
+    plat: {
+      idiom: "desktop",
+      platform: "linux",
+      arch: "ia32",
+      ver: null,
+    },
   },
   {
     regexes: [/snowleopard/, /OS\s?X.*10\.6/],
-    idiom: "desktop",
-    platform: "mac",
-    arch: "amd64",
-    ver: "10.6",
+    plat: {
+      idiom: "desktop",
+      platform: "mac",
+      arch: "amd64",
+      ver: "10.6",
+    },
   },
   {
     regexes: [/w764/, /WINNT 6\.1 x64/i],
-    idiom: "desktop",
-    platform: "win",
-    arch: "amd64",
-    ver: "7",
+    plat: {
+      idiom: "desktop",
+      platform: "win",
+      arch: "amd64",
+      ver: "7",
+    },
   },
   {
     regexes: [/WINNT 5\.1/i],
-    idiom: "desktop",
-    platform: "win",
-    arch: "ia32",
-    ver: "XP",
+    plat: {
+      idiom: "desktop",
+      platform: "win",
+      arch: "ia32",
+      ver: "XP",
+    },
   },
   {
     regexes: [/win7/i],
-    idiom: "desktop",
-    platform: "win",
-    arch: "ia32",
-    ver: "7",
+    plat: {
+      idiom: "desktop",
+      platform: "win",
+      arch: "ia32",
+      ver: "7",
+    },
   },
   {
     regexes: [/WINNT 6\.1/i],
-    idiom: "desktop",
-    platform: "win",
-    arch: "ia32",
-    ver: "7",
+    plat: {
+      idiom: "desktop",
+      platform: "win",
+      arch: "ia32",
+      ver: "7",
+    },
   },
   {
     regexes: [/WINNT 5\.1/i],
-    idiom: "desktop",
-    platform: "win",
-    arch: "ia32",
-    ver: "2003",
+    plat: {
+      idiom: "desktop",
+      platform: "win",
+      arch: "ia32",
+      ver: "2003",
+    },
   },
   {
     regexes: [/android/i],
-    idiom: "mobile",
-    platform: "android",
-    arch: "arm",
-    ver: null,
+    plat: {
+      idiom: "mobile",
+      platform: "android",
+      arch: "arm",
+      ver: null,
+    },
   },
 ];
 
@@ -104,63 +122,87 @@ var OS_PLATFORMS = [
 var BUILD_TYPES = [
   {
     regexes: [/talos/i, /(a11y|chrome|cold|dirty|dromaeo|scroll|svg|tp4)/],
-    type: "perf",
-    subtype: "talos",
+    buildType: {
+      type: "perf",
+      subtype: "talos",
+    },
   },
   {
     regexes: [/nightly/i, /shark/i],
-    type: "nightly",
-    subtype: "nightly",
+    buildType: {
+      type: "nightly",
+      subtype: "nightly",
+    },
   },
   {
     regexes: [/mochitest/i, /unit (browser-)?chrome/i],
-    type: "test",
-    subtype: "mochitest",
+    buildType: {
+      type: "test",
+      subtype: "mochitest",
+    },
   },
   {
     regexes: [/crashtest/i],
-    type: "test",
-    subtype: "crash",
+    buildType: {
+      type: "test",
+      subtype: "crash",
+    },
   },
   {
     regexes: [/jsreftest/i],
-    type: "test",
-    subtype: "jsref",
+    buildType: {
+      type: "test",
+      subtype: "jsref",
+    },
   },
   {
     regexes: [/reftest-d2d/i, /direct3d/i, /opengl/i, /reftest/i],
-    type: "test",
-    subtype: "reftest",
+    buildType: {
+      type: "test",
+      subtype: "reftest",
+    },
   },
   {
     regexes: [/xpcshell/i],
-    type: "test",
-    subtype: "xpcshell",
+    buildType: {
+      type: "test",
+      subtype: "xpcshell",
+    },
   },
   {
     regexes: [/depend/i, /build/i],
-    type: "build",
-    subtype: "build",
+    buildType: {
+      type: "build",
+      subtype: "build",
+    },
   },
   {
     regexes: [/jetpack/i],
-    type: "test",
-    subtype: "jetpack",
+    buildType: {
+      type: "test",
+      subtype: "jetpack",
+    },
   },
   {
     regexes: [/mozmill/i],
-    type: "test",
-    subtype: "mozmill",
+    buildType: {
+      type: "test",
+      subtype: "mozmill",
+    },
   },
   {
     regexes: [/valgrind/i],
-    type: "test",
-    subtype: "valgrind",
+    buildType: {
+      type: "test",
+      subtype: "valgrind",
+    },
   },
   {
     regexes: [/(check|test)/],
-    type: "test",
-    subtype: "check",
+    buildType: {
+      type: "test",
+      subtype: "check",
+    },
   },
 ];
 
@@ -271,16 +313,16 @@ Tinderboxer.prototype = {
         }
       }
     }
-    if (!buildType)
+    if (!goodBuildType)
       return (this._buildersByName[name] = null);
 
     var isDebug = /debug/i.test(name) || /(leak|bloat)/i.test(name);
 
     var buildInfo = {
       name: name,
-      os: osDef,
+      os: goodOs.plat,
       isDebug: isDebug,
-      type: buildType,
+      type: goodBuildType.buildType,
     };
     return (this._buildersByName[name] = buildInfo);
   },
@@ -351,7 +393,7 @@ Tinderboxer.prototype = {
 
         var result = machineResults[machineRunID] = new MachineResult ({
           builder: machine,
-          runID: machineRunID,
+          id: machineRunID,
           state: state,
           startTime: startTime,
           endTime: endTime,
@@ -447,5 +489,6 @@ MachineResult.prototype = {
     }).filter(function filterNull() { return this; }).get());
   },
 };
+exports.Tinderboxer = Tinderboxer;
 
 }); // end define

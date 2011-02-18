@@ -59,7 +59,7 @@
 
 define(
   [
-    "q/util", "q-http",
+    "q", "q-http",
     "./datastore",
     "./tinderboxer",
     "./repodefs",
@@ -92,6 +92,11 @@ function Overmind(tinderTreeDef) {
 Overmind.prototype = {
   _noteState: function(newState) {
     this.state = newState;
+    console.log("Overmind state is now:", this.state);
+  },
+
+  bootstrap: function() {
+    return DB.bootstrap();
   },
 
   /**
@@ -125,7 +130,7 @@ Overmind.prototype = {
     if (!this._syncDeferred)
       this._syncDeferred = $Q.defer();
 
-    this._logprocJobs = [];
+    this._logProcJobs = [];
 
     this._noteState("tinderbox:fetching");
 
@@ -363,6 +368,7 @@ Overmind.prototype = {
    */
   _gotDbInfoForPush: function(changeset, rowResults) {
     this._noteState("db-delta:check");
+    var self = this;
 
     var rootRepoDef = this.tinderTree.repos[0];
     var isComplexRepo = this.tinderTree.repos.length > 1;
@@ -382,15 +388,65 @@ Overmind.prototype = {
       setstate["r"] = rootPush;
     }
 
-    // -- normalized logic for both 'b' variants
-    function rockBuilds(keyExtra) {
+    function isBuildLoggable(build) {
+    }
+
+    // -- normalized logic for both 'b' variants and log job checking
+    function rockBuilds(keyExtra, builds) {
+      for (var iBuild = 0; iBuild < builds.length; iBuild++) {
+        var build = builds[iBuild];
+
+        var bKey = "b" + keyExtra + ":" + build.id;
+        var jsonStr = JSON.stringify(build);
+        if (!dbstate.hasOwnProperty(bKey) ||
+            dbstate[bKey] != jsonStr)
+          newState[bKey] = jsonStr;
+
+        if (isBuildLoggable(build)) {
+          var lKey = "l" + keyExtra + ":" + build.id;
+          if (!dbstate.hasOwnProperty(lKey)) {
+            this._logProcJobs.push({
+              key: lKey,
+              build: build,
+            });
+          }
+        }
+      }
     }
 
     // -- fire off normalized logic
-    for (var iRepo = 0;
+    function walkRevMap(acummKey, revMap, subRepos) {
+      if (subRepos.length) {
+        var repoDef = subRepos[0];
+        for (var csKey in revMap) {
+          var curPush = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
 
-    // --- kickoff next processing step.
-    this._processNextPush();
+          var rKey = "r" + accumKey;
+          if (!dbstate.hasOwnProperty(rKey)) {
+            setstate[rKey] = curPush;
+          }
+
+          walkRevMap(accumKey + ":" + curPush.id,
+                     revMap[csKey],
+                     subRepos.slice(1));
+        }
+      }
+      else {
+        rockBuilds(accumKey, revMap.builds);
+      }
+    }
+    walkRevMap("", revInfo, this.tinderTree.repos.slice(1));
+
+    console.log("want to write:", newState);
+    when(DB.putPushStuff(this.tinderTree.name, rootPush.id, newState),
+      function() {
+        console.log("db write completed");
+        // - kickoff next processing step.
+        self._processNextPush();
+      },
+      function(err) {
+        console.error("failed to write our many stories!");
+      });
   },
 
   _processNextLog: function() {
@@ -404,5 +460,6 @@ Overmind.prototype = {
   _processXpcshellLog: function() {
   },
 };
+exports.Overmind = Overmind;
 
 }); // end define

@@ -161,7 +161,7 @@ var TB_SUBSYSTEMS = {
 var MC_MAPPING = {
   _: "Meh",
   accessible: "Accessibility",
-  browser: PRODUCTS.firefox,
+  browser: "Firefox",
   db: {
     mdb: "Mork",
     mork: "Mork",
@@ -283,7 +283,7 @@ var PRODUCTS = exports.PRODUCTS = {
   thunderbird: new ProductDef("Thunderbird", TB_SUBSYSTEMS),
   seamonkey: new ProductDef("SeaMonkey", {}),
   lightning: new ProductDef("Lightning", {}),
-  platform: new ProductDef("Platform", MC_SUBSYSTEMS),
+  platform: new ProductDef("Platform", TB_SUBSYSTEMS),
 };
 
 var CC_MAPPING = {
@@ -329,7 +329,7 @@ function CodeRepoDef(def) {
   this.name = def.name;
   this.url = def.url;
   this.kind = def.kind;
-  this.relto = ("relto" in def) ? relto.def : null;
+  this.relto = ("relto" in def) ? def.relto : null;
   this.path_mapping = def.path_mapping;
 }
 CodeRepoDef.prototype = {
@@ -339,14 +339,14 @@ CodeRepoDef.prototype = {
 };
 
 var REPOS = exports.REPOS = {
-  "comm-central": new RepoDef({
+  "comm-central": new CodeRepoDef({
     name: "comm-central",
     url: "http://hg.mozilla.org/comm-central/",
     kind: "trunk",
     path_mapping: CC_MAPPING,
     family: "comm",
   }),
-  "try-comm-central": new RepoDef({
+  "try-comm-central": new CodeRepoDef({
     name: "try-comm-central",
     url: "http://hg.mozilla.org/try-comm-central/",
     kind: "try",
@@ -355,14 +355,14 @@ var REPOS = exports.REPOS = {
     family: "comm",
   }),
 
-  "mozilla-central": new RepoDef({
+  "mozilla-central": new CodeRepoDef({
     name: "mozilla-central",
     url: "http://hg.mozilla.org/mozilla-central/",
     kind: "trunk",
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
-  "tracemonkey": new RepoDef({
+  "tracemonkey": new CodeRepoDef({
     name: "tracemonkey",
     url: "http://hg.mozilla.org/tracemonkey/",
     kind: "team",
@@ -371,7 +371,7 @@ var REPOS = exports.REPOS = {
     family: "mozilla",
   }),
 
-  "comm-1.9.2": new RepoDef({
+  "comm-1.9.2": new CodeRepoDef({
     name: "comm-central",
     url: "http://hg.mozilla.org/releases/comm-1.9.2/",
     kind: "release",

@@ -37,16 +37,17 @@
 
 require(
   {
-    baseUrl: "../",
+    baseUrl: "./",
     packages: [
     ],
     paths: {
+      arbpl: "arbpl",
     },
   },
   [
     "q",
-    "./overmind",
-    "./repodefs",
+    "arbpl/overmind",
+    "arbpl/repodefs",
   ],
   function(
     $Q,
@@ -55,13 +56,23 @@ require(
   ) {
 var when = $Q.when;
 
+console.log("creating overmind");
 var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);
-when(mind.syncUp(),
+console.log("initiating syncUp");
+when(mind.bootstrap(),
   function() {
-    console.log("sync success!");
+    console.log("bootstrapped!");
+    when(mind.syncUp(),
+      function() {
+        console.log("sync success!");
+      },
+      function() {
+        console.error("sync failure");
+      });
   },
   function() {
-    console.error("sync failure!");
+    console.error("bootstrap failure!");
   });
+console.log("syncUp call completed, going async");
 
 });
