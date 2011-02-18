@@ -43,7 +43,25 @@ require(
     paths: {
     },
   },
-  ["./overmind"],
-  function($overmind) {
-    
+  [
+    "q",
+    "./overmind",
+    "./repodefs",
+  ],
+  function(
+    $Q,
+    $overmind,
+    $repodefs
+  ) {
+var when = $Q.when;
+
+var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);
+when(mind.syncUp(),
+  function() {
+    console.log("sync success!");
+  },
+  function() {
+    console.error("sync failure!");
+  });
+
 });

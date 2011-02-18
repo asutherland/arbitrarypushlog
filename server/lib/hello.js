@@ -88,6 +88,5 @@ function dumpRowResults(rowResults) {
 
 makeTable();
 
-  }
-);
+});
 

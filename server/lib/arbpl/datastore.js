@@ -74,6 +74,19 @@ function transformPushId(pushId) {
  *  lexically increasing direction and we want our scans to always go backwards
  *  in time.  This enables us to easily find the most recent push by seeking to
  *  [tree identifier, all zeroes].
+ *
+ * Column family "s" is used for everything, and stands for summary.  It is
+ *  further sub-divided like so:
+ * - "r": Stores the push info and changeset information for this push for the
+      root repo.
+ * - "r:PUSHID": Stores the push and changeset information for sub-repo pushes.
+ * - "b:(PUSHID:)BUILDID": Stores the build info scraped from the tinderbox
+ *    without augmentation.  In the event of a complex tree (ex: comm-central)
+ *    we include the push id of the sub-repo used to perform the build.  This
+ *    information can change and be updated it the build status progresses or
+ *    the note changes because of starring or what not.
+ * - "l:(PUSHID:)BUILDID": Stores any information derived from processing the
+ *    build log for information.
  */
 var TDEF_PUSH_FOCUSED = {
   name: TABLE_PUSH_FOCUSED,
@@ -171,8 +184,65 @@ HStore.prototype = {
       });
     return deferred.promise;
   },
-  
+
+  getPushInfo: function(treeId, pushId) {
+    var deferred = $Q.defer();
+    this.client.get(
+      TABLE_PUSH_RECORD, treeId + "," + transformPushId(pushId),
+      function(err, rowResults) {
+        if (err) {
+          console.error("Unhappiness getting row: " +
+                        treeId + "," + transformPushId(pushId));
+          deferred.reject(err);
+        }
+        else {
+          deferred.resolve(rowResults);
+        }
+      });
+    return deferred.promise;
+  },
+
+  normalizeRowResults: function(rowResults) {
+    var dbstate = {};
+    for (var iRow = 0; iRow < rowResults.length; iRow++) {
+      var rr = rowResults[iRow];
+
+      var cols = rr.columns;
+      for (var key in cols) {
+        var value = cols[key].value; // also knows timestamp
+
+        dbstate[key] = value;
+      }
+    }
+
+    return dbstate;
+  },
+
   putPushStuff: function(treeId, pushId, keysAndValues) {
+    var deferred = $Q.defer();
+    var mutations = [];
+    for (var key in keysAndValues) {
+      var value = keysAndValues[key];
+      mutations.push(new $baseTypes.Mutation({
+        column: key,
+        value: value,
+      }));
+    }
+
+    this.client.mutateRow(
+      TABLE_PUSH_RECORD, treeId + "," + transformPushId(pushId),
+      mutations,
+      function(err) {
+        if (err) {
+          console.error("Problem saving row: " +
+                        treeId + "," + transformPushId(pushId));
+          deferred.reject(err);
+        }
+        else {
+          deferred.resolve();
+        }
+      });
+    return deferred.promise;
   },
 };
 exports.HStore = HStore;

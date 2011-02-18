@@ -344,6 +344,7 @@ var REPOS = exports.REPOS = {
     url: "http://hg.mozilla.org/comm-central/",
     kind: "trunk",
     path_mapping: CC_MAPPING,
+    family: "comm",
   }),
   "try-comm-central": new RepoDef({
     name: "try-comm-central",
@@ -351,6 +352,7 @@ var REPOS = exports.REPOS = {
     kind: "try",
     relto: "comm-central",
     path_mapping: CC_MAPPING,
+    family: "comm",
   }),
 
   "mozilla-central": new RepoDef({
@@ -358,6 +360,7 @@ var REPOS = exports.REPOS = {
     url: "http://hg.mozilla.org/mozilla-central/",
     kind: "trunk",
     path_mapping: MC_MAPPING,
+    family: "mozilla",
   }),
   "tracemonkey": new RepoDef({
     name: "tracemonkey",
@@ -365,6 +368,15 @@ var REPOS = exports.REPOS = {
     kind: "team",
     relto: "mozilla-central",
     path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+
+  "comm-1.9.2": new RepoDef({
+    name: "comm-central",
+    url: "http://hg.mozilla.org/releases/comm-1.9.2/",
+    kind: "release",
+    path_mapping: CC_MAPPING,
+    family: "comm",
   }),
 };
 
@@ -374,6 +386,7 @@ var REPOS = exports.REPOS = {
  */
 function TinderTreeDef(def) {
   this.id = def.id;
+  this.name = def.name;
   this.product = def.product;
   this.repos = def.repos;
   this.mount = def.mount;
@@ -388,6 +401,7 @@ TinderTreeDef.prototype = {
 var TINDER_TREES = exports.TINDER_TREES = {
   tb_trunk: new TinderTreeDef({
     id: "cc",
+    name: "Thunderbird",
     product: PRODUCTS.thunderbird,
     repos: [REPOS["comm-central"], REPOS["mozilla-central"]],
     mount: {
@@ -397,6 +411,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   /*
   tb_try: new TinderTreeDef({
     id: "ctry",
+    name: "ThunderbirdTry",
     product: PRODUCTS.thunderbird,
   }),
    */

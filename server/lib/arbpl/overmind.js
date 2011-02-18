@@ -59,13 +59,17 @@
 
 define(
   [
-    "q/util",
+    "q/util", "q-http",
     "./datastore",
+    "./tinderboxer",
+    "./repodefs",
     "exports"
   ],
   function(
-    $Q,
+    $Q, $Qhttp,
     $datastore,
+    $tinderboxer,
+    $repodefs,
     exports
   ) {
 
@@ -73,10 +77,17 @@ var when = $Q.when;
 
 var DB = new $datastore.HStore();
 
+var HOURS_IN_MS = 60 * 60 * 1000;
+
 function Overmind(tinderTreeDef) {
   this.tinderTree = tinderTreeDef;
 
+  this.tinderboxer = new $tinderboxer.Tinderboxer(tinderTreeDef.name);
+
   this.state = "inactive";
+  this._syncDeferred = null;
+
+  this._pendingPushFetches = 0;
 }
 Overmind.prototype = {
   _noteState: function(newState) {
@@ -88,17 +99,309 @@ Overmind.prototype = {
    *  we have no data whatsoever, grab the most recent 12 hours.
    */
   syncUp: function() {
+    this._syncDeferred = $Q.defer();
+
     var self = this;
     when(DB.getMostRecentKnownPush(this.tinderTree.id),
       function(rowResults) {
-        
+        if (rowResults.length) {
+          console.warn("Unexpected! The DB gave us a result!");
+        }
+        else {
+          self.syncTimeRange({
+              endTime: Date.now() + 2000,
+              duration: 12 * HOURS_IN_MS,
+            });
+        }
       },
       function(err) {
+        console.error("DB gave up on getting the recent push.");
+      });
 
+    return this._syncDeferred.promise;
+  },
+
+  syncTimeRange: function(timeRange) {
+    if (!this._syncDeferred)
+      this._syncDeferred = $Q.defer();
+
+    this._logprocJobs = [];
+
+    this._noteState("tinderbox:fetching");
+
+    when(this.tinderboxer.fetchRange(timeRange),
+      this._procTinderboxBuildResults.bind(this),
+      function(err) { console.error("problem getting tinderbox results."); });
+
+    return this._syncDeferred.promise;
+  },
+
+  /**
+   * Group results by build revision tuples, then ask the pushlog server for
+   *  those revisions we do not currently know about.
+   */
+  _procTinderboxBuildResults: function(results) {
+    this._noteState("tinderbox:processing");
+
+    var RE_RELEASES = /^releases\//;
+    /**
+     * Given a repo-name from the tinderbox (basically the repo path), try
+     *  and find the `CodeRepoDef` for that repository.
+     */
+    function findRepoDef(repoName) {
+      if (RE_RELEASES.test(repoName)) {
+        repoName = repoName.substring(9);
+      }
+
+      if ($repodefs.REPOS.hasOwnProperty(repoName)) {
+        return $repodefs.REPOS[repoName];
+      }
+      return null;
+    }
+
+    /** Map repo families to revision map depth... */
+    var familyPrioMap = {};
+    for (var iRepo = 0; iRepo < this.tinderTree.repos.length; iRepo++) {
+      familyPrioMap[this.tinderTree.repos[iRepo].family] = iRepo;
+    }
+
+    /**
+     * Hierarchical map that clusters the builds.  In the case of comm-central,
+     *  the outer map will contain the comm-central revisions as keys, and the
+     *  values with be maps with mozilla-central revisions as keys.  In
+     *  the case of mozilla-central, there will only be the revMap whose keys
+     *  are mozilla-central revisions.
+     *
+     * The values/leaf nodes in the map will be dictionaries with objects with
+     *  a "builds" list in it.
+     */
+    var revMap = this._revMap = {};
+    var repoAndRevs = {};
+    var i, revision, repoDef;
+    var earliest = null, latest = null;
+
+    for (var buildId in results) {
+      var build = results[buildId];
+
+      if (earliest == null || build.startTime < earliest)
+        earliest = build.startTime;
+      if (latest == null || build.startTime > latest)
+        latest = build.startTime;
+
+      // Resolve and order the repositories based on our tupling hierarchy.
+      // (We can't just key into build.revs in the order we want because on try
+      //  servers we cannot guarantee that the exact repo we expect will be in
+      //  use; that might be the variation that was being tried!)
+      var orderedRevInfo = [];
+      for (var revRepo in build.revs) {
+        revision = build.revs[revRepo];
+        repoDef = findRepoDef(revRepo);
+        if (!repoDef || !familyPrioMap.hasOwnProperty(repoDef.family))
+          throw new Error("Completely unknown repo: " + revRepo);
+        orderedRevInfo[familyPrioMap[repoDef.family]] = [repoDef, revision];
+
+        // update our pushlog fetch info
+        if (!repoAndRevs.hasOwnProperty(revRepo))
+          repoAndRevs[revRepo] = {repo: repoDef, revs: []};
+        if (repoAndRevs[revRepo].revs.indexOf(revision) != -1)
+          repoAndRevs[revRepo].revs.push(revision);
+      }
+      // now map the contributions into the revMap
+      var curMap = revMap;
+      for (i = 0; i < orderedRevInfo.length; i++) {
+        repoDef = orderedRevInfo[i][0];
+        revision = orderedRevInfo[i][1];
+        // final nesting?
+        if (i == orderedRevInfo.length - 1) {
+          if (curMap.hasOwnProperty(revision)) {
+            curMap = curMap[revision];
+            curMap.builds.push(build);
+          }
+          else {
+            curMap = curMap[revision] = {builds: [build]};
+          }
+        }
+        // hierarchy stage still
+        else {
+          if (curMap.hasOwnProperty(revision))
+            curMap = curMap[revision];
+          else
+            curMap = curMap[revision] = {};
+        }
+      }
+    }
+
+    this._getPushInfoForRevisions(repoAndRevs, earliest, latest);
+  },
+
+  /**
+   * Retrieve the push and changeset information given one or more trees and
+   *  a set of revisions for each tree.  We assume temporal locality for the
+   *  revisions we are provided and try to just ask the server for an expanded
+   *  time range
+   *
+   * @args[
+   *   @param[repoAndRevs @dictof[repoName @dict[
+   *     @key[repo CodeRepoDef]
+   *     @key[revs @listof[String]]{
+   *       The list of revision strings that the pushlog will find acceptable.
+   *     }
+   *   ]]]
+   *   @param[earliestTime Date]{
+   *     The earliest time that we think correlates with the revisions.  When
+   *     going off of builds, this means the earliest timestamp for the start of
+   *     a build.  We will apply a fudge factor; no one upstream of us should.
+   *   }
+   *   @param[latestTime Date]{
+   *     The latest time that we think correlates with the revisions.  When
+   *     going off of builds, this means the latest timestamp for the start of
+   *     a build.
+   *   }
+   * ]
+   */
+  _getPushInfoForRevisions: function(repoAndRevs, earliestTime, latestTime) {
+    this._noteState("pushlog:fetch");
+
+    // map (repo+rev) => {push: blah, changeset: blah}
+    this._revInfoByRepoAndRev = {};
+
+    // fudge earliestTime by a few hours...
+    earliestTime -= 3 * HOURS_IN_MS;
+
+    for (var repoName in repoAndRevs) {
+      var repoAndRev = repoAndRevs[repoName];
+
+      this._fetchSpecificPushInfo(repoAndRev.repo, repoAndRev.revs,
+                                  "&startdate=" + earliestTime +
+                                  "&enddate=" + latestTime);
+    }
+  },
+
+  _fetchSpecificPushInfo: function(repoDef, revs, paramStr) {
+    var self = this;
+    var url = repoAndRev.repo.url + "?full=1" + paramStr;
+    // XXX promises feel like they would be cleaner, but the Q abstractions are
+    //  concerning still right now.
+    this._pendingPushFetches++;
+
+    when($Qhttp.read(url),
+      function(jsonStr) {
+        self._pendingPushFetches--;
+
+        var pushes = JSON.parse(jsonStr);
+
+        for (var pushId in pushes) {
+          var pinfo = pushes[pushId];
+          pinfo.id = pushId;
+
+          for (var iChange = 0; iChange < pinfo.changesets.length; iChange++) {
+            var csinfo = pinfo.changesets[iChange];
+
+            var shortRev = csinfo.node.substring(0, 12);
+            csinfo.shortRev = shortRev;
+
+            var aggrKey = repoDef.name + ":" + shortRev;
+            self._revInfoByRepoAndRev[aggrKey] = {
+              push: pinfo,
+              changeset: csinfo,
+            };
+            revs.splice(revs.indexOf(shortRev));
+          }
+        }
+
+        // Issue one-off requests for any missing changesets; chained, so only
+        //  trigger for one right now.
+        if (revs.length) {
+          self._fetchSpecificPushInfo(repoDef, revs, "&rev=" + revs[0]);
+        }
+        else {
+          if (self._pendingPushFetches == 0)
+            self._processNextPush();
+        }
+      },
+      function(err) {
+        self._pendingPushFetches--;
+        console.error("Push fetch error", repoDef);
       });
   },
 
-  syncTimeRange: function() {
+  /**
+   * Figure out what the database does not yet know; persist newfound state and
+   *  initiate follow-on processing of logs and the like not yet processed.
+   *
+   * Now that we have the tinderbox builds and information on all the pushes
+   *  mentioned by the tinderbox builds, we need to check what the database
+   *  already knows.  Anything it does not know that we just found out, we need
+   *  to tell.  Additionally, any derived information (like analysis of build
+   *  logs) that has not been performed should also be scheduled.
+   */
+  _processNextPush: function() {
+    this._noteState("db-delta:fetch");
+
+    var repoDef = this.tinderTree.repos[0];
+    var self = this;
+    for (var changeset in this._revMap) {
+      var aggrKey = repoDef.name + ":" + changeset;
+      if (!this._revInfoByRepoAndRev.hasOwnProperty(aggrKey))
+        throw new Error("Unable to map changeset " + changeset);
+      var csmeta = this._revInfoByRepoAndRev[aggrKey];
+      when(DB.getPushInfo(this.tinderTree.name, csmeta.push.id),
+        function(rowResults) {
+          self._gotDbInfoForPush(changeset, rowResults);
+        },
+        function(err) {
+          console.error("Failed to find good info on push...");
+        });
+    }
+    // (we only reach here if there were no more changesets to process)
+    this._processNextLog();
+  },
+
+  /**
+   * Now that we have what the database knows for this push, we can figure out
+   *  what to tell the database and what log processing jobs we should trigger.
+   */
+  _gotDbInfoForPush: function(changeset, rowResults) {
+    this._noteState("db-delta:check");
+
+    var rootRepoDef = this.tinderTree.repos[0];
+    var isComplexRepo = this.tinderTree.repos.length > 1;
+
+    var revInfo = this._revMap[changeset];
+    delete this._revMap[changeset];
+
+    // -- slurp dbstate into a map
+    var dbstate = DB.normalizeRowResults(rowResults);
+    var setstate = {};
+
+    var rootPush =
+      this._revInfoByRepoAndRev[rootRepoDef.name + ":" + changeset];
+
+    // -- handle root "r" records.
+    if (!dbstate.hasOwnProperty("r")) {
+      setstate["r"] = rootPush;
+    }
+
+    // -- normalized logic for both 'b' variants
+    function rockBuilds(keyExtra) {
+    }
+
+    // -- fire off normalized logic
+    for (var iRepo = 0;
+
+    // --- kickoff next processing step.
+    this._processNextPush();
+  },
+
+  _processNextLog: function() {
+    this._noteState("logproc");
+    console.warn("ALL DONE.");
+  },
+
+  _processMozmillLog: function() {
+  },
+
+  _processXpcshellLog: function() {
   },
 };
 
