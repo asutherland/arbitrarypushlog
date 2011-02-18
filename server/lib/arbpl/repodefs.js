@@ -331,6 +331,7 @@ function CodeRepoDef(def) {
   this.kind = def.kind;
   this.relto = ("relto" in def) ? def.relto : null;
   this.path_mapping = def.path_mapping;
+  this.family = def.family;
 }
 CodeRepoDef.prototype = {
   toString: function() {

@@ -63,6 +63,7 @@ define(
     "./datastore",
     "./tinderboxer",
     "./repodefs",
+    "./hackjobs",
     "exports"
   ],
   function(
@@ -70,6 +71,7 @@ define(
     $datastore,
     $tinderboxer,
     $repodefs,
+    $hackjobs,
     exports
   ) {
 
@@ -104,11 +106,13 @@ Overmind.prototype = {
    *  we have no data whatsoever, grab the most recent 12 hours.
    */
   syncUp: function() {
+    console.log("syncUp...");
     this._syncDeferred = $Q.defer();
 
     var self = this;
     when(DB.getMostRecentKnownPush(this.tinderTree.id),
       function(rowResults) {
+        console.log("heard back from DB");
         if (rowResults.length) {
           console.warn("Unexpected! The DB gave us a result!");
         }
@@ -127,6 +131,7 @@ Overmind.prototype = {
   },
 
   syncTimeRange: function(timeRange) {
+    console.log("syncTimeRange...");
     if (!this._syncDeferred)
       this._syncDeferred = $Q.defer();
 
@@ -208,7 +213,7 @@ Overmind.prototype = {
         // update our pushlog fetch info
         if (!repoAndRevs.hasOwnProperty(revRepo))
           repoAndRevs[revRepo] = {repo: repoDef, revs: []};
-        if (repoAndRevs[revRepo].revs.indexOf(revision) != -1)
+        if (repoAndRevs[revRepo].revs.indexOf(revision) == -1)
           repoAndRevs[revRepo].revs.push(revision);
       }
       // now map the contributions into the revMap
@@ -236,6 +241,7 @@ Overmind.prototype = {
       }
     }
 
+    console.log("??repoAndRevs", repoAndRevs);
     this._getPushInfoForRevisions(repoAndRevs, earliest, latest);
   },
 
@@ -270,12 +276,17 @@ Overmind.prototype = {
     // map (repo+rev) => {push: blah, changeset: blah}
     this._revInfoByRepoAndRev = {};
 
+    // normalize to millis
+    earliestTime = earliestTime.valueOf();
+    latestTime = latestTime.valueOf();
+
     // fudge earliestTime by a few hours...
     earliestTime -= 3 * HOURS_IN_MS;
 
     for (var repoName in repoAndRevs) {
       var repoAndRev = repoAndRevs[repoName];
 
+      console.log("Repo", repoName, "wants", repoAndRev.revs);
       this._fetchSpecificPushInfo(repoAndRev.repo, repoAndRev.revs,
                                   "&startdate=" + earliestTime +
                                   "&enddate=" + latestTime);
@@ -284,17 +295,20 @@ Overmind.prototype = {
 
   _fetchSpecificPushInfo: function(repoDef, revs, paramStr) {
     var self = this;
-    var url = repoAndRev.repo.url + "?full=1" + paramStr;
+    var url = repoDef.url + "json-pushes?full=1" + paramStr;
     // XXX promises feel like they would be cleaner, but the Q abstractions are
     //  concerning still right now.
     this._pendingPushFetches++;
 
-    when($Qhttp.read(url),
-      function(jsonStr) {
+    console.log("fetching push info for", repoDef.name, "paramstr", paramStr);
+    when($hackjobs.httpFetch(url),
+      function(jsonBuffer) {
         self._pendingPushFetches--;
 
+        var jsonStr = jsonBuffer.toString("utf8");
         var pushes = JSON.parse(jsonStr);
 
+        console.log("repo", repoDef.name, "got JSON");
         for (var pushId in pushes) {
           var pinfo = pushes[pushId];
           pinfo.id = pushId;
@@ -310,14 +324,17 @@ Overmind.prototype = {
               push: pinfo,
               changeset: csinfo,
             };
-            revs.splice(revs.indexOf(shortRev));
+            console.log("  resolving rev", shortRev, revs.indexOf(shortRev));
+            if (revs.indexOf(shortRev) != -1)
+              revs.splice(revs.indexOf(shortRev), 1);
           }
         }
 
         // Issue one-off requests for any missing changesets; chained, so only
         //  trigger for one right now.
         if (revs.length) {
-          self._fetchSpecificPushInfo(repoDef, revs, "&rev=" + revs[0]);
+          console.log("... still have pending revs", revs);
+          self._fetchSpecificPushInfo(repoDef, revs, "&changeset=" + revs[0]);
         }
         else {
           if (self._pendingPushFetches == 0)
@@ -326,7 +343,7 @@ Overmind.prototype = {
       },
       function(err) {
         self._pendingPushFetches--;
-        console.error("Push fetch error", repoDef);
+        console.error("Push fetch error", err, err.stack);
       });
   },
 
@@ -357,6 +374,8 @@ Overmind.prototype = {
         function(err) {
           console.error("Failed to find good info on push...");
         });
+      // we did something. leave!
+      return;
     }
     // (we only reach here if there were no more changesets to process)
     this._processNextLog();
@@ -383,9 +402,9 @@ Overmind.prototype = {
     var rootPush =
       this._revInfoByRepoAndRev[rootRepoDef.name + ":" + changeset];
 
-    // -- handle root "r" records.
-    if (!dbstate.hasOwnProperty("r")) {
-      setstate["r"] = rootPush;
+    // -- handle root "s:r" records.
+    if (!dbstate.hasOwnProperty("s:r")) {
+      setstate["s:r"] = rootPush;
     }
 
     function isBuildLoggable(build) {
@@ -396,14 +415,14 @@ Overmind.prototype = {
       for (var iBuild = 0; iBuild < builds.length; iBuild++) {
         var build = builds[iBuild];
 
-        var bKey = "b" + keyExtra + ":" + build.id;
+        var bKey = "s:b" + keyExtra + ":" + build.id;
         var jsonStr = JSON.stringify(build);
         if (!dbstate.hasOwnProperty(bKey) ||
             dbstate[bKey] != jsonStr)
-          newState[bKey] = jsonStr;
+          setstate[bKey] = jsonStr;
 
         if (isBuildLoggable(build)) {
-          var lKey = "l" + keyExtra + ":" + build.id;
+          var lKey = "s:l" + keyExtra + ":" + build.id;
           if (!dbstate.hasOwnProperty(lKey)) {
             this._logProcJobs.push({
               key: lKey,
@@ -415,13 +434,14 @@ Overmind.prototype = {
     }
 
     // -- fire off normalized logic
-    function walkRevMap(acummKey, revMap, subRepos) {
+    function walkRevMap(accumKey, revMap, subRepos) {
       if (subRepos.length) {
         var repoDef = subRepos[0];
         for (var csKey in revMap) {
-          var curPush = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
+          var minfo = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
+          var curPush = minfo.push;
 
-          var rKey = "r" + accumKey;
+          var rKey = "s:r" + accumKey;
           if (!dbstate.hasOwnProperty(rKey)) {
             setstate[rKey] = curPush;
           }
@@ -437,8 +457,8 @@ Overmind.prototype = {
     }
     walkRevMap("", revInfo, this.tinderTree.repos.slice(1));
 
-    console.log("want to write:", newState);
-    when(DB.putPushStuff(this.tinderTree.name, rootPush.id, newState),
+    console.log("want to write:", setstate);
+    when(DB.putPushStuff(this.tinderTree.name, rootPush.id, setstate),
       function() {
         console.log("db write completed");
         // - kickoff next processing step.

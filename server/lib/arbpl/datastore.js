@@ -94,7 +94,9 @@ var TDEF_PUSH_FOCUSED = {
     new $baseTypes.ColumnDescriptor({
       name: "s",
       maxVersions: 1,
-      compression: "RECORD",
+      // it does not like compression: RECORD and the javadoc says the option
+      //  is deprecated, although jerks do not mention what it is deprecated
+      //  in favor of...
       bloomFilterType: "ROW",
       blockCacheEnabled: 1,
     }),
@@ -137,17 +139,20 @@ HStore.prototype = {
   },
 
   _ensureSchema: function() {
+    console.log("_ensureSchema", this._iNextTableSchema);
     var schema = SCHEMA_TABLES[this._iNextTableSchema++];
     var self = this;
-    client.createTable(
+    this.client.createTable(
       schema.name,
       schema.columnFamilies,
       function(err) {
+        console.log("_ensureSchema callback", err);
         // We don't care if there is an error right now; we are striving for
         //  idempotency and this gets us that.
 
         // If we are all done, resolve.
         if (self._iNextTableSchema >= SCHEMA_TABLES.length) {
+          console.log("resolving db bootstrap");
           self._bootstrapDeferred.resolve();
           return;
         }
@@ -161,6 +166,7 @@ HStore.prototype = {
   },
 
   getMostRecentKnownPush: function(treeId) {
+    console.log("getMostRecentKnownPush...");
     var deferred = $Q.defer();
     var self = this;
     this.client.scannerOpen(
@@ -188,7 +194,7 @@ HStore.prototype = {
 
   getPushInfo: function(treeId, pushId) {
     var deferred = $Q.defer();
-    this.client.get(
+    this.client.getRow(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       function(err, rowResults) {
         if (err) {
@@ -212,7 +218,7 @@ HStore.prototype = {
       for (var key in cols) {
         var value = cols[key].value; // also knows timestamp
 
-        dbstate[key] = value;
+        dbstate[key] = JSON.parse(value);
       }
     }
 
@@ -226,7 +232,7 @@ HStore.prototype = {
       var value = keysAndValues[key];
       mutations.push(new $baseTypes.Mutation({
         column: key,
-        value: value,
+        value: JSON.stringify(value),
       }));
     }
 

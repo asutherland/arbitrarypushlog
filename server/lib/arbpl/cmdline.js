@@ -35,6 +35,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+
+process.on("uncaughtException",
+  function(err) {
+    console.error("Uncaught exception!", err);
+  });
+
 require(
   {
     baseUrl: "./",
@@ -56,12 +62,13 @@ require(
   ) {
 var when = $Q.when;
 
+
 console.log("creating overmind");
 var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);
-console.log("initiating syncUp");
+console.log("initiating bootstrap");
 when(mind.bootstrap(),
   function() {
-    console.log("bootstrapped!");
+    console.log("bootstrapped! initiating syncup");
     when(mind.syncUp(),
       function() {
         console.log("sync success!");

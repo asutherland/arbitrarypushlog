@@ -17,15 +17,18 @@
 define(
   [
     "q", "q-http",
+    "url",
+    "./hackjobs",
     "exports"
   ],
   function(
     $Q, $Qhttp,
+    $url,
+    $hackjobs,
     exports
   ) {
 
 var when = $Q.when;
-
 
 /**
  * Platform categories to be decided by applying the associated regular
@@ -206,12 +209,16 @@ var BUILD_TYPES = [
   },
 ];
 
+var RE_SINGLE_QUOTE = /'/g;
+var RE_DOUBLE_QUOTE = /"/g;
+var RE_XFFE = /\xfffe/g;
+
 /**
  * The tinderbox JSON format is not actually JSON but rather JSONP without
  *  the callback.
  */
 function parseStupidJsonBlob(stupidBlob) {
-  if (stupidBlob.substring(0, 16) != "tinderbox_stupidBlob =") {
+  if (stupidBlob.substring(0, 16) != "tinderbox_data =") {
     console.error("Tinderbox JSON stupidBlob not as expected!");
     return null;
   }
@@ -219,9 +226,10 @@ function parseStupidJsonBlob(stupidBlob) {
 
   // Additionally, the JSON is not actually legal JSON, so we need to
   // flip the bloody quotes. Khaaaaaaaaaaaaaaaaaaaaaan.
-  stupidBlob = stupidBlob.replace("'", "\xfffe", "g");
-  stupidBlob = stupidBlob.replace('"', "'", "g");
-  var lessStupidBlob = stupidBlob.replace("\xfffe", '"', "g");
+  stupidBlob = stupidBlob.replace(RE_SINGLE_QUOTE, "\xfffe");
+  stupidBlob = stupidBlob.replace(RE_DOUBLE_QUOTE, "'");
+  var lessStupidBlob = stupidBlob.replace(RE_XFFE, '"');
+
   return JSON.parse(lessStupidBlob);
 }
 
@@ -253,19 +261,20 @@ Tinderboxer.prototype = {
   fetchRange: function(timeRange) {
     var deferred = $Q.defer(), self = this;
     var url = this._getScriptURL(timeRange, false, Date.now());
-    when($Qhttp.read(url),
-      function(stupidJsonBlob) {
-        var tinderObj = parseStupidJsonBlob(stupidJsonBlob);
+    console.log("fetching tinderbox data from", url);
+    when($hackjobs.httpFetch(url),
+      function(dataBuffer) {
+        var tinderObj = parseStupidJsonBlob(dataBuffer.toString("utf8"));
         try {
           deferred.resolve(self._parseTinderbox(tinderObj));
         }
         catch (ex) {
-          console.error("Exception parsing tinderbox data", ex);
+          console.error("Exception parsing tinderbox data", ex.stack);
           deferred.reject(ex);
         }
       },
       function(err) {
-        console.error("Problem fetching tinderbox log!");
+        console.error("Problem fetching tinderbox log!", err);
         deferred.reject(err);
       });
 
@@ -306,7 +315,7 @@ Tinderboxer.prototype = {
 
     for (var iBT = 0; iBT < BUILD_TYPES.length; iBT++) {
       var buildType = BUILD_TYPES[iBT];
-      for (iRegex = 0; iRegex < buildType.regexes.length; iRegex) {
+      for (iRegex = 0; iRegex < buildType.regexes.length; iRegex++) {
         if (buildType.regexes[iRegex].test(name)) {
           goodBuildType = buildType;
           break;
@@ -350,11 +359,11 @@ Tinderboxer.prototype = {
   _parseTinderbox: function TinderboxJSONUser_parseTinderbox(td) {
     var machines = [];
 
-    for (var iBN = 0; iBN < data.build_names.length; iBN++) {
-      machines.push(this._categorizeBuilder(data.build_names[iBN]));
+    for (var iBN = 0; iBN < td.build_names.length; iBN++) {
+      machines.push(this._categorizeBuilder(td.build_names[iBN]));
     }
 
-    var notes = td.note_array.map(this.processNote);
+    var notes = td.note_array.map(this._processNote);
 
     var machineResults = {};
     // rows
@@ -380,7 +389,7 @@ Tinderboxer.prototype = {
                                             : 0;
         var machineRunID = build.logfile;
         var buildScrape = td.scrape[machineRunID];
-        var revs = this.findRevInScrape(buildScrape);
+        var revs = this._findRevInScrape(buildScrape);
         // just ignore jobs that can’t be associated to a revision, this also
         // takes care of running builds
         if (!revs)
