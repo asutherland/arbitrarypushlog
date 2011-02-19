@@ -262,7 +262,7 @@ Tinderboxer.prototype = {
     var deferred = $Q.defer(), self = this;
     var url = this._getScriptURL(timeRange, false, Date.now());
     console.log("fetching tinderbox data from", url);
-    when($hackjobs.httpFetch(url),
+    when($Qhttp.read(url),
       function(dataBuffer) {
         var tinderObj = parseStupidJsonBlob(dataBuffer.toString("utf8"));
         try {

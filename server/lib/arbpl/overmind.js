@@ -280,8 +280,9 @@ Overmind.prototype = {
     earliestTime = earliestTime.valueOf();
     latestTime = latestTime.valueOf();
 
-    // fudge earliestTime by a few hours...
-    earliestTime -= 3 * HOURS_IN_MS;
+    // fudge earliestTime by a lot because the one-off fetches are really
+    //  slow.
+    earliestTime -= 12 * HOURS_IN_MS;
 
     for (var repoName in repoAndRevs) {
       var repoAndRev = repoAndRevs[repoName];
@@ -301,7 +302,7 @@ Overmind.prototype = {
     this._pendingPushFetches++;
 
     console.log("fetching push info for", repoDef.name, "paramstr", paramStr);
-    when($hackjobs.httpFetch(url),
+    when($Qhttp.read(url),
       function(jsonBuffer) {
         self._pendingPushFetches--;
 
