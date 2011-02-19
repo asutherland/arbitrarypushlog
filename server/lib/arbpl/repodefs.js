@@ -431,4 +431,13 @@ var TINDER_TREES = exports.TINDER_TREES = {
 
 };
 
+exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
+  for (var key in TINDER_TREES) {
+    var tree = TINDER_TREES[key];
+    if (tree.name == treeName)
+      return tree;
+  }
+  return null;
+};
+
 }); // end define

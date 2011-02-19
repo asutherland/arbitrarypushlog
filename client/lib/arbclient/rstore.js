@@ -35,85 +35,18 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-
-process.on("uncaughtException",
-  function(err) {
-    console.error(err.stack);
-  });
-
-require(
-  {
-    baseUrl: "../../",
-    packages: [
-    ],
-    paths: {
-      arbpl: "server/lib/arbpl",
-      "arbpl-cmn": "common/lib/arbpl-cmn",
-    },
-  },
+define(
   [
-    "nomnom",
-    "q",
-    "require"
+    "exports",
   ],
   function(
-    $nomnom,
-    $Q,
-    $require
+    exports
   ) {
-var when = $Q.when;
 
-var OPTS = [
-  {
-    name: "command",
-    position: 0,
-    help: "one of: sync, web",
-  },
-];
-
-// We need to do our own argv slicing to compensate for RequireJS' r.js
-var options = $nomnom.parseArgs(OPTS, null, process.argv.slice(3));
-switch (options.command) {
-  case "web":
-    $require(
-      ["arbpl/web/gogogo"],
-      function($webgo) {
-        // automatically goes, as it were.
-      }
-    );
-    break;
-
-  case "sync":
-    $require(
-      ["arbpl/overmind", "arbpl/repodefs"],
-      function($overmind, $repodefs) {
-        console.log("creating overmind");
-        var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);
-        console.log("initiating bootstrap");
-        when(mind.bootstrap(),
-          function() {
-            console.log("bootstrapped! initiating syncup");
-            when(mind.syncUp(),
-              function() {
-                console.log("sync success!");
-              },
-              function() {
-                console.error("sync failure");
-              });
-          },
-          function() {
-            console.error("bootstrap failure!");
-          });
-        console.log("syncUp call completed, going async");
-      }
-    );
-    break;
-
-  default:
-    console.error("unknown command: " + options.command);
-    process.exit(-1);
-    break;
+function RemoteStore() {
 }
+RemoteStore.prototype = {
+};
+exports.RemoteStore = RemoteStore;
 
-
-});
+}); // end define

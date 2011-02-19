@@ -81,6 +81,19 @@ var DB = new $datastore.HStore();
 
 var HOURS_IN_MS = 60 * 60 * 1000;
 
+function PushlogDateString(d){
+ function pad(n) {
+   return n<10 ? '0'+n : n;
+ };
+ return encodeURIComponent(
+   pad(d.getUTCMonth()+1) + '/' +
+   pad(d.getUTCDate()) + '/' +
+   d.getUTCFullYear() + ' ' +
+   + pad(d.getUTCHours())+':'
+   + pad(d.getUTCMinutes())+':'
+   + pad(d.getUTCSeconds()) + 'Z');
+}
+
 function Overmind(tinderTreeDef) {
   this.tinderTree = tinderTreeDef;
 
@@ -110,7 +123,7 @@ Overmind.prototype = {
     this._syncDeferred = $Q.defer();
 
     var self = this;
-    when(DB.getMostRecentKnownPush(this.tinderTree.id),
+    when(DB.getMostRecentKnownPushes(this.tinderTree.id, 1),
       function(rowResults) {
         console.log("heard back from DB");
         if (rowResults.length) {
@@ -282,15 +295,18 @@ Overmind.prototype = {
 
     // fudge earliestTime by a lot because the one-off fetches are really
     //  slow.
-    earliestTime -= 12 * HOURS_IN_MS;
+    earliestTime -= 6 * HOURS_IN_MS;
+
+    var earliestTimeStr = PushlogDateString(new Date(earliestTime));
+    var latestTimeStr = PushlogDateString(new Date(latestTime));
 
     for (var repoName in repoAndRevs) {
       var repoAndRev = repoAndRevs[repoName];
 
       console.log("Repo", repoName, "wants", repoAndRev.revs);
       this._fetchSpecificPushInfo(repoAndRev.repo, repoAndRev.revs,
-                                  "&startdate=" + earliestTime +
-                                  "&enddate=" + latestTime);
+                                  "&startdate=" + earliestTimeStr +
+                                  "&enddate=" + latestTimeStr);
     }
   },
 
@@ -368,7 +384,7 @@ Overmind.prototype = {
       if (!this._revInfoByRepoAndRev.hasOwnProperty(aggrKey))
         throw new Error("Unable to map changeset " + changeset);
       var csmeta = this._revInfoByRepoAndRev[aggrKey];
-      when(DB.getPushInfo(this.tinderTree.name, csmeta.push.id),
+      when(DB.getPushInfo(this.tinderTree.id, csmeta.push.id),
         function(rowResults) {
           self._gotDbInfoForPush(changeset, rowResults);
         },
@@ -397,11 +413,11 @@ Overmind.prototype = {
     delete this._revMap[changeset];
 
     // -- slurp dbstate into a map
-    var dbstate = DB.normalizeRowResults(rowResults);
+    var dbstate = DB.normalizeOneRow(rowResults);
     var setstate = {};
 
     var rootPush =
-      this._revInfoByRepoAndRev[rootRepoDef.name + ":" + changeset];
+      this._revInfoByRepoAndRev[rootRepoDef.name + ":" + changeset].push;
 
     // -- handle root "s:r" records.
     if (!dbstate.hasOwnProperty("s:r")) {
@@ -459,7 +475,7 @@ Overmind.prototype = {
     walkRevMap("", revInfo, this.tinderTree.repos.slice(1));
 
     console.log("want to write:", setstate);
-    when(DB.putPushStuff(this.tinderTree.name, rootPush.id, setstate),
+    when(DB.putPushStuff(this.tinderTree.id, rootPush.id, setstate),
       function() {
         console.log("db write completed");
         // - kickoff next processing step.
@@ -472,7 +488,8 @@ Overmind.prototype = {
 
   _processNextLog: function() {
     this._noteState("logproc");
-    console.warn("ALL DONE.");
+    console.log("ALL DONE, quitting.");
+    process.exit(0);
   },
 
   _processMozmillLog: function() {

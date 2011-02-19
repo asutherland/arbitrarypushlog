@@ -165,7 +165,9 @@ HStore.prototype = {
     return this._bootstrapDeferred.promise;
   },
 
-  getMostRecentKnownPush: function(treeId) {
+  getMostRecentKnownPushes: function(treeId, count) {
+    if (count == null)
+      count = 1;
     console.log("getMostRecentKnownPush...");
     var deferred = $Q.defer();
     var self = this;
@@ -178,8 +180,8 @@ HStore.prototype = {
           deferred.reject(err);
         }
         else {
-          self.client.scannerGet(
-            scannerId,
+          self.client.scannerGetList(
+            scannerId, count,
             function(err, rowResults) {
               self.client.scannerClose(scannerId);
               if (err)
@@ -209,9 +211,18 @@ HStore.prototype = {
     return deferred.promise;
   },
 
+  normalizeOneRow: function(rowResults) {
+    var rowStates = this.normalizeRowResults(rowResults);
+    if (rowStates.length)
+      return rowStates[0];
+    return {};
+  },
+
   normalizeRowResults: function(rowResults) {
-    var dbstate = {};
+    var rowStates = [];
     for (var iRow = 0; iRow < rowResults.length; iRow++) {
+      var dbstate = {};
+      rowStates.push(dbstate);
       var rr = rowResults[iRow];
 
       var cols = rr.columns;
@@ -222,7 +233,7 @@ HStore.prototype = {
       }
     }
 
-    return dbstate;
+    return rowStates;
   },
 
   putPushStuff: function(treeId, pushId, keysAndValues) {
