@@ -37,19 +37,34 @@
 
 define(
   [
-    "./rstore",
-    "arbcommon/repodefs",
-    "exports"
+    "wmsy/wmsy",
   ],
   function(
-    $rstore,
-    $repodefs,
-    exports
+    $wmsy
   ) {
 
-exports.main = function main() {
-  var rstore = new $rstore($repodefs.TINDER_TREES.tb_trunk);
-  
-};
+var wy = new $wmsy.WmsyDomain({id: "ui-pushes", domain: "arbpl"});
+
+wy.defineWidget({
+  name: "complex-push",
+  constraint: {
+    type: "push",
+    obj: { kind: "complex" },
+  },
+  structure: {
+    subPushes: wy.vertList({type: "push"}, "subPushes"),
+  }
+});
+
+wy.defineWidget({
+  name: "simple-push",
+  constraint: {
+    type: "push",
+    obj: { kind: "simple" },
+  },
+  structure: {
+  }
+});
+
 
 }); // end define

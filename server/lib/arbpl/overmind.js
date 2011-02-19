@@ -62,7 +62,7 @@ define(
     "q", "q-http",
     "./datastore",
     "./tinderboxer",
-    "./repodefs",
+    "arbcommon/repodefs",
     "./hackjobs",
     "exports"
   ],
@@ -81,6 +81,11 @@ var DB = new $datastore.HStore();
 
 var HOURS_IN_MS = 60 * 60 * 1000;
 
+/**
+ * The pushlog has ugly internal date parsing plus a fallback to the python
+ *  "parsedatetime" module.  We opt to fail the custom date parsing regex and
+ *  so go straight to parsedatetime which can understand time zones reliably.
+ */
 function PushlogDateString(d){
  function pad(n) {
    return n<10 ? '0'+n : n;
@@ -458,12 +463,13 @@ Overmind.prototype = {
           var minfo = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
           var curPush = minfo.push;
 
-          var rKey = "s:r" + accumKey;
+          var kidAccumKey = accumKey + ":" + curPush.id;
+          var rKey = "s:r" + kidAccumKey;
           if (!dbstate.hasOwnProperty(rKey)) {
             setstate[rKey] = curPush;
           }
 
-          walkRevMap(accumKey + ":" + curPush.id,
+          walkRevMap(kidAccumKey,
                      revMap[csKey],
                      subRepos.slice(1));
         }

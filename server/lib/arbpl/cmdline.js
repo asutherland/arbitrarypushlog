@@ -48,7 +48,7 @@ require(
     ],
     paths: {
       arbpl: "server/lib/arbpl",
-      "arbpl-cmn": "common/lib/arbpl-cmn",
+      arbcommon: "client/lib/arbcommon",
     },
   },
   [
@@ -85,7 +85,7 @@ switch (options.command) {
 
   case "sync":
     $require(
-      ["arbpl/overmind", "arbpl/repodefs"],
+      ["arbpl/overmind", "arbcommon/repodefs"],
       function($overmind, $repodefs) {
         console.log("creating overmind");
         var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);

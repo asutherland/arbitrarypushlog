@@ -39,7 +39,7 @@ define(
   [
     "q",
     "../datastore",
-    "../repodefs",
+    "arbcommon/repodefs",
     "express"
   ],
   function(

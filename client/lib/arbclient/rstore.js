@@ -37,15 +37,101 @@
 
 define(
   [
+    "narscribblus-plat/utils/pwomise",
     "exports",
   ],
   function(
+    $pwomise,
     exports
   ) {
+var when = $pwomise.when;
 
-function RemoteStore() {
+/**
+ * A push to a repo that depends on one or more other repos to build.
+ */
+function ComplexPush(jsonObj) {
+  for (var key in jsonObj)
+    this[key] = jsonObj[key];
+}
+ComplexPush.prototype = {
+  kind: "complex",
+};
+
+/**
+ * A push of a single repo that stands alone.
+ */
+function SimplePush(jsonObj) {
+  for (var key in jsonObj)
+    this[key] = jsonObj[key];
+}
+SimplePush.prototype = {
+  kind: "simple",
+};
+
+function commonLoad(url, promiseName, promiseRef) {
+  var deferred = $pwomise.defer(promiseName, promiseRef);
+  var req = new XMLHttpRequest();
+  req.open("GET", url, true);
+  req.addEventListener("load", function() {
+    if (req.status == 200)
+      deferred.resolve(req.responseText);
+    else
+      deferred.reject(req.status);
+  }, false);
+  // We used to disable caching here with Cache-Control.  Instead, we are
+  //  making this the problem of the development web-server to provide us
+  //  with proper cache directives.  Or the client can nuke or otherwise
+  //  disable its cache.
+  req.send(null);
+  return deferred.promise;
+}
+
+function RemoteStore(tinderTree) {
+  this.tinderTree = tinderTree;
+  this.urlBase = "/";
 }
 RemoteStore.prototype = {
+  /**
+   * The server uses HBase and surfaces that quite directly.  It might be
+   *  worth pushing this transformation down into the server.
+   */
+  _normalizeOnePush: function(hbData) {
+    var key, value;
+
+    // --- first pass, get the revision info.
+    for (key in hbData) {
+      if (key[2] == "r") {
+        // - top level push
+        if (key.length == 3) {
+        }
+        // - sub repo push
+        else {
+        }
+      }
+    }
+
+    // --- second pass, get the build info
+    for (key in hbData) {
+      if (key[2] == "b") {
+        // (all builds should have the same, maximal, push depth)
+      }
+    }
+  },
+
+  getRecentPushes: function() {
+    var deferred = $pwomise.defer("recent-pushes", this.tinderTree.name);
+
+    when(commonLoad(this.urlBase + "tree/" + this.tinderTree.name +
+                      "/pushes",
+                    "push-fetch"),
+      function(jsonStr) {
+
+      },
+      function() {
+      });
+
+    return deferred.promise;
+  },
 };
 exports.RemoteStore = RemoteStore;
 
