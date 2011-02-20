@@ -47,63 +47,9 @@ define(
     exports
   ) {
 
-function FileCategories(extensions, name) {
-}
 
-function PathCategories(pathbits, name) {
-}
-
-var PATH_CATEGORIZERS = [
-  // Testing
-  new PathCategories(["/test/"],
-                     "Tests"),
-
-  // Code
-  new FileCategories([".idl"],
-                     "IDL"),
-  new FileCategories([".h", ".c", ".cpp", ".cc"],
-                     "C++ Code"),
-  new FileCategories([".js", ".jsm"],
-                     "JS Code"),
-  new FileCategories([".xml"],
-                     "XBL Bindings"),
-  new FileCategories([".xul"],
-                     "XUL"),
-
-  // Themes
-  new FileCategories([".css", ".png", ".jpg", ".jpeg"],
-                     "Theming"),
-  // Localization
-  new FileCategories([".dtd", ".properties"],
-                     "Strings"),
-  // Build System
-  new FileCategories(["client.py",
-                      "build.mk",
-                      "Makefile", "Makefile.in",
-                      "configure", "configure.in"],
-                     "Build System"),
-  // Packaging
-  new FileCategories(["jar.mn",
-                      "removed-files.in",
-                      ".ini", ".rdf", ".manifest"],
-                     "Packaging"),
-
-  // Revision Control cruft
-  new FileCategories([".hgtags", ".hgignore"],
-                     "VC Cruft"),
-];
-
-/**
- * Product name with very simple meta-info; nothing to do with specific
- * releases.
- */
-function ProductDef(name) {
-  this.name = name;
-}
-
-
-
-var TB_SUBSYSTEMS = {
+var CC_MAPPING = {
+  // - Thunderbird Stuff
   "mail": {
     _: "Mail",
     branding: "Branding",
@@ -111,7 +57,7 @@ var TB_SUBSYSTEMS = {
       "about-support": "about:support",
       activity: "Activity Manager",
       addrbook: "Address Book",
-      build: "Build",
+      build: "Mail Build",
       compose: "Compose",
       migration: "Migration Wizard",
       phishing: "Phishing",
@@ -135,7 +81,7 @@ var TB_SUBSYSTEMS = {
     _: "MailNews",
     addrbook: "Address Book",
     base: "MailNews Core",
-    build: "Build",
+    build: "MailNews Build",
     compose: "Compose",
     db: {
       gloda: "Gloda",
@@ -155,11 +101,16 @@ var TB_SUBSYSTEMS = {
     mime: "libmime",
     news: "NNTP",
   },
+  // - Other Product Top-levels
+  suite: "SeaMonkey",
+  calendar: "Calendar",
+  // - Other stuff,
+  ldap: "LDAP",
+  editor: "CC Editor",
 };
 
 
 var MC_MAPPING = {
-  _: "Meh",
   accessible: "Accessibility",
   browser: "Firefox",
   db: {
@@ -278,22 +229,6 @@ var MC_MAPPING = {
   xulrunner: "XULRunner",
 };
 
-var PRODUCTS = exports.PRODUCTS = {
-  firefox: new ProductDef("Firefox", MC_MAPPING),
-  thunderbird: new ProductDef("Thunderbird", TB_SUBSYSTEMS),
-  seamonkey: new ProductDef("SeaMonkey", {}),
-  lightning: new ProductDef("Lightning", {}),
-  platform: new ProductDef("Platform", TB_SUBSYSTEMS),
-};
-
-var CC_MAPPING = {
-  mail: PRODUCTS.thunderbird,
-  mailnews: PRODUCTS.thunderbird,
-  suite: PRODUCTS.seamonkey,
-  calendar: PRODUCTS.lightning,
-  mozilla: MC_MAPPING,
-};
-
 
 /**
  * @typedef[CodeRepoKind @oneof[
@@ -403,7 +338,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   tb_trunk: new TinderTreeDef({
     id: "cc",
     name: "Thunderbird",
-    product: PRODUCTS.thunderbird,
+    product: "Thunderbird",
     repos: [REPOS["comm-central"], REPOS["mozilla-central"]],
     mount: {
       mozilla: REPOS["mozilla-central"],

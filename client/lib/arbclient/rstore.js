@@ -37,36 +37,22 @@
 
 define(
   [
-    "narscribblus-plat/utils/pwomise",
+    "narscribblus/utils/pwomise",
+    "arbcommon/change-summarizer",
+    "./datamodel",
+    "./lstore",
     "exports",
   ],
   function(
     $pwomise,
+    $changeSummarizer,
+    $datamodel,
+    $lstore,
     exports
   ) {
 var when = $pwomise.when;
 
-/**
- * A push to a repo that depends on one or more other repos to build.
- */
-function ComplexPush(jsonObj) {
-  for (var key in jsonObj)
-    this[key] = jsonObj[key];
-}
-ComplexPush.prototype = {
-  kind: "complex",
-};
-
-/**
- * A push of a single repo that stands alone.
- */
-function SimplePush(jsonObj) {
-  for (var key in jsonObj)
-    this[key] = jsonObj[key];
-}
-SimplePush.prototype = {
-  kind: "simple",
-};
+var LocalDB = $lstore.LocalDB;
 
 function commonLoad(url, promiseName, promiseRef) {
   var deferred = $pwomise.defer(promiseName, promiseRef);
@@ -86,48 +72,121 @@ function commonLoad(url, promiseName, promiseRef) {
   return deferred.promise;
 }
 
+/**
+ * Per-tinderbox tree server talking.
+ */
 function RemoteStore(tinderTree) {
   this.tinderTree = tinderTree;
   this.urlBase = "/";
 }
 RemoteStore.prototype = {
   /**
-   * The server uses HBase and surfaces that quite directly.  It might be
-   *  worth pushing this transformation down into the server.
+   * Normalize push data (in the form of raw HBase maps) for a single
+   *  push into local object representations.
    */
   _normalizeOnePush: function(hbData) {
-    var key, value;
+    var key, value, self = this;
 
-    // --- first pass, get the revision info.
+    function chewChangeset(hbcs, repo) {
+      var cset = new $datamodel.Changeset();
+      cset.shortRev = hbcs.shortRev;
+      cset.fullRev = hbcs.node;
+
+      cset.author = LocalDB.getPersonForCommitter(hbcs.author);
+
+      cset.branch = hbcs.branch;
+      cset.tags = hbcs.tags;
+
+      cset.rawDesc = hbcs.desc;
+
+      cset.files = hbcs.files;
+      cset.changeSummary =
+        $changeSummarizer.summarizeChangeset(hbcs.files, repo.path_mapping);
+
+      return cset;
+    }
+
+    var chewedBuildPushes = {};
+    /**
+     * Process and create or retrieve the already created BuildPush instance
+     *  corresponding to the given push key.   We do this because hbData is
+     *  an unordered map that has the hierarchical push information effectively
+     *  randomly distributed throughout it.  Rather than perform an ordering
+     *  pass, we leverage our ability to randomly access the map and the fact
+     *  that our push "parents" are the lexical prefixes of their children.
+     */
+    function chewPush(pushKey) {
+      if (chewedBuildPushes.hasOwnProperty(pushKey)) {
+        return chewedBuildPushes[pushKey];
+      }
+      var buildPush = new $datamodel.BuildPush();
+      var truePush = new $datamodel.Push();
+      buildPush.push = truePush;
+
+      var value = hbData[pushKey];
+      var keyBits = pushKey.split(":");
+
+      // - set push state...
+      truePush.id = value.id;
+      truePush.pushDate = new Date(value.date);
+      truePush.pusher = LocalDB.getPersonForPusher(value.user);
+
+      for (var iCS = 0; iCS < value.changesets.length; iCS++) {
+        truePush.changesets.push(
+          chewChangeset(value.changesets[iCS],
+                        self.tinderTree.repos[keyBits.length - 2]));
+      }
+
+      // - complex?  add us to our parent.
+      if (keyBits.length > 2) {
+        var parentBuildPush = chewPush(keyBits.slice(0, -1).join(":"));
+        parentBuildPush.subPushes.push(buildPush);
+      }
+
+      chewedBuildPushes[pushKey] = buildPush;
+      return buildPush;
+    }
+
     for (key in hbData) {
       if (key[2] == "r") {
-        // - top level push
-        if (key.length == 3) {
-        }
-        // - sub repo push
-        else {
-        }
+        chewPush(key);
+      }
+      // s:b:(pushid:)*BUILDID
+      else if (key[2] == "b") {
+        // - create our build rep
+        var build = new $datamodel.BuildInfo();
+
+        // - stash us in our owning push
+        // derive our parent's push key from our build key.
+        var idxLastColon = key.lastIndexOf(":");
+        var pushKey = "s:r:" + key.substring(4, idxLastColon);
+        // get that push...
+        var buildPush = chewPush(pushKey);
+        // stash!
+        buildPush.builds.push(build);
       }
     }
 
-    // --- second pass, get the build info
-    for (key in hbData) {
-      if (key[2] == "b") {
-        // (all builds should have the same, maximal, push depth)
-      }
-    }
+    return chewedBuildPushes["s:r"];
   },
 
   getRecentPushes: function() {
     var deferred = $pwomise.defer("recent-pushes", this.tinderTree.name);
-
+    var self = this;
     when(commonLoad(this.urlBase + "tree/" + this.tinderTree.name +
                       "/pushes",
                     "push-fetch"),
       function(jsonStr) {
-
+        var jsonObj = JSON.parse(jsonStr);
+        var buildPushes = jsonObj.map(self._normalizeOnePush, self);
+        // sort them...
+        buildPushes.sort(function(a, b) {
+                           return b.push.pushDate - a.push.pushDate;
+                         });
+        deferred.resolve(buildPushes);
       },
-      function() {
+      function(err) {
+        deferred.reject(err);
       });
 
     return deferred.promise;

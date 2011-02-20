@@ -46,24 +46,32 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-pushes", domain: "arbpl"});
 
 wy.defineWidget({
-  name: "complex-push",
+  name: "generic-push",
   constraint: {
     type: "push",
-    obj: { kind: "complex" },
   },
   structure: {
+    pusher: wy.widget({type: "person"}, ["push", "pusher"]),
+    pushDate: wy.bind(["push", "pushDate"]),
+
+    changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
     subPushes: wy.vertList({type: "push"}, "subPushes"),
   }
 });
 
 wy.defineWidget({
-  name: "simple-push",
+  name: "changeset-summary",
   constraint: {
-    type: "push",
-    obj: { kind: "simple" },
+    type: "changeset",
   },
   structure: {
-  }
+    shortRev: wy.bind("shortRev"),
+    author: wy.widget({type: "person"}, "author"),
+    desc: wy.bind("rawDesc"),
+  },
+  style: {
+
+  },
 });
 
 

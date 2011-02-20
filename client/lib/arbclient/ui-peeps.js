@@ -38,103 +38,25 @@
 define(
   [
     "wmsy/wmsy",
-    "./ui-page-pushes",
-    "./ui-pushes",
-    "./ui-peeps",
-    "exports"
   ],
   function(
-    $wmsy,
-    $ui_page_pushes,
-    $ui_pushes,
-    $ui_peeps,
-    exports
+    $wmsy
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-main", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-peeps", domain: "arbpl"});
 
 wy.defineWidget({
-  name: "app-root",
-  doc: "App Root Container; immediate child varies on high-level app state.",
+  name: "mozperson",
   constraint: {
-    type: "app-root",
-  },
-  focus: wy.focus.domain.vertical("state"),
-  structure: {
-    state: wy.widget({type: "app-state"}, wy.SELF),
-  },
-  impl: {
-    postInit: function() {
-      this.obj.binding = this;
-    }
-  },
-});
-
-wy.defineWidget({
-  name: "state-connecting",
-  doc: "The connecting splash screen.",
-  constraint: {
-    type: "app-state",
-    obj: {
-      state: "connecting",
-    },
+    type: "person",
   },
   structure: {
-    heading: "Connecting..."
+    displayName: wy.bind("displayName"),
   },
   style: {
-    heading: [
-      "display: block;",
-      "font-size: 300%;",
-      "text-align: center;",
-      "color: black;",
-    ],
+
   },
 });
 
-wy.defineWidget({
-  name: "state-error",
-  doc: "Error page for when things go massively wrong; like a dead server.",
-  constraint: {
-    type: "app-state",
-    obj: {
-      state: "error",
-    },
-  },
-  structure: {
-    heading: "Something is rotten in the state of this state machine.",
-  },
-  style: {
-    heading: [
-      "display: block;",
-      "font-size: 300%;",
-      "text-align: center;",
-      "color: red;",
-    ],
-  },
-});
-
-wy.defineWidget({
-  name: "state-good",
-  doc: "Nominal operation state.",
-  constraint: {
-    type: "app-state",
-    obj: {
-      state: "good",
-    },
-  },
-  structure: {
-    page: wy.widget({type: "page"}, "page"),
-  },
-  style: {
-  },
-});
-
-
-
-exports.bindApp = function bindApp(appObj) {
-  var emitter = wy.wrapElement(document.getElementById("body"));
-  emitter.emit({type: "app-root", obj: appObj});
-};
 
 }); // end define
