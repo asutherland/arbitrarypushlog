@@ -80,6 +80,10 @@ function RemoteStore(tinderTree) {
   this.urlBase = "/";
 }
 RemoteStore.prototype = {
+   _pushSorter: function(a, b) {
+     return b.push.pushDate - a.push.pushDate;
+   },
+
   /**
    * Normalize push data (in the form of raw HBase maps) for a single
    *  push into local object representations.
@@ -128,7 +132,7 @@ RemoteStore.prototype = {
 
       // - set push state...
       truePush.id = value.id;
-      truePush.pushDate = new Date(value.date);
+      truePush.pushDate = new Date(value.date * 1000);
       truePush.pusher = LocalDB.getPersonForPusher(value.user);
 
       for (var iCS = 0; iCS < value.changesets.length; iCS++) {
@@ -141,6 +145,7 @@ RemoteStore.prototype = {
       if (keyBits.length > 2) {
         var parentBuildPush = chewPush(keyBits.slice(0, -1).join(":"));
         parentBuildPush.subPushes.push(buildPush);
+        parentBuildPush.subPushes.sort(self._pushSorter);
       }
 
       chewedBuildPushes[pushKey] = buildPush;
@@ -180,9 +185,7 @@ RemoteStore.prototype = {
         var jsonObj = JSON.parse(jsonStr);
         var buildPushes = jsonObj.map(self._normalizeOnePush, self);
         // sort them...
-        buildPushes.sort(function(a, b) {
-                           return b.push.pushDate - a.push.pushDate;
-                         });
+        buildPushes.sort(self._pushSorter);
         deferred.resolve(buildPushes);
       },
       function(err) {

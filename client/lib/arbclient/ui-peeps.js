@@ -54,7 +54,9 @@ wy.defineWidget({
     displayName: wy.bind("displayName"),
   },
   style: {
-
+    root: [
+      "display: inline-block;",
+    ],
   },
 });
 

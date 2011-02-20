@@ -79,7 +79,8 @@ LocalStore.prototype = {
     var peep;
     if (this._peepsByEmail.hasOwnProperty(email)) {
       peep = this._peepsByEmail[email];
-      if (peep.displayName == email &&
+      if (displayName &&
+          peep.displayName == email &&
           displayName != email)
         peep.displayName = displayName;
       return peep;

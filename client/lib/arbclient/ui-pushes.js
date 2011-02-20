@@ -51,12 +51,33 @@ wy.defineWidget({
     type: "push",
   },
   structure: {
-    pusher: wy.widget({type: "person"}, ["push", "pusher"]),
-    pushDate: wy.bind(["push", "pushDate"]),
+    headingBox: {
+      pushDate: wy.libWidget({type: "relative-date"}, ["push", "pushDate"]),
+      pusher: wy.widget({type: "person"}, ["push", "pusher"]),
+    },
 
-    changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
-    subPushes: wy.vertList({type: "push"}, "subPushes"),
-  }
+    kids: {
+      changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
+      subPushes: wy.vertList({type: "push"}, "subPushes"),
+    }
+  },
+  style: {
+    headingBox: [
+      "border-top: 1px solid #ddd;",
+      "margin-bottom: 0.3em;",
+    ],
+    pushDate: [
+      "display: inline-block;",
+      "margin-right: 1em",
+    ],
+
+    kids: [
+      "padding-left: 2em;",
+    ],
+    changesets: [
+      "margin-bottom: 0.5em;",
+    ],
+  },
 });
 
 wy.defineWidget({
@@ -65,12 +86,20 @@ wy.defineWidget({
     type: "changeset",
   },
   structure: {
-    shortRev: wy.bind("shortRev"),
+    // The revision does not seem tremendously useful until you want more
+    //  information about the push or want to cite it to someone else, so
+    //  let's forget about it for now.
+    //shortRev: wy.bind("shortRev"),
     author: wy.widget({type: "person"}, "author"),
     desc: wy.bind("rawDesc"),
   },
   style: {
-
+    author: [
+      "width: 12em;",
+    ],
+    desc: [
+      "font-weight: bolder;",
+    ],
   },
 });
 
