@@ -123,23 +123,50 @@ wy.defineWidget({
   constraint: {
     type: "change-summary-group",
   },
-  structure: wy.flow({
-    name: wy.bind("name"),
-    colonStr: ": ",
-    fileTypes: "",
-  }),
+  structure: {
+    summaryRow: wy.flow({
+      name: wy.bind("name"),
+      colonStr: ": ",
+      fileTypes: "",
+    }),
+    // the file list should start out collapsed...
+    fileList: wy.vertList({type: "changed-file"}, wy.NONE),
+  },
   impl: {
     postInitUpdate: function() {
+      this.collapsed = true;
       this.fileTypes_element.textContent = this.obj.fileTypes.join(", ");
+    },
+  },
+  events: {
+    root: {
+      command: function() {
+        this.collapsed = !this.collapsed;
+        if (this.collapsed)
+          this.fileList_set(null);
+        else
+          this.fileList_set(this.obj.files);
+      },
     },
   },
   style: {
     root: [
       "display: block;",
+      "cursor: default;",
+    ],
+    fileList: [
+      "margin-left: 1em;",
     ],
   },
 });
 
+wy.defineWidget({
+  name: "changed-file",
+  constraint: {
+    type: "changed-file",
+  },
+  structure: wy.bind(wy.SELF),
+});
 
 
 }); // end define

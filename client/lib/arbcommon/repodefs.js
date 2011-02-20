@@ -141,6 +141,9 @@ var MC_MAPPING = {
     jetpack: "Jetpack",
     jsd: "JS Debugging",
     src: {
+      ctypes: "JS CTypes",
+      methodjit: "Spidermonkey Method JIT",
+      nanjoit: "Spidermonkey NanoJIT",
       xpconnect: "XPConnect"
     }
   },

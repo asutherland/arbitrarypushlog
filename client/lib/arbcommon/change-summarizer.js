@@ -84,6 +84,7 @@ ChangeSummary.prototype = {
 function ChangeGroup(name) {
   this.name = name;
   this.fileTypes = [];
+  this.files = [];
 }
 ChangeGroup.prototype = {
 };
@@ -108,9 +109,10 @@ function PathCategory(pathbits, name) {
 }
 PathCategory.prototype = {
   test: function(pathParts, fileName) {
-    for (var i = 0; i < this.pathbits; i++) {
-      if (pathParts.indexOf(this.pathbits[i]) != -1)
+    for (var i = 0; i < this.pathbits.length; i++) {
+      if (pathParts.indexOf(this.pathbits[i]) != -1) {
         return true;
+      }
     }
     return false;
   },
@@ -118,7 +120,7 @@ PathCategory.prototype = {
 
 // all of these get checked before FILE_CATEGORIZERS.
 var PATH_CATEGORIZERS = [
-  new PathCategory(["test"],
+  new PathCategory(["test", "tests"],
                    "Tests"),
   new FileCategory([".hgtags", ".hgignore"],
                    "VC Cruft"),
@@ -152,6 +154,9 @@ var FILE_EXT_CATEGORIZERS = [
   // Packaging
   new FileCategory([".ini", ".rdf", ".manifest"],
                    "Packaging"),
+  // Testing stuff
+  new FileCategory([".list"],
+                   "Tests"),
 ];
 
 var FALLBACK_CATEGORY = new FileCategory([], "Other");
@@ -233,8 +238,11 @@ exports.summarizeChangeset = function summarizeChangeset(files,
     else {
       curGroup = groups[bestSubsystem];
     }
-    if (curGroup.fileTypes.indexOf(goodCategory.name) == -1)
+    if (curGroup.fileTypes.indexOf(goodCategory.name) == -1) {
       curGroup.fileTypes.push(goodCategory.name);
+      curGroup.fileTypes.sort();
+    }
+    curGroup.files.push(fullPath);
   }
 
   groupsList.sort(function(a, b) { return a.name.localeCompare(b.name); });
