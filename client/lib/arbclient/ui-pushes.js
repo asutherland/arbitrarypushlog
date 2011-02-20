@@ -62,9 +62,13 @@ wy.defineWidget({
     }
   },
   style: {
+    root: [
+    ],
     headingBox: [
-      "border-top: 1px solid #ddd;",
+      "border-top: 1px solid #357fa5;",
+      "background-color: #b9e4ff;",
       "margin-bottom: 0.3em;",
+      "padding: 2px;",
     ],
     pushDate: [
       "display: inline-block;",
@@ -81,7 +85,7 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "changeset-summary",
+  name: "changeset",
   constraint: {
     type: "changeset",
   },
@@ -92,16 +96,50 @@ wy.defineWidget({
     //shortRev: wy.bind("shortRev"),
     author: wy.widget({type: "person"}, "author"),
     desc: wy.bind("rawDesc"),
+    summaryGroups: wy.vertList({type: "change-summary-group"},
+                               ["changeSummary", "changeGroups"]),
   },
   style: {
+    root: [
+      "border-top: 1px solid #dddddd;",
+      "background-color: #eeeeee;",
+      "padding: 2px;",
+      "margin-bottom: 1em;",
+    ],
     author: [
       "width: 12em;",
     ],
     desc: [
       "font-weight: bolder;",
     ],
+    summaryGroups: [
+      "margin-top: 0.5em;",
+    ],
   },
 });
+
+wy.defineWidget({
+  name: "change-summary-group",
+  constraint: {
+    type: "change-summary-group",
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    colonStr: ": ",
+    fileTypes: "",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.fileTypes_element.textContent = this.obj.fileTypes.join(", ");
+    },
+  },
+  style: {
+    root: [
+      "display: block;",
+    ],
+  },
+});
+
 
 
 }); // end define
