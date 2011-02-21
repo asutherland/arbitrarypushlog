@@ -59,6 +59,7 @@ wy.defineWidget({
 
     kids: {
       changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
+      // build summary
       buildGroups: wy.vertList({type: "build-platform-group"},
                                ["buildSummary", "groups"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
@@ -80,8 +81,6 @@ wy.defineWidget({
 
     kids: [
       "padding-left: 2em;",
-    ],
-    changesets: [
       "margin-bottom: 0.5em;",
     ],
   },
@@ -108,7 +107,7 @@ wy.defineWidget({
       "border-top: 1px solid #dddddd;",
       "background-color: #eeeeee;",
       "padding: 2px;",
-      "margin-bottom: 1em;",
+      "margin-bottom: 0.5em;",
     ],
     author: [
       "width: 12em;",

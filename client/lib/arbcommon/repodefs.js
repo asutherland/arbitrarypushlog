@@ -114,6 +114,7 @@ var MC_MAPPING = {
   accessible: "Accessibility",
   browser: "Firefox",
   content: "Content",
+  config: "Build System",
   db: {
     mdb: "Mork",
     mork: "Mork",

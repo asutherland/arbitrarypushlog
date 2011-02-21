@@ -129,7 +129,7 @@ var PATH_CATEGORIZERS = [
   new FileCategory(["client.py",
                     "build.mk",
                     "Makefile", "Makefile.in",
-                    "configure", "configure.in"],
+                    "configure", "configure.in", "config.mk"],
                    "Build System"),
 ];
 var FILE_EXT_CATEGORIZERS = [

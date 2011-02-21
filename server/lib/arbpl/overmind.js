@@ -62,6 +62,7 @@ define(
     "q", "q-http",
     "./datastore",
     "./tinderboxer",
+    "./xpcshell-logfrob", "./mozmill-logfrob",
     "arbcommon/repodefs",
     "./hackjobs",
     "exports"
@@ -70,6 +71,7 @@ define(
     $Q, $Qhttp,
     $datastore,
     $tinderboxer,
+    $frobXpcshell, $frobMozmill,
     $repodefs,
     $hackjobs,
     exports
@@ -107,7 +109,22 @@ function Overmind(tinderTreeDef) {
   this.state = "inactive";
   this._syncDeferred = null;
 
+  /**
+   * How many pushlog queries are in flight to the hg server?  We track this
+   *  so we can resolve a promise when the number hits zero and stays there.
+   *  (We may temporarily hit zero during the resolution process, but it
+   *  will rebound to 1 before control flow is yielded.)
+   */
   this._pendingPushFetches = 0;
+
+  /**
+   * How many log processing jobs are active?  This is used
+   */
+  this._activeLogFrobbers = [];
+  /**
+   * Queued log processing jobs.
+   */
+  this._logProcJobs = null;
 }
 Overmind.prototype = {
   _noteState: function(newState) {
@@ -120,32 +137,22 @@ Overmind.prototype = {
   },
 
   /**
-   * Attempt to bring us up-to-date based on the current state.  In the event
-   *  we have no data whatsoever, grab the most recent 12 hours.
+   * Attempt to bring us up-to-date based on the current state.  Which means
+   *  asking for what has happened in the last 12 hours (or whatever the
+   *  tinderbox actually gives us from its "now" file) since it can involve
+   *  starred stuff, slow builds, and the like.
    */
   syncUp: function() {
-    console.log("syncUp...");
-    this._syncDeferred = $Q.defer();
-
-    var self = this;
-    when(DB.getMostRecentKnownPushes(this.tinderTree.id, 1),
-      function(rowResults) {
-        console.log("heard back from DB");
-        if (rowResults.length) {
-          console.warn("Unexpected! The DB gave us a result!");
-        }
-        else {
-          self.syncTimeRange({
-              endTime: Date.now() + 2000,
-              duration: 12 * HOURS_IN_MS,
-            });
-        }
-      },
-      function(err) {
-        console.error("DB gave up on getting the recent push.");
-      });
-
-    return this._syncDeferred.promise;
+    return this.syncTimeRange({
+      // We kick endTime into the future to cause a fast-path branch
+      //  to be taken where we don't even issue a query proper but just
+      //  ask for the "current" file.  (We are _not_ trying to fight
+      //  clock skew on the server!  This just needs to be offset
+      //  enough that the given duration has not ellapsed by the time
+      //  we get to that fast-path check.)
+      endTime: Date.now() + (20 * 1000),
+      duration: 12 * HOURS_IN_MS,
+    });
   },
 
   syncTimeRange: function(timeRange) {
@@ -300,7 +307,7 @@ Overmind.prototype = {
 
     // fudge earliestTime by a lot because the one-off fetches are really
     //  slow.
-    earliestTime -= 6 * HOURS_IN_MS;
+    earliestTime -= 12 * HOURS_IN_MS;
 
     var earliestTimeStr = PushlogDateString(new Date(earliestTime));
     var latestTimeStr = PushlogDateString(new Date(latestTime));
@@ -400,6 +407,7 @@ Overmind.prototype = {
       return;
     }
     // (we only reach here if there were no more changesets to process)
+    this._noteState("logproc");
     this._processNextLog();
   },
 
@@ -429,7 +437,15 @@ Overmind.prototype = {
       setstate["s:r"] = rootPush;
     }
 
+    /**
+     * Figure out if the build is something we can perform follow-on processing
+     *  for.  Currently this is true for xpcshell and Thunderbird mozmill runs.
+     *  Everything else can go pound sand.
+     */
     function isBuildLoggable(build) {
+      return ((build.type.type === "test") &&
+              ((build.type.subtype === "mozmill") ||
+               (build.type.subtype === "xpcshell")));
     }
 
     // -- normalized logic for both 'b' variants and log job checking
@@ -492,16 +508,58 @@ Overmind.prototype = {
       });
   },
 
+  /**
+   * How many logs should we try and process in parallel?  Let's keep this
+   *  at 1 unless it turns out the tinderbox is really bad at serving us our
+   *  requested files in a timely fasion.
+   */
+  MAX_CONCURRENT_LOG_FROBS: 1,
+
+  /**
+   * Trigger the processing of (one or more) logs.  We do this in a streaming
+   *  fashion rather than promise fashion because these logs can end up being
+   *  rather large.  Note that even though the logs claim to be gzipped, they
+   *  are not actually gzipped, maybe.
+   */
   _processNextLog: function() {
-    this._noteState("logproc");
-    console.log("ALL DONE, quitting.");
-    process.exit(0);
+    while ((this._activeLogFrobbers.length < this.MAX_CONCURRENT_LOG_FROBS) &&
+           (this._logProcJobs.length)) {
+      var job = this._logProcJobs.pop();
+
+      var frobber = null;
+      switch (job.build.type.subtype) {
+        case "xpcshell":
+          frobber = this._processXpcshellLog(job);
+          break;
+
+        case "mozmill":
+          frobber = this._processMozmillLog(job);
+          break;
+
+        default:
+          console.error("dunnae how to frobben", job);
+          break;
+      }
+
+      if (frobber)
+        this._activeLogFrobbers.push(frobber);
+    }
+
+    if (this._activeLogFrobbers.length === 0 &&
+        this._logProcJobs.length === 0) {
+      this._allDone();
+    }
   },
 
   _processMozmillLog: function() {
   },
 
   _processXpcshellLog: function() {
+  },
+
+  _allDone: function() {
+    console.log("ALL DONE, quitting.");
+    process.exit(0);
   },
 };
 exports.Overmind = Overmind;

@@ -41,13 +41,11 @@
 
 define(
   [
-    "fs",
     "carrier",
     "crypto",
     "exports"
   ],
   function(
-    $fs,
     $carrier,
     $crypto,
     exports
@@ -197,9 +195,7 @@ XpcshellFrobber.prototype = {
   }
 };
 
-exports.dummyTestRun = function(path) {
-  var stream = $fs.createReadStream(path);
-
+exports.dummyTestRun = function(stream) {
   var frobber = new XpcshellFrobber(stream, function(failures) {
     for (var i = 0; i < failures.length; i++) {
       console.log(failures[i]);

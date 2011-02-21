@@ -41,11 +41,9 @@
 
 define(
   [
-    "fs",
     "exports"
   ],
   function(
-    $fs,
     exports
   ) {
 
