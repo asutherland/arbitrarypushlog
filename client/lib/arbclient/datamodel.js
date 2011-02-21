@@ -119,8 +119,23 @@ function BuildPush() {
    * }
    */
   this.builds = [];
+
+  /**
+   * The `BuildSummary` that encapsulates what is up with the builds.
+   */
+  this.buildSummary = null;
 }
 BuildPush.prototype = {
+  visitLeafBuildPushes: function(func, funcThis) {
+    if (this.subPushes.length) {
+      for (var iPush = 0; iPush < this.subPushes.length; iPush++) {
+        this.subPushes[iPush].visitLeafBuildPushes(func, funcThis);
+      }
+    }
+    else {
+      func.call(funcThis, this);
+    }
+  },
 };
 exports.BuildPush = BuildPush;
 
@@ -240,10 +255,13 @@ Changeset.prototype = {
 };
 exports.Changeset = Changeset;
 
+// we don't need a custom build rep right now.
+/*
 function BuildInfo() {
 }
 BuildInfo.prototype = {
 };
 exports.BuildInfo = BuildInfo;
+*/
 
 }); // end define

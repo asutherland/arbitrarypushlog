@@ -59,6 +59,8 @@ wy.defineWidget({
 
     kids: {
       changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
+      buildGroups: wy.vertList({type: "build-platform-group"},
+                               ["buildSummary", "groups"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
   },
@@ -177,6 +179,45 @@ wy.defineWidget({
     type: "changed-file",
   },
   structure: wy.bind(wy.SELF),
+});
+
+wy.defineWidget({
+  name: "build-platform-group",
+  constraint: {
+    type: "build-platform-group",
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    delim: ": ",
+    types: wy.widgetFlow({type: "build-type-group"}, "types",
+                         {separator: ", "}),
+  }),
+});
+
+wy.defineWidget({
+  name: "build-type-group",
+  constraint: {
+    type: "build-type-group",
+  },
+  structure: wy.bind("name", {state: "state"}),
+  style: {
+    root: {
+      _: [
+      ],
+      '[state="building"]': [
+        "color: #999;",
+      ],
+      '[state="success"]': [
+        "color: #390;",
+      ],
+      '[state="testfailed"]': [
+        "color: #f60;",
+      ],
+      '[state="busted"]': [
+        "color: #d00;",
+      ],
+    },
+  },
 });
 
 

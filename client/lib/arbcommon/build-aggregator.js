@@ -50,4 +50,94 @@ define(
     exports
   ) {
 
+/**
+ * Per-platform grouping.
+ */
+function PlatformGroup(name) {
+  this.name = name;
+  this.types = [];
+  this.typeMap = {};
+}
+PlatformGroup.prototype = {
+};
+exports.PlatformGroup = PlatformGroup;
+
+var BUILD_STATE_PRIORITY_MAP = {
+  success: 0,
+  building: 1,
+  testfailed: 2,
+  busted: 3,
+};
+
+var BUILD_STATE_EXPAND_REQUIRED_MAP = {
+  success: false,
+  building: false,
+  testfailed: true,
+  busted: true,
+};
+
+function BuildTypeGroup(name) {
+  this.name = name;
+  this.builds = [];
+  this.state = "success";
+  this.expandNeeded = false;
+}
+BuildTypeGroup.prototype = {
+};
+exports.BuildTypeGroup = BuildTypeGroup;
+
+function nameSorter(a, b) {
+  return a.name.localeCompare(b.name);
+}
+
+function AggrBuildSummary(groups) {
+  this.groups = groups;
+}
+AggrBuildSummary.prototype = {
+};
+exports.AggrBuildSummary = AggrBuildSummary;
+
+exports.aggregateBuilds = function aggregateBuilds(builds) {
+  var groups = [], groupMap = {};
+  for (var i = 0; i < builds.length; i++) {
+    var build = builds[i];
+    var builder = build.builder;
+    console.log("builder", builder);
+
+    // - get the platform group
+    var platGroup;
+    if (groupMap.hasOwnProperty(builder.os.platform)) {
+      platGroup = groupMap[builder.os.platform];
+    }
+    else {
+      platGroup = groupMap[builder.os.platform] =
+        new PlatformGroup(builder.os.platform);
+      groups.push(platGroup);
+    }
+
+    // - categorize by build type within the group
+    var typeGroup;
+    if (platGroup.typeMap.hasOwnProperty(builder.type.type)) {
+      typeGroup = platGroup.typeMap[builder.type.type];
+    }
+    else {
+      typeGroup = platGroup.typeMap[builder.type.type] =
+        new BuildTypeGroup(builder.type.type);
+      platGroup.types.push(typeGroup);
+      platGroup.types.sort(nameSorter);
+    }
+    typeGroup.builds.push(build);
+    // set the state to the highest priority
+    if (BUILD_STATE_PRIORITY_MAP[build.state] >
+        BUILD_STATE_PRIORITY_MAP[typeGroup.state])
+      typeGroup.state = build.state;
+    // and mark expanding as required if required by the state
+    if (BUILD_STATE_EXPAND_REQUIRED_MAP[build.state])
+      typeGroup.expandNeeded = true;
+  }
+  groups.sort(nameSorter);
+
+  return new AggrBuildSummary(groups);
+};
+
 });

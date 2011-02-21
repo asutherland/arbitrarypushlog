@@ -99,7 +99,7 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/WINNT 5\.1/i],
+    regexes: [/WINNT 5\.2/i],
     plat: {
       idiom: "desktop",
       platform: "win",

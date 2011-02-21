@@ -39,6 +39,7 @@ define(
   [
     "narscribblus/utils/pwomise",
     "arbcommon/change-summarizer",
+    "arbcommon/build-aggregator",
     "./datamodel",
     "./lstore",
     "exports",
@@ -46,6 +47,7 @@ define(
   function(
     $pwomise,
     $changeSummarizer,
+    $buildAggregator,
     $datamodel,
     $lstore,
     exports
@@ -158,8 +160,8 @@ RemoteStore.prototype = {
       }
       // s:b:(pushid:)*BUILDID
       else if (key[2] == "b") {
-        // - create our build rep
-        var build = new $datamodel.BuildInfo();
+        // - just use the build rep verbatim for now...
+        var build = JSON.parse(hbData[key]);
 
         // - stash us in our owning push
         // derive our parent's push key from our build key.
@@ -172,7 +174,14 @@ RemoteStore.prototype = {
       }
     }
 
-    return chewedBuildPushes["s:r"];
+    // -- perform any summarization that depends on us having seen everything
+    var retBuildPush = chewedBuildPushes["s:r"];
+    // - summarize builds
+    retBuildPush.visitLeafBuildPushes(function(buildPush) {
+      buildPush.buildSummary =
+        $buildAggregator.aggregateBuilds(buildPush.builds);
+    });
+    return retBuildPush;
   },
 
   getRecentPushes: function() {
