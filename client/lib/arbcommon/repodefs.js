@@ -113,6 +113,7 @@ var CC_MAPPING = {
 var MC_MAPPING = {
   accessible: "Accessibility",
   browser: "Firefox",
+  content: "Content",
   db: {
     mdb: "Mork",
     mork: "Mork",

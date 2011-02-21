@@ -50,6 +50,7 @@ wy.defineWidget({
   constraint: {
     type: "push",
   },
+  focus: wy.focus.nestedItem.vertical("changesets", "subPushes"),
   structure: {
     headingBox: {
       pushDate: wy.libWidget({type: "relative-date"}, ["push", "pushDate"]),
@@ -89,6 +90,7 @@ wy.defineWidget({
   constraint: {
     type: "changeset",
   },
+  focus: wy.focus.nestedItem.vertical("summaryGroups"),
   structure: {
     // The revision does not seem tremendously useful until you want more
     //  information about the push or want to cite it to someone else, so
@@ -132,6 +134,7 @@ wy.defineWidget({
     // the file list should start out collapsed...
     fileList: wy.vertList({type: "changed-file"}, wy.NONE),
   },
+  focus: wy.focus.item,
   impl: {
     postInitUpdate: function() {
       this.collapsed = true;
@@ -146,14 +149,20 @@ wy.defineWidget({
           this.fileList_set(null);
         else
           this.fileList_set(this.obj.files);
+        this.FOCUS.bindingResized(this);
       },
     },
   },
   style: {
-    root: [
-      "display: block;",
-      "cursor: default;",
-    ],
+    root: {
+      _: [
+        "display: block;",
+        "cursor: default;",
+      ],
+      ":hover": [
+        "background-color: #dddddd;",
+      ],
+    },
     fileList: [
       "margin-left: 1em;",
     ],
