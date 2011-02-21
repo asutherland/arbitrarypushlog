@@ -109,6 +109,24 @@ switch (options.command) {
     );
     break;
 
+  case "frob-xpcshell":
+    $require(
+      ["arbpl/xpcshell-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun(options[1]);
+      }
+    );
+    break;
+
+  case "frob-mozmill":
+    $require(
+      ["arbpl/mozmill-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun(options[1]);
+      }
+    );
+    break;
+
   default:
     console.error("unknown command: " + options.command);
     process.exit(-1);

@@ -126,8 +126,8 @@ Frobber.prototype = {
 };
 exports.Frobber = Frobber;
 
-exports.dummyTestRun = function() {
-  var stream = $fs.createReadStream("/tmp/mozmill-log");
+exports.dummyTestRun = function(path) {
+  var stream = $fs.createReadStream(path);
 
   var frobber = new Frobber(stream, function(objs) {
     for (var i = 0; i < objs.length; i++) {

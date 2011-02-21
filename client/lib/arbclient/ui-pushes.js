@@ -116,6 +116,8 @@ wy.defineWidget({
     ],
     summaryGroups: [
       "margin-top: 0.5em;",
+      "background-color: #f8f8f8;",
+      "padding: 2px;",
     ],
   },
 });
