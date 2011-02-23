@@ -313,7 +313,7 @@ var REPOS = exports.REPOS = {
   }),
 
   "comm-1.9.2": new CodeRepoDef({
-    name: "comm-central",
+    name: "comm-1.9.2",
     url: "http://hg.mozilla.org/releases/comm-1.9.2/",
     kind: "release",
     path_mapping: CC_MAPPING,

@@ -125,11 +125,45 @@ function Overmind(tinderTreeDef) {
    * Queued log processing jobs.
    */
   this._logProcJobs = null;
+
+  /**
+   * @dictof[
+   *   @key["repo:short-changeset-id" String]{
+   *     An aggregate key made up of the repo name from the `CodeRepoDef` (Ex:
+   *     "comm-central", "mozilla-central") and the 12-character form of the
+   *     changeset revision (which is just the first 12 characters).
+   *   }
+   *   @value[@dict[
+   *     @key[push Object]{
+   *       The entire push meta-information blob from the hg pushlog for the
+   *       push the changeset belongs to.
+   *     }
+   *     @key[changeset Object]{
+   *       The changeset meta-information for the changeset.  This can be found
+   *       inside the push structure too, but is obviously much easier to get
+   *       to this way.
+   *     }
+   *   ]]
+   * ]
+   */
+  this._revInfoByRepoAndRev = null;
+
+  /**
+   * Hierarchical map that clusters the builds.  In the case of comm-central,
+   *  the outer map will contain the comm-central revisions as keys, and the
+   *  values with be maps with mozilla-central revisions as keys.  In
+   *  the case of mozilla-central, there will only be the revMap whose keys
+   *  are mozilla-central revisions.
+   *
+   * The values/leaf nodes in the map will be dictionaries with objects with
+   *  a "builds" list in it.
+   */
+  this._revMap = null;
 }
 Overmind.prototype = {
-  _noteState: function(newState) {
+  _noteState: function(newState, extra) {
     this.state = newState;
-    console.log("Overmind state is now:", this.state);
+    console.log("Overmind state is now:", this.state, extra);
   },
 
   bootstrap: function() {
@@ -200,16 +234,6 @@ Overmind.prototype = {
       familyPrioMap[this.tinderTree.repos[iRepo].family] = iRepo;
     }
 
-    /**
-     * Hierarchical map that clusters the builds.  In the case of comm-central,
-     *  the outer map will contain the comm-central revisions as keys, and the
-     *  values with be maps with mozilla-central revisions as keys.  In
-     *  the case of mozilla-central, there will only be the revMap whose keys
-     *  are mozilla-central revisions.
-     *
-     * The values/leaf nodes in the map will be dictionaries with objects with
-     *  a "builds" list in it.
-     */
     var revMap = this._revMap = {};
     var repoAndRevs = {};
     var i, revision, repoDef;
@@ -284,14 +308,19 @@ Overmind.prototype = {
   /**
    * Retrieve the push and changeset information given one or more trees and
    *  a set of revisions for each tree.  We assume temporal locality for the
-   *  revisions we are provided and try to just ask the server for an expanded
-   *  time range
+   *  revisions we are provided and will ask for an expanded time range on
+   *  what we are provided in order to reduce the need for one-off follow-up
+   *  queries.
+   *
+   * Once all revision info has been fetched (using `fetchSpecificPushInfo`)
+   *  control flow will transition to `_processNextPush`.
    *
    * @args[
    *   @param[repoAndRevs @dictof[repoName @dict[
    *     @key[repo CodeRepoDef]
    *     @key[revs @listof[String]]{
-   *       The list of revision strings that the pushlog will find acceptable.
+   *       The list of short (12 character) revision strings that the pushlog
+   *       will find acceptable.
    *     }
    *   ]]]
    *   @param[earliestTime Date]{
@@ -427,7 +456,7 @@ Overmind.prototype = {
    *  what to tell the database and what log processing jobs we should trigger.
    */
   _gotDbInfoForPush: function(changeset, rowResults) {
-    this._noteState("db-delta:check");
+    this._noteState("db-delta:check", changeset);
     var self = this;
 
     var rootRepoDef = this.tinderTree.repos[0];
@@ -460,6 +489,15 @@ Overmind.prototype = {
     }
 
     // -- normalized logic for both 'b' variants and log job checking
+    /**
+     * @args[
+     *   @param[keyExtra String]{
+     *     In the case of a single-repo tree, this will be "".  In the case of
+     *     a dual-repo like comm-central, this will be ":sub-repo-push-id", for
+     *     example ":1000".
+     *   }
+     * ]
+     */
     function rockBuilds(keyExtra, builds) {
       for (var iBuild = 0; iBuild < builds.length; iBuild++) {
         var build = builds[iBuild];
@@ -484,6 +522,28 @@ Overmind.prototype = {
     }
 
     // -- fire off normalized logic
+    /**
+     *
+     *
+     * @args[
+     *   @param[accumKey String]{
+     *     The accumulated keyExtra to feed to rockBuilds.  This should start
+     *     out as "" in the base case.  For each level of depth, we append
+     *     ":sub-repo-push-id".
+     *   }
+     *   @param[revMap @dictof["push id" "sub revision map or {builds}"]]{
+     *     In the style of the `_revMap` object.  In the case where we still
+     *     have `subRepos`, this will be a map from pushes in subRepos[0] to
+     *     either more maps of the same type or the builds-containing leaf
+     *     objects.
+     *   }
+     *   @param[subRepos @listof[RepoDef]]{
+     *     Sub-repositories yet to be processed.  This will be empty when we
+     *     should be processing builds and `revMap` should accordingly just
+     *     be an object with a builds attribute.
+     *   }
+     * ]
+     */
     function walkRevMap(accumKey, revMap, subRepos) {
       if (subRepos.length) {
         var repoDef = subRepos[0];

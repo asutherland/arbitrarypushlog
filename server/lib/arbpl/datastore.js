@@ -59,6 +59,7 @@ var TABLE_PUSH_FOCUSED = "arbpl_pushy";
 var BIG_PUSH_NUMBER = 9999999;
 var PUSH_DIGIT_COUNT = 7;
 var ZEROES = "0000000";
+var NINES  = "9999999";
 
 function transformPushId(pushId) {
   var nonpaddedString = (BIG_PUSH_NUMBER - pushId) + "";
@@ -168,11 +169,16 @@ HStore.prototype = {
   getMostRecentKnownPushes: function(treeId, count) {
     if (count == null)
       count = 1;
-    console.log("getMostRecentKnownPush...");
+    console.log("getMostRecentKnownPush...", treeId);
     var deferred = $Q.defer();
     var self = this;
-    this.client.scannerOpen(
-      TABLE_PUSH_FOCUSED, treeId + "," + ZEROES, ["s"],
+    this.client.scannerOpenWithStop(
+      TABLE_PUSH_FOCUSED,
+      treeId + "," + ZEROES,
+      // we need to specify the stop row to stop from reading into the next
+      //  tree's data!
+      treeId + "," + NINES,
+      ["s"],
       function(err, scannerId) {
         if (err) {
           console.error("Failed to get scanner for most recent on tree",
