@@ -161,6 +161,7 @@ RemoteStore.prototype = {
       // s:b:(pushid:)*BUILDID
       else if (key[2] == "b") {
         // - just use the build rep verbatim for now...
+        // (which is redundantly JSON encoded for change detection reasons)
         var build = JSON.parse(hbData[key]);
 
         // - stash us in our owning push
@@ -171,6 +172,16 @@ RemoteStore.prototype = {
         var buildPush = chewPush(pushKey);
         // stash!
         buildPush.builds.push(build);
+
+        // - if we have a processed log, stash that on us
+        var logKey = "s:l" + key.substring(3);
+        if (hbData.hasOwnProperty(logKey)) {
+          // (note: _not_ redundantly JSON encoded, unlike the build)
+          build.processedLog = hbData[logKey];
+        }
+        else {
+          build.processedLog = null;
+        }
       }
     }
 

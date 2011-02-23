@@ -596,7 +596,7 @@ Overmind.prototype = {
   },
 
   _processMozmillLog: function(job) {
-    console.log("MOZMILL LOG GOBBLE", job);
+    console.log("MOZMILL LOG GOBBLE", job.build.logURL);
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
@@ -607,7 +607,7 @@ Overmind.prototype = {
   },
 
   _processXpcshellLog: function(job) {
-    console.log("XPCSHELL LOG GOBBLE", job);
+    console.log("XPCSHELL LOG GOBBLE", job.build.logURL);
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);

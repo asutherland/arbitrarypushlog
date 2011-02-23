@@ -62,6 +62,9 @@ wy.defineWidget({
       // build summary
       buildGroups: wy.vertList({type: "build-platform-group"},
                                ["buildSummary", "groups"]),
+      // build failures
+      buildFailGroups: wy.vertList({type: "build-fail-group"},
+                                   ["buildSummary", "failGroups"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
   },
@@ -228,6 +231,72 @@ wy.defineWidget({
     },
   },
 });
+
+wy.defineWidget({
+  name: "build-fail-group",
+  constraint: {
+    type: "build-fail-group",
+  },
+  structure: {
+    name: wy.bind("name"),
+
+    signature: wy.bind("signature"),
+    builderGroup: wy.flow({
+      buildersLabel: "Builders: ",
+      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+                           {separator: ", "}),
+    }),
+  },
+  style: {
+    root: [
+      "position: relative;",
+    ],
+    name: [
+      "display: inline-block;",
+      "width: 12em;",
+    ],
+    signature: [
+      "display: inline-block;",
+      "float: right;",
+    ],
+    builderGroup: [
+      "clear: both;",
+      "display: block;",
+      "margin-left: 1em;",
+    ],
+  },
+});
+
+
+wy.defineWidget({
+  name: "build-info",
+  doc: "summarize the build information concisely",
+  constraint: {
+    type: "build-info",
+  },
+  structure: "",
+  impl: {
+    postInitUpdate: function() {
+      var platform = this.obj.builder.os;
+      var type = this.obj.builder.type;
+      var buildStr = platform.platform;
+      if (platform.arch)
+        buildStr += " " + platform.arch;
+      if (platform.ver)
+        buildStr += " " + platform.ver;
+
+      if (this.obj.builder.isDebug)
+        buildStr += " " + debug;
+
+      buildStr += " " + type.subtype;
+
+      this.domNode.textContent = buildStr;
+    },
+  },
+  style: {
+  },
+});
+
 
 
 }); // end define

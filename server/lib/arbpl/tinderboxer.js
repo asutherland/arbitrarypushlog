@@ -63,6 +63,15 @@ var OS_PLATFORMS = [
     },
   },
   {
+    regexes: [/leopard/, /OS\s?X.*10\.5/],
+    plat: {
+      idiom: "desktop",
+      platform: "mac",
+      arch: "amd64",
+      ver: "10.5",
+    },
+  },
+  {
     regexes: [/w764/, /WINNT 6\.1 x64/i],
     plat: {
       idiom: "desktop",
@@ -315,8 +324,10 @@ Tinderboxer.prototype = {
         }
       }
     }
-    if (!goodBuildType)
+    if (!goodBuildType) {
+      console.warn("IGNORING BUILDER", name);
       return (this._buildersByName[name] = null);
+    }
 
     var isDebug = /debug/i.test(name) || /(leak|bloat)/i.test(name);
 

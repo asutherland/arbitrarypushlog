@@ -90,8 +90,19 @@ function nameSorter(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-function AggrBuildSummary(groups) {
+function FailGroup(type, name, signature) {
+  this.type = type;
+  this.name = name;
+  this.signature = signature;
+  this.inBuilds = [];
+}
+FailGroup.prototype = {
+};
+exports.FailGroup = FailGroup;
+
+function AggrBuildSummary(groups, failGroups) {
   this.groups = groups;
+  this.failGroups = failGroups;
 }
 AggrBuildSummary.prototype = {
 };
@@ -99,11 +110,12 @@ exports.AggrBuildSummary = AggrBuildSummary;
 
 exports.aggregateBuilds = function aggregateBuilds(builds) {
   var groups = [], groupMap = {};
+  var failGroups = [], failGroupMap = {};
   for (var i = 0; i < builds.length; i++) {
     var build = builds[i];
     var builder = build.builder;
-    console.log("builder", builder);
 
+    // -- platform/build type hierarchy grouping
     // - get the platform group
     var platGroup;
     if (groupMap.hasOwnProperty(builder.os.platform)) {
@@ -134,10 +146,32 @@ exports.aggregateBuilds = function aggregateBuilds(builds) {
     // and mark expanding as required if required by the state
     if (BUILD_STATE_EXPAND_REQUIRED_MAP[build.state])
       typeGroup.expandNeeded = true;
+
+    // -- failure clustering
+    if (build.processedLog) {
+      var buildFailures = build.processedLog;
+      var testType = build.builder.type.subType;
+      for (var iFail = 0; iFail < buildFailures.length; iFail++) {
+        var bfail = buildFailures[iFail];
+        var failGroupKey = testType + ":" + bfail.test + ":" + bfail.hash;
+
+        var failGroup;
+        if (failGroupMap.hasOwnProperty(failGroupKey)) {
+          failGroup = failGroupMap[failGroupKey];
+        }
+        else {
+          failGroup = failGroupMap[failGroupKey] =
+            new FailGroup(testType, bfail.test, bfail.hash);
+          failGroups.push(failGroup);
+        }
+
+        failGroup.inBuilds.push(build);
+      }
+    }
   }
   groups.sort(nameSorter);
 
-  return new AggrBuildSummary(groups);
+  return new AggrBuildSummary(groups, failGroups);
 };
 
 });
