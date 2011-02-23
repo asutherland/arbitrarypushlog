@@ -59,6 +59,9 @@ wy.defineWidget({
   constraint: {
     type: "app-root",
   },
+  provideContext: {
+    tinderTree: "tinderTree",
+  },
   focus: wy.focus.domain.vertical("state"),
   structure: {
     state: wy.widget({type: "app-state"}, wy.SELF),

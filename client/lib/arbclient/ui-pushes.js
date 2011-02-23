@@ -238,8 +238,14 @@ wy.defineWidget({
     type: "build-fail-group",
   },
   structure: {
-    name: wy.bind("name"),
-
+    testGroup: wy.flow({
+      name: wy.bind("name"),
+      delimContextLinks: " (",
+      topfailsLink: wy.hyperlink(wy.computed("topfailsLabel"), {
+                                   href: wy.computed("topfailsLink"),
+                                 }),
+      endDelimContextLinks: ")",
+    }),
     signature: wy.bind("signature"),
     builderGroup: wy.flow({
       buildersLabel: "Builders: ",
@@ -247,13 +253,25 @@ wy.defineWidget({
                            {separator: ", "}),
     }),
   },
+  impl: {
+    topfailsLabel: function() {
+      // XXX this will not vary, this should not be computed and instead
+      //  we should use wy.static or something.
+      return "topfails";
+    },
+    topfailsLink: function() {
+      return "http://brasstacks.mozilla.com/topfails/test/" +
+        this.__context.tinderTree.name +
+        "?name=xpcshell/tests/" + this.obj.name;
+    },
+  },
   style: {
     root: [
       "position: relative;",
     ],
-    name: [
+    testGroup: [
       "display: inline-block;",
-      "width: 12em;",
+      "width: 48em;",
     ],
     signature: [
       "display: inline-block;",
