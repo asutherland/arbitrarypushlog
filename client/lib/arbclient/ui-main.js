@@ -123,6 +123,7 @@ wy.defineWidget({
   style: {
     root: [
       "display: inline-block;",
+      "border-radius: 10px;",
       "width: 40em;",
       "margin: 8px;",
       "cursor: pointer;",
