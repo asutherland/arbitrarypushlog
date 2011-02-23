@@ -169,7 +169,7 @@ HStore.prototype = {
   getMostRecentKnownPushes: function(treeId, count) {
     if (count == null)
       count = 1;
-    console.log("getMostRecentKnownPush...", treeId);
+    //console.log("getMostRecentKnownPush...", treeId);
     var deferred = $Q.defer();
     var self = this;
     this.client.scannerOpenWithStop(
