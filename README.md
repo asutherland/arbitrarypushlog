@@ -23,6 +23,7 @@ Mozilla Tinderbox processor and UI.
 
 ## Server Deps:
 
+- q, q-http: promises stuff
 - carrier: simple line-reader stream filter
 - express/connect: web serving framework, used very shallowly.
 - thrift: for hbase talkin'
