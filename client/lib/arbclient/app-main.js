@@ -38,6 +38,7 @@
 define(
   [
     "narscribblus/utils/pwomise",
+    "narscribblus-plat/utils/env",
     "./rstore",
     "arbcommon/repodefs",
     "./ui-main",
@@ -45,6 +46,7 @@ define(
   ],
   function(
     $pwomise,
+    $env,
     $rstore,
     $repodefs,
     $ui_main,
@@ -55,9 +57,14 @@ var when = $pwomise.when;
 /**
  *
  */
-function ArbApp() {
-  this.tinderTree = $repodefs.TINDER_TREES.tb_trunk;
-  this.rstore = new $rstore.RemoteStore(this.tinderTree);
+function ArbApp(win) {
+  this.tinderTree = null;
+  this.rstore = null;
+
+  this.win = win;
+  this._popStateWrapped = this._popState.bind(this);
+  this.win.addEventListener("popstate", this._popStateWrapped, false);
+  this.history = win.history;
 
   /**
    * @oneof[
@@ -78,7 +85,9 @@ function ArbApp() {
    *   }
    * ]
    */
-  this.state = "connecting";
+  this.state = "picktree";
+
+  this.possibleTrees = $repodefs.TINDER_TREES;
 
   /**
    * The wmsy binding associated with us.  A related rule is that only a
@@ -101,12 +110,29 @@ function ArbApp() {
   this.page = null;
 }
 ArbApp.prototype = {
-  updateState: function(newState) {
-    this.state = newState;
-    this.binding.update();
+  selectTree: function(tinderTree, fromUrl) {
+    this.tinderTree = tinderTree;
+    this.rstore = new $rstore.RemoteStore(this.tinderTree);
+    this.updateState("connecting");
+    if (!fromUrl)
+      this.history.pushState(null, "", "?tree=" + tinderTree.name);
+    this._bootstrap();
   },
 
-  bootstrap: function() {
+  updateState: function(newState) {
+    this.state = newState;
+    if (this.binding)
+      this.binding.update();
+  },
+
+  _popState: function() {
+    var env = $env.getEnv(this.win);
+    if (!env.hasOwnProperty("tree")) {
+      this.updateState("picktree");
+    }
+  },
+
+  _bootstrap: function() {
     var self = this;
     when(this.rstore.getRecentPushes(),
       function gotPushes(pushes) {
@@ -125,8 +151,16 @@ ArbApp.prototype = {
 };
 
 exports.main = function main() {
-  var app = window.app = new ArbApp();
-  app.bootstrap();
+  var env = $env.getEnv();
+
+  var app = window.app = new ArbApp(window);
+
+  if ("tree" in env) {
+    var treeDef = $repodefs.safeGetTreeByName(env.tree);
+    if (treeDef) {
+      app.selectTree(treeDef, true);
+    }
+  }
   $ui_main.bindApp(app);
 };
 

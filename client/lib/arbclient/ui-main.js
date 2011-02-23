@@ -71,6 +71,82 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "state-picktree",
+  doc: "Lists the trees you can look at, lets you pick one.",
+  constraint: {
+    type: "app-state",
+    obj: {
+      state: "picktree",
+    },
+  },
+  focus: wy.focus.container.vertical("possibleTrees"),
+  structure: {
+    heading: "Pick a tree:",
+    possibleTrees: wy.vertList({type: "pickable-tree"},
+                               wy.dictAsList("possibleTrees")),
+  },
+  events: {
+    possibleTrees: {
+      command: function(pickedBinding) {
+        this.obj.selectTree(pickedBinding.obj);
+      },
+    },
+  },
+  style: {
+    heading: [
+      "display: block;",
+      "font-size: 400%;",
+      "text-align: center;",
+      "color: black;",
+      "margin-bottom: 40px;",
+    ],
+    possibleTrees: [
+      "text-align: center;",
+    ],
+  },
+});
+
+wy.defineWidget({
+  name: "pickable-tree",
+  doc: "Represent a tree for pickin' purposes",
+  constraint: {
+    type: "pickable-tree",
+  },
+  focus: wy.focus.item,
+  structure: {
+    name: wy.bind("name"),
+    url: wy.bind(["repos", 0, "url"]),
+  },
+  style: {
+    root: [
+      "display: inline-block;",
+      "width: 40em;",
+      "margin-bottom: 8px;",
+      "cursor: pointer;",
+    ],
+    name: [
+      "display: block;",
+      "color: black;",
+      "border-top-left-radius: 10px;",
+      "border-top-right-radius: 10px;",
+      "padding: 8px;",
+      "background-color: #F8ECC9;",
+      "font-size: 200%;",
+    ],
+    url: [
+      "display: block;",
+      "color: white;",
+      "border-bottom-left-radius: 10px;",
+      "border-bottom-right-radius: 10px;",
+      "padding: 8px;",
+      "background-color: #A79C8E;",
+      "font-size: 150%;",
+    ]
+  },
+});
+
+
+wy.defineWidget({
   name: "state-connecting",
   doc: "The connecting splash screen.",
   constraint: {

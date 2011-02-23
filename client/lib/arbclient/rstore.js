@@ -167,7 +167,7 @@ RemoteStore.prototype = {
         // - stash us in our owning push
         // derive our parent's push key from our build key.
         var idxLastColon = key.lastIndexOf(":");
-        var pushKey = "s:r:" + key.substring(4, idxLastColon);
+        var pushKey = "s:r" + key.substring(3, idxLastColon);
         // get that push...
         var buildPush = chewPush(pushKey);
         // stash!
