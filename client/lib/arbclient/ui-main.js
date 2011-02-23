@@ -124,7 +124,7 @@ wy.defineWidget({
     root: [
       "display: inline-block;",
       "width: 40em;",
-      "margin-bottom: 8px;",
+      "margin: 8px;",
       "cursor: pointer;",
     ],
     name: [
