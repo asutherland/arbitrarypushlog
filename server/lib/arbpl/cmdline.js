@@ -54,15 +54,13 @@ require(
   [
     "nomnom",
     "q",
-    "url", "http", "fs", "stream",
-    "compress",
+    "arbpl/hackjobs",
     "require"
   ],
   function(
     $nomnom,
     $Q,
-    $url, $http, $fs, $stream,
-    $compress,
+    $hackjobs,
     $require
   ) {
 var when = $Q.when;
@@ -74,43 +72,6 @@ var OPTS = [
     help: "one of: sync, web",
   },
 ];
-
-var RE_URL = /^http:/;
-var RE_GZIPPED = /\.gz$/;
-function gimmeStreamForThing(thing) {
-  if (RE_URL.test(thing)) {
-    var parsed = $url.parse(thing);
-    var stream;
-
-    if (RE_GZIPPED.test(parsed.pathname)) {
-      var gunzipStream = stream = new $compress.GunzipStream(stream);
-    }
-    else {
-      stream = new $stream.Stream();
-    }
-
-    var req = $http.get({
-      host: parsed.host,
-      port: parsed.hasOwnProperty("port") ? parsed.port : 80,
-      path: parsed.pathname,
-    }, function(httpStream) {
-      httpStream.on("data", function(data) {
-        stream.write(data);
-      });
-      httpStream.on("end", function() {
-        stream.end();
-      });
-      httpStream.on("close", function() {
-        stream.close();
-      });
-    });
-
-    return stream;
-  }
-  else {
-    return $fs.createReadStream(thing);
-  }
-}
 
 // We need to do our own argv slicing to compensate for RequireJS' r.js
 var options = $nomnom.parseArgs(OPTS, null, process.argv.slice(3));
@@ -154,7 +115,7 @@ switch (options.command) {
     $require(
       ["arbpl/xpcshell-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun(gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
       }
     );
     break;
@@ -163,7 +124,7 @@ switch (options.command) {
     $require(
       ["arbpl/mozmill-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun(gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
       }
     );
     break;

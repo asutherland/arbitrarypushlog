@@ -229,7 +229,12 @@ HStore.prototype = {
       for (var key in cols) {
         var value = cols[key].value; // also knows timestamp
 
-        dbstate[key] = JSON.parse(value);
+        try {
+          dbstate[key] = JSON.parse(value);
+        }
+        catch (ex) {
+          console.error("Exception JSON parsing", value);
+        }
       }
     }
 
@@ -237,6 +242,11 @@ HStore.prototype = {
   },
 
   putPushStuff: function(treeId, pushId, keysAndValues) {
+    if (pushId == null) {
+      console.error("Attempted to write with a gibberish push id", pushId);
+      throw new Error("bad push id: " + pushId);
+    }
+
     var deferred = $Q.defer();
     var mutations = [];
     for (var key in keysAndValues) {

@@ -266,7 +266,6 @@ Overmind.prototype = {
       }
     }
 
-    console.log("??repoAndRevs", repoAndRevs);
     this._getPushInfoForRevisions(repoAndRevs, earliest, latest);
   },
 
@@ -443,9 +442,9 @@ Overmind.prototype = {
      *  Everything else can go pound sand.
      */
     function isBuildLoggable(build) {
-      return ((build.type.type === "test") &&
-              ((build.type.subtype === "mozmill") ||
-               (build.type.subtype === "xpcshell")));
+      return ((build.builder.type.type === "test") &&
+              ((build.builder.type.subtype === "mozmill") ||
+               (build.builder.type.subtype === "xpcshell")));
     }
 
     // -- normalized logic for both 'b' variants and log job checking
@@ -462,7 +461,8 @@ Overmind.prototype = {
         if (isBuildLoggable(build)) {
           var lKey = "s:l" + keyExtra + ":" + build.id;
           if (!dbstate.hasOwnProperty(lKey)) {
-            this._logProcJobs.push({
+            self._logProcJobs.push({
+              pushId: rootPush.id,
               key: lKey,
               build: build,
             });
@@ -496,10 +496,9 @@ Overmind.prototype = {
     }
     walkRevMap("", revInfo, this.tinderTree.repos.slice(1));
 
-    console.log("want to write:", setstate);
     when(DB.putPushStuff(this.tinderTree.id, rootPush.id, setstate),
       function() {
-        console.log("db write completed");
+        console.log("db write completed:", self.tinderTree.id, rootPush.id);
         // - kickoff next processing step.
         self._processNextPush();
       },
@@ -518,8 +517,11 @@ Overmind.prototype = {
   /**
    * Trigger the processing of (one or more) logs.  We do this in a streaming
    *  fashion rather than promise fashion because these logs can end up being
-   *  rather large.  Note that even though the logs claim to be gzipped, they
-   *  are not actually gzipped, maybe.
+   *  rather large.
+   *
+   * Log processing occurs as a follow-on process after all pushes have been
+   *  process for no particular reason.  We could just as easily process all
+   *  the logs for a push before moving on to the next push.
    */
   _processNextLog: function() {
     while ((this._activeLogFrobbers.length < this.MAX_CONCURRENT_LOG_FROBS) &&
@@ -527,7 +529,7 @@ Overmind.prototype = {
       var job = this._logProcJobs.pop();
 
       var frobber = null;
-      switch (job.build.type.subtype) {
+      switch (job.build.builder.type.subtype) {
         case "xpcshell":
           frobber = this._processXpcshellLog(job);
           break;
@@ -547,18 +549,77 @@ Overmind.prototype = {
 
     if (this._activeLogFrobbers.length === 0 &&
         this._logProcJobs.length === 0) {
+      console.log("Active log frobbers:", this._activeLogFrobbers);
+      console.log("Log proc jobs:", this._logProcJobs);
       this._allDone();
     }
   },
 
-  _processMozmillLog: function() {
+  /**
+   * Notify that a frobber has completed operation, saving its result state to
+   *  the datastore and potentially triggering a new frobber.
+   * XXX this implementation is verging on spaghetti-logic; the redeeming grace
+   *  is we are still pretty small...
+   *
+   * @args[
+   *   @param[frobber]{
+   *     The frobber instance that completed processing, so that we can splice
+   *     it out of the list of active frobbers.
+   *   }
+   *   @param[job]{
+   *     The job the frobber was working; this provides us with the information
+   *     required so we know where to write to.
+   *   }
+   *   @param[logResultObj]{
+   *     The state object to persist to the datastore.  This will be JSON
+   *     serialized at a lower level, so barring a great reason, there is no
+   *     need to pre-serialize things.
+   *   }
+   * ]
+   */
+  _frobberDone: function(frobber, job, logResultObj) {
+    var self = this;
+    var stateObj = {};
+    stateObj[job.key] = logResultObj;
+    // Although we could potentially overlap the next request with this
+    //  request, this is the easiest way to make sure that _allDone does not
+    //  kill the VM prematurely.  XXX The datastore should probably be able to
+    //  handle out a promise for when it has quiesced.
+    console.log("frobber db write to", job.pushId);
+    when(DB.putPushStuff(this.tinderTree.id, job.pushId, stateObj),
+      function() {
+        console.log(" frobber db write completed");
+        self._activeLogFrobbers.splice(
+          self._activeLogFrobbers.indexOf(frobber), 1);
+        self._processNextLog();
+      });
   },
 
-  _processXpcshellLog: function() {
+  _processMozmillLog: function(job) {
+    console.log("MOZMILL LOG GOBBLE", job);
+    var self = this;
+
+    var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
+    var frobber = new $frobMozmill.MozmillFrobber(stream, function(failures) {
+      self._frobberDone(frobber, job, failures);
+    });
+    return frobber;
+  },
+
+  _processXpcshellLog: function(job) {
+    console.log("XPCSHELL LOG GOBBLE", job);
+    var self = this;
+
+    var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
+    var frobber = new $frobXpcshell.XpcshellFrobber(stream, function(failures) {
+      self._frobberDone(frobber, job, failures);
+    });
+    return frobber;
   },
 
   _allDone: function() {
     console.log("ALL DONE, quitting.");
+    process.stdout.end();
     process.exit(0);
   },
 };

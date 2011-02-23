@@ -166,7 +166,7 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/xpcshell/i],
+    regexes: [/xpcshell/i, /(check|test)/],
     buildType: {
       type: "test",
       subtype: "xpcshell",
@@ -198,13 +198,6 @@ var BUILD_TYPES = [
     buildType: {
       type: "test",
       subtype: "valgrind",
-    },
-  },
-  {
-    regexes: [/(check|test)/],
-    buildType: {
-      type: "test",
-      subtype: "check",
     },
   },
 ];

@@ -110,9 +110,12 @@ wy.defineWidget({
       "margin-bottom: 0.5em;",
     ],
     author: [
+      "position: absolute;",
       "width: 12em;",
     ],
     desc: [
+      "display: block;",
+      "margin-left: 12.5em;",
       "font-weight: bolder;",
     ],
     summaryGroups: [
@@ -191,6 +194,13 @@ wy.defineWidget({
     types: wy.widgetFlow({type: "build-type-group"}, "types",
                          {separator: ", "}),
   }),
+  style: {
+    name: [
+      "display: inline-block;",
+      "width: 4em;",
+      "text-align: right;",
+    ],
+  },
 });
 
 wy.defineWidget({

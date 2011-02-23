@@ -122,7 +122,7 @@ Frobber.prototype = {
     this.callback(this.jsonObjs);
   },
 };
-exports.Frobber = Frobber;
+exports.MozmillFrobber = Frobber;
 
 exports.dummyTestRun = function(path) {
   var stream = $fs.createReadStream(path);

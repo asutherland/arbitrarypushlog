@@ -194,6 +194,7 @@ XpcshellFrobber.prototype = {
     this.callback(this.failures);
   }
 };
+exports.XpcshellFrobber = XpcshellFrobber;
 
 exports.dummyTestRun = function(stream) {
   var frobber = new XpcshellFrobber(stream, function(failures) {
