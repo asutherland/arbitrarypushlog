@@ -27,3 +27,4 @@ Mozilla Tinderbox processor and UI.
 - express/connect: web serving framework, used very shallowly.
 - thrift: for hbase talkin'
 - compress: decompress, npm packageable one from git://github.com/sjmulder/node-compress.git
+- nomnom: option parsing
