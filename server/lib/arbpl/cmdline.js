@@ -69,7 +69,7 @@ var OPTS = [
   {
     name: "command",
     position: 0,
-    help: "one of: sync, web",
+    help: "one of: sync, web, localchew",
   },
 ];
 
@@ -96,6 +96,19 @@ switch (options.command) {
           },
           function() {
             console.error("suspiciously impossible failure!");
+          });
+      }
+    );
+    break;
+
+  case "localchew":
+    $require(
+      ["arbpl/localchew"],
+      function($localchew) {
+        var chewer = new $localchew.LocalChewer();
+        when(chewer.chew(options[1]),
+          function(pushId) {
+            console.log("chewed log as push id:", pushId);
           });
       }
     );

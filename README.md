@@ -26,4 +26,4 @@ Mozilla Tinderbox processor and UI.
 - carrier: simple line-reader stream filter
 - express/connect: web serving framework, used very shallowly.
 - thrift: for hbase talkin'
-- compress: decompress
+- compress: decompress, npm packageable one from git://github.com/sjmulder/node-compress.git

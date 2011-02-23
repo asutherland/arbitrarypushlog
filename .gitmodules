@@ -1,0 +1,9 @@
+[submodule "client/deps/jstut"]
+	path = client/deps/jstut
+	url = git://github.com/asutherland/jstut.git
+[submodule "client/deps/wmsy"]
+	path = client/deps/wmsy
+	url = git://github.com/asutherland/wmsy.git
+[submodule "client/deps/requirejs"]
+	path = client/deps/requirejs
+	url = git://github.com/jrburke/requirejs.git

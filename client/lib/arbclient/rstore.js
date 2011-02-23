@@ -133,7 +133,7 @@ RemoteStore.prototype = {
       var keyBits = pushKey.split(":");
 
       // - set push state...
-      truePush.id = value.id;
+      truePush.id = parseInt(value.id);
       truePush.pushDate = new Date(value.date * 1000);
       truePush.pusher = LocalDB.getPersonForPusher(value.user);
 
