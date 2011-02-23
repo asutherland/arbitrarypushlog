@@ -95,7 +95,7 @@ var CC_MAPPING = {
       smime: "SMIME",
     },
     imap: "IMAP",
-    import: "Mail Import",
+    "import": "Mail Import",
     local: "Local Folders",
     mapi: "Windows MAPI",
     mime: "libmime",
