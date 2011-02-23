@@ -87,26 +87,16 @@ switch (options.command) {
 
   case "sync":
     $require(
-      ["arbpl/overmind", "arbcommon/repodefs"],
-      function($overmind, $repodefs) {
-        console.log("creating overmind");
-        var mind = new $overmind.Overmind($repodefs.TINDER_TREES.tb_trunk);
-        console.log("initiating bootstrap");
-        when(mind.bootstrap(),
+      ["arbpl/hivemind"],
+      function($hivemind) {
+        when($hivemind.HIVE_MIND.syncAll(),
           function() {
-            console.log("bootstrapped! initiating syncup");
-            when(mind.syncUp(),
-              function() {
-                console.log("sync success!");
-              },
-              function() {
-                console.error("sync failure");
-              });
+            console.log("synchronized everyone! woo!");
+            process.exit(0);
           },
           function() {
-            console.error("bootstrap failure!");
+            console.error("suspiciously impossible failure!");
           });
-        console.log("syncUp call completed, going async");
       }
     );
     break;

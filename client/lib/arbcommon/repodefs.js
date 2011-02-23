@@ -349,17 +349,28 @@ var TINDER_TREES = exports.TINDER_TREES = {
       mozilla: REPOS["mozilla-central"],
     },
   }),
-  /*
   tb_try: new TinderTreeDef({
     id: "ctry",
     name: "ThunderbirdTry",
-    product: PRODUCTS.thunderbird,
+    product: "Thunderbird",
+    repos: [REPOS["try-comm-central"], REPOS["mozilla-central"]],
+    mount: {
+      mozilla: REPOS["mozilla-central"],
+    },
   }),
-   */
+
   // releases/comm-1.9.2 => c192
   // releases/comm-1.9.1 => c191
 
   // mozilla-central => mc
+  mc_trunk: new TinderTreeDef({
+    id: "mc",
+    name: "Firefox",
+    product: "Firefox",
+    repos: [REPOS["mozilla-central"]],
+    mount: {
+    },
+  }),
   // try => mtry
 
   // tracemonkey => tm

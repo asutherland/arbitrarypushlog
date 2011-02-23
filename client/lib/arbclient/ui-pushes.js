@@ -264,6 +264,9 @@ wy.defineWidget({
       "display: block;",
       "margin-left: 1em;",
     ],
+    buildersLabel: [
+      "color: #888;",
+    ],
   },
 });
 

@@ -168,17 +168,17 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/reftest-d2d/i, /direct3d/i, /opengl/i, /reftest/i],
+    regexes: [/reftest/i, /reftest-d2d/i, /direct3d/i, /opengl/i],
     buildType: {
       type: "test",
       subtype: "reftest",
     },
   },
   {
-    regexes: [/xpcshell/i, /(check|test)/],
+    regexes: [/mozmill/i],
     buildType: {
       type: "test",
-      subtype: "xpcshell",
+      subtype: "mozmill",
     },
   },
   {
@@ -196,17 +196,18 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/mozmill/i],
-    buildType: {
-      type: "test",
-      subtype: "mozmill",
-    },
-  },
-  {
     regexes: [/valgrind/i],
     buildType: {
       type: "test",
       subtype: "valgrind",
+    },
+  },
+  // because check/test are catch-ally, this must go last.
+  {
+    regexes: [/xpcshell/i, /(check|test)/],
+    buildType: {
+      type: "test",
+      subtype: "xpcshell",
     },
   },
 ];
@@ -303,24 +304,26 @@ Tinderboxer.prototype = {
       return this._buildersByName[name];
 
     var iRegex, goodOs = null, goodBuildType = null;
+    outerOSLoop:
     for (var iOS = 0; iOS < OS_PLATFORMS.length; iOS++) {
       var osDef = OS_PLATFORMS[iOS];
       for (iRegex = 0; iRegex < osDef.regexes.length; iRegex++) {
         if (osDef.regexes[iRegex].test(name)) {
           goodOs = osDef;
-          break;
+          break outerOSLoop;
         }
       }
     }
     if (!goodOs)
       return (this._buildersByName[name] = null);
 
+    outerBuildLoop:
     for (var iBT = 0; iBT < BUILD_TYPES.length; iBT++) {
       var buildType = BUILD_TYPES[iBT];
       for (iRegex = 0; iRegex < buildType.regexes.length; iRegex++) {
         if (buildType.regexes[iRegex].test(name)) {
           goodBuildType = buildType;
-          break;
+          break outerBuildLoop;
         }
       }
     }

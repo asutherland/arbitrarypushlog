@@ -214,6 +214,7 @@ Overmind.prototype = {
     var repoAndRevs = {};
     var i, revision, repoDef;
     var earliest = null, latest = null;
+    var expectedRevCount = this.tinderTree.repos.length;
 
     for (var buildId in results) {
       var build = results[buildId];
@@ -228,7 +229,9 @@ Overmind.prototype = {
       //  servers we cannot guarantee that the exact repo we expect will be in
       //  use; that might be the variation that was being tried!)
       var orderedRevInfo = [];
+      var seenRevs = 0;
       for (var revRepo in build.revs) {
+        seenRevs++;
         revision = build.revs[revRepo];
         repoDef = findRepoDef(revRepo);
         if (!repoDef || !familyPrioMap.hasOwnProperty(repoDef.family))
@@ -241,6 +244,15 @@ Overmind.prototype = {
         if (repoAndRevs[revRepo].revs.indexOf(revision) == -1)
           repoAndRevs[revRepo].revs.push(revision);
       }
+      if (seenRevs != expectedRevCount) {
+        if (seenRevs != 0) {
+          console.info("skipping build", build.id,
+                       "which does not have the expected rev count!",
+                       build.revs);
+        }
+        continue;
+      }
+
       // now map the contributions into the revMap
       var curMap = revMap;
       for (i = 0; i < orderedRevInfo.length; i++) {
@@ -618,9 +630,7 @@ Overmind.prototype = {
   },
 
   _allDone: function() {
-    console.log("ALL DONE, quitting.");
-    process.stdout.end();
-    process.exit(0);
+    this._syncDeferred.resolve();
   },
 };
 exports.Overmind = Overmind;

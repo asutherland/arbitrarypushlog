@@ -103,6 +103,8 @@ var RE_TEST_TREE_PATH_BASE = /.+[/\\]build[/\\]xpcshell[/\\]tests[/\\](.+)/;
 
 var RE_BACKSLASH = /\\/g;
 
+var RE_IS_MOCHITEST = /^chrome:/;
+
 /**
  * Process a tinderbox xpcshell run for failures.  When we see xpcshell
  *  calling out a failure and dumping a log, we process the log for all xpcshell
@@ -143,10 +145,22 @@ XpcshellFrobber.prototype = {
       case FST_LOOKING_FOR_FAILED_TEST: {
         match = RE_FAILED_TEST_STARTS.exec(line);
         if (match) {
+          var fullPath = match[1];
+          // we hate mochitests; go directly to waiting for the log end marker.
+          // (note: we should not actually be provided mochitest logs, but
+          //  since I already screwed up once...)
+          if (RE_IS_MOCHITEST.test(fullPath) ||
+              // mochitest timeout reports like so:
+              fullPath == "Shutdown") {
+            console.warn("XpcshellFrobber does not like mochitests, " +
+                         "but you still gave me one anyways!", fullPath);
+            this.state = FST_DONE_WITH_LOG;
+            break;
+          }
+
           this.state = FST_IN_TEST_LOG;
           this.hasher = $crypto.createHash("md5");
 
-          var fullPath = match[1];
           match = RE_TEST_TREE_PATH_BASE.exec(fullPath);
           if (!match)
             console.error("failed to match on", fullPath);
