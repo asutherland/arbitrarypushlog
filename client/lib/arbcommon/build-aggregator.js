@@ -149,11 +149,21 @@ exports.aggregateBuilds = function aggregateBuilds(builds) {
 
     // -- failure clustering
     if (build.processedLog) {
-      var buildFailures = build.processedLog;
-      var testType = build.builder.type.subType;
+      var testType = build.builder.type.subtype;
+      var buildFailures = build.processedLog.failures;
       for (var iFail = 0; iFail < buildFailures.length; iFail++) {
         var bfail = buildFailures[iFail];
-        var failGroupKey = testType + ":" + bfail.test + ":" + bfail.hash;
+        var failGroupKey, testName, signature;
+        if (testType === "mozmill") {
+          failGroupKey = testType + ":" + bfail.fileName + ":" + bfail.testName;
+          testName = bfail.testName;
+          signature = "";
+        }
+        else {
+          failGroupKey = testType + ":" + bfail.test + ":" + bfail.hash;
+          testName = bfail.test;
+          signature = bfail.hash;
+        }
 
         var failGroup;
         if (failGroupMap.hasOwnProperty(failGroupKey)) {
@@ -161,7 +171,7 @@ exports.aggregateBuilds = function aggregateBuilds(builds) {
         }
         else {
           failGroup = failGroupMap[failGroupKey] =
-            new FailGroup(testType, bfail.test, bfail.hash);
+            new FailGroup(testType, testName, signature);
           failGroups.push(failGroup);
         }
 

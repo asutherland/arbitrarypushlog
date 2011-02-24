@@ -199,15 +199,16 @@ HStore.prototype = {
     return this._bootstrapDeferred.promise;
   },
 
-  getMostRecentKnownPushes: function(treeId, count) {
+  getMostRecentKnownPushes: function(treeId, count, highPushId) {
     if (count == null)
       count = 1;
     //console.log("getMostRecentKnownPush...", treeId);
     var deferred = $Q.defer();
     var self = this;
+    var startRow = highPushId ? transformPushId(parseInt(highPushId)) : ZEROES;
     this.client.scannerOpenWithStop(
       TABLE_PUSH_FOCUSED,
-      treeId + "," + ZEROES,
+      treeId + "," + startRow,
       // we need to specify the stop row to stop from reading into the next
       //  tree's data!
       treeId + "," + NINES,

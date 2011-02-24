@@ -195,11 +195,12 @@ RemoteStore.prototype = {
     return retBuildPush;
   },
 
-  getRecentPushes: function() {
+  getRecentPushes: function(fromPushId) {
     var deferred = $pwomise.defer("recent-pushes", this.tinderTree.name);
     var self = this;
+    var query = (fromPushId != null) ? ("?highpushid=" + fromPushId) : "";
     when(commonLoad(this.urlBase + "tree/" + this.tinderTree.name +
-                      "/pushes",
+                      "/pushes" + query,
                     "push-fetch"),
       function(jsonStr) {
         var jsonObj = JSON.parse(jsonStr);

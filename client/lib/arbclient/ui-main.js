@@ -71,6 +71,11 @@ wy.defineWidget({
       this.obj.binding = this;
     }
   },
+  receive: {
+    navigate: function(keyDeltas) {
+      this.obj.navigate(keyDeltas);
+    },
+  },
 });
 
 wy.defineWidget({
@@ -88,10 +93,11 @@ wy.defineWidget({
     possibleTrees: wy.vertList({type: "pickable-tree"},
                                wy.dictAsList("possibleTrees")),
   },
+  emit: ["navigate"],
   events: {
     possibleTrees: {
       command: function(pickedBinding) {
-        this.obj.selectTree(pickedBinding.obj);
+        this.emit_navigate({tree: pickedBinding.obj.name});
       },
     },
   },

@@ -37,45 +37,49 @@
 
 define(
   [
-    "q",
-    "../datastore",
-    "arbcommon/repodefs",
-    "express"
+    "wmsy/wmsy",
   ],
   function(
-    $Q,
-    $datastore,
-    $repodefs,
-    $express
+    $wmsy
   ) {
-var when = $Q.when;
 
+var wy = new $wmsy.WmsyDomain({id: "ui-page-testlog", domain: "arbpl"});
 
-var DB = new $datastore.HStore();
-var app = $express.createServer();
-
-app.configure(function() {
-  console.log("cur dir", process.cwd());
-  app.use($express.staticProvider(process.cwd() + "/../../client"));
-});
-
-app.get("/tree/:tree/pushes", function(req, res) {
-  var tinderTree = $repodefs.safeGetTreeByName(req.params.tree);
-  if (!tinderTree) {
-    res.send(404);
-    return;
-  }
-  var highPushId = req.param("highpushid");
-  when(DB.getMostRecentKnownPushes(tinderTree.id, 8, highPushId),
-    function(rowResults) {
-      var rowStates = DB.normalizeRowResults(rowResults);
-      res.send(rowStates);
+wy.defineWidget({
+  name: "page-testlog",
+  constraint: {
+    type: "page",
+    obj: { page: "testlog" },
+  },
+  focus: wy.focus.domain.vertical("pushes"),
+  structure: {
+    header: {
+      fileName: wy.bind("fileName"),
+      testName: wy.bind("testName"),
     },
-    function(err) {
-      res.send(500);
-    });
+    windows: wy.vertList({type: "window"},
+                         ["failureContext", "windows", "windows"]),
+    preEvents: wy.vertList({type: "log-entry"},
+                           ["failureContext", "preEvents"]),
+    events: wy.vertList({type: "log-entry"},
+                        ["failureContext", "events"]),
+  }
 });
 
-app.listen(8008);
+wy.defineWidget({
+  name: "window",
+  constraint: {
+    type: "window",
+  },
+  structure: {
+    header: {
+      id: wy.bind("id"),
+      title: wy.bind("title"),
+      active: wy.bind("isActive"),
+    },
+    screenshot: wy.bindImage("screenshotDataUrl"),
+    focusedElem: wy.widget({type: "log-entry"}, "focusedElem"),
+  },
+});
 
-}); // end require.def
+}); // end define

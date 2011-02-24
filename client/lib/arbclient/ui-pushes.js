@@ -233,9 +233,11 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "build-fail-group",
+  name: "xpcshell-build-fail-group",
+  doc: "characterize xpcshell failure groups",
   constraint: {
     type: "build-fail-group",
+    obj: { type: "xpcshell" },
   },
   structure: {
     testGroup: wy.flow({
@@ -268,6 +270,70 @@ wy.defineWidget({
   style: {
     root: [
       "position: relative;",
+    ],
+    name: [
+      "font-weight: 600;",
+    ],
+    testGroup: [
+      "display: inline-block;",
+      "width: 48em;",
+    ],
+    signature: [
+      "display: inline-block;",
+      "float: right;",
+    ],
+    builderGroup: [
+      "clear: both;",
+      "display: block;",
+      "margin-left: 1em;",
+    ],
+    buildersLabel: [
+      "color: #888;",
+    ],
+  },
+});
+
+wy.defineWidget({
+  name: "mozmill-build-fail-group",
+  doc: "characterize mozmill failure groups",
+  constraint: {
+    type: "build-fail-group",
+    obj: { type: "mozmill" },
+  },
+  structure: {
+    testGroup: wy.flow({
+      name: wy.bind("name"),
+      delimContextLinks: " (",
+      topfailsLink: wy.hyperlink(wy.computed("topfailsLabel"), {
+                                   href: wy.computed("topfailsLink"),
+                                 }),
+      endDelimContextLinks: ")",
+    }),
+    signature: wy.bind("signature"),
+    builderGroup: wy.flow({
+      buildersLabel: "Builders: ",
+      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+                           {separator: ", "}),
+    }),
+  },
+  impl: {
+    topfailsLabel: function() {
+      // XXX this will not vary, this should not be computed and instead
+      //  we should use wy.static or something.
+      return "topfails";
+    },
+    topfailsLink: function() {
+      return "http://brasstacks.mozilla.com/topfails/test/" +
+        this.__context.tinderTree.name +
+        "?name=xpcshell/tests/" + this.obj.name;
+    },
+  },
+  style: {
+    root: [
+      "position: relative;",
+    ],
+    name: [
+      "font-weight: 600;",
     ],
     testGroup: [
       "display: inline-block;",

@@ -62,8 +62,8 @@ function ArbApp(win) {
   this.rstore = null;
 
   this.win = win;
-  this._popStateWrapped = this._popState.bind(this);
-  this.win.addEventListener("popstate", this._popStateWrapped, false);
+  this._popLocationWrapped = this._popLocation.bind(this);
+  this.win.addEventListener("popstate", this._popLocationWrapped, false);
   this.history = win.history;
 
   /**
@@ -108,44 +108,116 @@ function ArbApp(win) {
    *
    */
   this.page = null;
+
+  /**
+   * The current navigated page location in terms of key/value pairs.  These
+   *  are currently surface in the location bar as query terms, but we could
+   *  also create a fake hierarchy with #! or something.
+   */
+  this._loc = null;
+
+  this._popLocation();
 }
 ArbApp.prototype = {
-  selectTree: function(tinderTree, fromUrl) {
-    this.tinderTree = tinderTree;
-    this.rstore = new $rstore.RemoteStore(this.tinderTree);
-    this.updateState("connecting");
-    if (!fromUrl)
-      this.history.pushState(null, "", "?tree=" + tinderTree.name);
-    this._bootstrap();
+  _useTree: function(tinderTree) {
+    if (this.tinderTree !== tinderTree) {
+      this.tinderTree = tinderTree;
+      this.rstore = new $rstore.RemoteStore(this.tinderTree);
+    }
   },
 
-  updateState: function(newState) {
+  _showRevisions: function(pushId) {
+    this._updateState("connecting");
+    this._getPushes(pushId);
+  },
+
+  _updateState: function(newState) {
     this.state = newState;
     if (this.binding)
       this.binding.update();
   },
 
-  _popState: function() {
+  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log"],
+  _popLocation: function() {
     var env = $env.getEnv(this.win);
-    if (!env.hasOwnProperty("tree")) {
-      this.updateState("picktree");
+    var loc = this._loc = {};
+    var clobbering = false;
+    for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
+      var key = this.ORDERED_LOCATION_KEYS[iKey];
+      if (clobbering) {
+        loc[key] = null;
+      }
+      else if (env.hasOwnProperty(key)) {
+        loc[key] = env[key];
+      }
+      else {
+        loc[key] = null;
+        clobbering = true;
+      }
+    }
+
+    var treeDef = loc.tree ? $repodefs.safeGetTreeByName(loc.tree) : null;
+    // no (legal) tree, gotta pick one
+    if (!treeDef) {
+      this._updateState("picktree");
+      this._setLocation({}, true);
+      return;
+    }
+
+    // no log, show pushes (either most recent or from a specific push)
+    if (!loc.log) {
+      this._useTree(treeDef);
+      this._showRevisions(loc.pushid);
+      return;
+    }
+
+    // yes log, request it
+  },
+
+  _setLocation: function(loc, alreadyInEffect) {
+    this._loc = loc;
+    var qbits = [];
+    for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
+      var key = this.ORDERED_LOCATION_KEYS[iKey];
+      if (loc[key] != null)
+        qbits.push(encodeURIComponent(key) + "=" + encodeURIComponent(loc[key]));
+      else
+        break;
+    }
+
+    var navUrl;
+    if (qbits.length)
+      navUrl = "?" + qbits.join("&");
+    else
+      navUrl = "";
+    this.history.pushState(null, "", navUrl);
+
+    if (!alreadyInEffect) {
+      this._popLocation();
     }
   },
 
-  _bootstrap: function() {
+  navigate: function(keyDeltas) {
+    for (var key in keyDeltas) {
+      this._loc[key] = keyDeltas[key];
+    }
+    this._setLocation(this._loc);
+  },
+
+  _getPushes: function(highPushId) {
     var self = this;
-    when(this.rstore.getRecentPushes(),
+    when(this.rstore.getRecentPushes(highPushId),
       function gotPushes(pushes) {
         self.page = {
           page: "pushes",
           pushes: pushes,
         };
-        self.updateState("good");
+        self._updateState("good");
       },
       function fetchProblem(err) {
         console.error("No go on the data.");
         self.error = err;
-        self.updateState("error");
+        self._updateState("error");
       });
   },
 };
@@ -154,13 +226,6 @@ exports.main = function main() {
   var env = $env.getEnv();
 
   var app = window.app = new ArbApp(window);
-
-  if ("tree" in env) {
-    var treeDef = $repodefs.safeGetTreeByName(env.tree);
-    if (treeDef) {
-      app.selectTree(treeDef, true);
-    }
-  }
   $ui_main.bindApp(app);
 };
 

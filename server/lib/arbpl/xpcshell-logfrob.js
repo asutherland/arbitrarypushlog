@@ -205,7 +205,7 @@ XpcshellFrobber.prototype = {
     }
   },
   onEnd: function() {
-    this.callback(this.failures);
+    this.callback({type: "xpcshell", failures: this.failures});
   }
 };
 exports.XpcshellFrobber = XpcshellFrobber;

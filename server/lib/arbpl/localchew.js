@@ -121,7 +121,7 @@ LocalChewer.prototype = {
     console.log("all parsed, writing");
     var logFileInfo = $fs.statSync(this._path);
     var logDate = new Date(logFileInfo.mtime);
-    var logStamp = Math.floor(logDate.valueOf / 1000);
+    var logStamp = Math.floor(logDate.valueOf() / 1000);
 
     var setstate = {};
     // the revision info
@@ -177,6 +177,7 @@ LocalChewer.prototype = {
         if (key != "failureContext")
           overviewFail[key] = failure[key];
       }
+      overviewFailures.push(overviewFail);
     }
 
     // put the summary results in...
