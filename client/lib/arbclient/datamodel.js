@@ -124,6 +124,8 @@ function BuildPush() {
    * The `BuildSummary` that encapsulates what is up with the builds.
    */
   this.buildSummary = null;
+  
+  this.topLevelPush = null;
 }
 BuildPush.prototype = {
   visitLeafBuildPushes: function(func, funcThis) {

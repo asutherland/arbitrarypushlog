@@ -126,18 +126,13 @@ ArbApp.prototype = {
     }
   },
 
-  _showRevisions: function(pushId) {
-    this._updateState("connecting");
-    this._getPushes(pushId);
-  },
-
   _updateState: function(newState) {
     this.state = newState;
     if (this.binding)
       this.binding.update();
   },
 
-  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log"],
+  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "test"],
   _popLocation: function() {
     var env = $env.getEnv(this.win);
     var loc = this._loc = {};
@@ -163,15 +158,16 @@ ArbApp.prototype = {
       this._setLocation({}, true);
       return;
     }
+    this._useTree(treeDef);
 
     // no log, show pushes (either most recent or from a specific push)
     if (!loc.log) {
-      this._useTree(treeDef);
-      this._showRevisions(loc.pushid);
+      this._getPushes(loc.pushid);
       return;
     }
 
     // yes log, request it
+    this._getLog(loc.pushid, loc.log, loc.test);
   },
 
   _setLocation: function(loc, alreadyInEffect) {
@@ -201,10 +197,12 @@ ArbApp.prototype = {
     for (var key in keyDeltas) {
       this._loc[key] = keyDeltas[key];
     }
+    console.log("trying to navigate to", this._loc);
     this._setLocation(this._loc);
   },
 
   _getPushes: function(highPushId) {
+    this._updateState("connecting");
     var self = this;
     when(this.rstore.getRecentPushes(highPushId),
       function gotPushes(pushes) {
@@ -219,6 +217,25 @@ ArbApp.prototype = {
         self.error = err;
         self._updateState("error");
       });
+  },
+
+  _getLog: function(pushId, buildId, filterToTest) {
+    this._updateState("connecting");
+    var self = this;
+    when(this.rstore.getPushLogDetail(pushId, buildId),
+      function gotPushes(logDetails) {
+        self.page = {
+          page: "testlog",
+          failures: logDetails.failures,
+        };
+        self._updateState("good");
+      },
+      function fetchProblem(err) {
+        console.error("No go on the data.");
+        self.error = err;
+        self._updateState("error");
+      });
+
   },
 };
 

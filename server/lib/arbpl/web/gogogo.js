@@ -76,6 +76,25 @@ app.get("/tree/:tree/pushes", function(req, res) {
     });
 });
 
+app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
+  var tinderTree = $repodefs.safeGetTreeByName(req.params.tree);
+  if (!tinderTree) {
+    res.send(404);
+    return;
+  }
+  var highPushId = req.param("highpushid");
+  when(DB.getPushLogDetail(tinderTree.id,
+                           req.params.pushid,
+                           decodeURIComponent(req.params.buildid)),
+    function(buildDetails) {
+      res.send(buildDetails);
+    },
+    function(err) {
+      res.send(500);
+    });
+});
+
+
 app.listen(8008);
 
 }); // end require.def

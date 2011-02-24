@@ -51,7 +51,18 @@ wy.defineWidget({
     type: "page",
     obj: { page: "testlog" },
   },
-  focus: wy.focus.domain.vertical("pushes"),
+  focus: wy.focus.domain.vertical("failures"),
+  structure: {
+    failures: wy.vertList({type: "build-test-failure"}, "failures"),
+  }
+});
+
+wy.defineWidget({
+  name: "build-test-failure",
+  constraint: {
+    type: "build-test-failure",
+  },
+  focus: wy.focus.domain.vertical("windows", "preEvents", "events"),
   structure: {
     header: {
       fileName: wy.bind("fileName"),
@@ -59,19 +70,20 @@ wy.defineWidget({
     },
     windows: wy.vertList({type: "window"},
                          ["failureContext", "windows", "windows"]),
-    preEvents: wy.vertList({type: "log-entry"},
+    preEvents: wy.vertList({type: "log4moz-record"},
                            ["failureContext", "preEvents"]),
-    events: wy.vertList({type: "log-entry"},
+    events: wy.vertList({type: "log4moz-record"},
                         ["failureContext", "events"]),
   }
 });
+
 
 wy.defineWidget({
   name: "window",
   constraint: {
     type: "window",
   },
-  structure: {
+  structure: wy.block({
     header: {
       id: wy.bind("id"),
       title: wy.bind("title"),
@@ -79,6 +91,24 @@ wy.defineWidget({
     },
     screenshot: wy.bindImage("screenshotDataUrl"),
     focusedElem: wy.widget({type: "log-entry"}, "focusedElem"),
+  }, {active: "isActive"}),
+  style: {
+    root: {
+      _: [
+        "border: 1px solid black;",
+      ],
+      '[active="true"]': [
+        "background-color: #eeeeff;",
+      ],
+    },
+    id: [
+      "display: inline-block;",
+      "width: 16em;",
+    ],
+    title: [
+      "display: inline-block;",
+      "width: 32em;",
+    ],
   },
 });
 

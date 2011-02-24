@@ -54,6 +54,41 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl"});
 
 wy.defineWidget({
+  name: "log4moz-record",
+  constraint: {
+    type: "log4moz-record",
+  },
+  structure: wy.flow({
+    logger: wy.bind("loggerName"),
+    entries: wy.stream({type: "log-entry"}, "messageObjects"),
+  }),
+  style: {
+    root: [
+      "display: block;",
+    ],
+    logger: [
+      "display: inline-block;",
+      "width: 12em;",
+    ],
+  },
+});
+
+wy.defineWidget({
+  name: "log-test",
+  constraint: {
+    type: "log-entry",
+    obj: { type: wy.WILD },
+  },
+  structure: "",
+  impl: {
+    postInit: function() {
+      this.domNode.textContent = JSON.stringify(this.obj);
+    },
+  },
+});
+
+
+wy.defineWidget({
   name: "log-test",
   constraint: {
     type: "log-entry",
@@ -61,6 +96,16 @@ wy.defineWidget({
   },
   structure: [wy.bind("type"), ": ", wy.bind("name"), " ", wy.bind("parameter")],
 });
+
+wy.defineWidget({
+  name: "log-test",
+  constraint: {
+    type: "log-entry",
+    obj: { type: "subtest" },
+  },
+  structure: [wy.bind("type"), ": ", wy.bind("name"), " ", wy.bind("parameter")],
+});
+
 
 wy.defineWidget({
   name: "log-action",

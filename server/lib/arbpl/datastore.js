@@ -62,6 +62,7 @@ var ZEROES = "0000000";
 var NINES  = "9999999";
 
 function transformPushId(pushId) {
+  pushId = parseInt(pushId);
   var nonpaddedString = (BIG_PUSH_NUMBER - pushId) + "";
   return ZEROES.substring(nonpaddedString.length) + nonpaddedString;
 }
@@ -254,17 +255,19 @@ HStore.prototype = {
 
   getPushLogDetail: function(treeId, pushId, buildId) {
     var deferred = $Q.defer();
-    this.client.getRowWithColumns(
+    this.client.get(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       "d:l:" + buildId,
-      function(err, cell) {
+      function(err, cells) {
         if (err) {
           console.error("Unhappiness getting cell: " +
-                        treeId + "," + transformPushId(pushId));
+                        treeId + "," + transformPushId(pushId) +
+                        " row: " + "d:l:" + buildId,
+                        err);
           deferred.reject(err);
         }
         else {
-          deferred.resolve(JSON.parse(cell.value));
+          deferred.resolve(JSON.parse(cells[0].value));
         }
       });
     return deferred.promise;

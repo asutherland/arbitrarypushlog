@@ -132,6 +132,8 @@ RemoteStore.prototype = {
       var value = hbData[pushKey];
       var keyBits = pushKey.split(":");
 
+      buildPush.topLevelPush = (keyBits.length == 2);
+
       // - set push state...
       truePush.id = parseInt(value.id);
       truePush.pushDate = new Date(value.date * 1000);
@@ -208,6 +210,22 @@ RemoteStore.prototype = {
         // sort them...
         buildPushes.sort(self._pushSorter);
         deferred.resolve(buildPushes);
+      },
+      function(err) {
+        deferred.reject(err);
+      });
+
+    return deferred.promise;
+  },
+
+  getPushLogDetail: function(pushId, buildId) {
+    var deferred = $pwomise.defer("pushlog-detail", this.tinderTree.name);
+    var self = this;
+    when(commonLoad(this.urlBase + "tree/" + this.tinderTree.name +
+                      "/push/" + pushId + "/log/" + encodeURIComponent(buildId),
+                    "log-fetch"),
+      function(jsonStr) {
+        deferred.resolve(JSON.parse(jsonStr));
       },
       function(err) {
         deferred.reject(err);

@@ -41,6 +41,8 @@ define(
     "./ui-page-pushes",
     "./ui-pushes",
     "./ui-peeps",
+    "./ui-page-testlog",
+    "./ui-loghelper",
     "exports"
   ],
   function(
@@ -48,6 +50,8 @@ define(
     $ui_page_pushes,
     $ui_pushes,
     $ui_peeps,
+    $ui_page_testlog,
+    $ui_loghelper,
     exports
   ) {
 

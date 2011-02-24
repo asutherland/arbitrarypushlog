@@ -50,6 +50,10 @@ wy.defineWidget({
   constraint: {
     type: "push",
   },
+  // don't automatically bind anything, but make sure we create the obj
+  //  so we can potentially assign to it in postInit.
+  provideContext: {
+  },
   focus: wy.focus.nestedItem.vertical("changesets", "subPushes"),
   structure: {
     headingBox: {
@@ -67,6 +71,12 @@ wy.defineWidget({
                                    ["buildSummary", "failGroups"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
+  },
+  impl: {
+    postInitUpdate: function() {
+      if (this.obj.topLevelPush)
+        this.__context.pushId = this.obj.push.id;
+    },
   },
   style: {
     root: [
@@ -300,16 +310,11 @@ wy.defineWidget({
     type: "build-fail-group",
     obj: { type: "mozmill" },
   },
+  emit: ["navigate"],
   structure: {
     testGroup: wy.flow({
       name: wy.bind("name"),
-      delimContextLinks: " (",
-      topfailsLink: wy.hyperlink(wy.computed("topfailsLabel"), {
-                                   href: wy.computed("topfailsLink"),
-                                 }),
-      endDelimContextLinks: ")",
     }),
-    signature: wy.bind("signature"),
     builderGroup: wy.flow({
       buildersLabel: "Builders: ",
       types: wy.widgetFlow({type: "build-info"}, "inBuilds",
@@ -317,15 +322,19 @@ wy.defineWidget({
     }),
   },
   impl: {
-    topfailsLabel: function() {
+    investigateLabel: function() {
       // XXX this will not vary, this should not be computed and instead
       //  we should use wy.static or something.
-      return "topfails";
+      return "investigate";
     },
-    topfailsLink: function() {
-      return "http://brasstacks.mozilla.com/topfails/test/" +
-        this.__context.tinderTree.name +
-        "?name=xpcshell/tests/" + this.obj.name;
+  },
+  events: {
+    types: {
+      click: function(buildBinding) {
+        console.log("context", this.__context, "obj", this.obj);
+        this.emit_navigate({pushid: this.__context.pushId,
+                            log: buildBinding.obj.builder.id});
+      },
     },
   },
   style: {
