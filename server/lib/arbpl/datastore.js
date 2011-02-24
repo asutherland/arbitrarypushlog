@@ -76,24 +76,57 @@ function transformPushId(pushId) {
  *  in time.  This enables us to easily find the most recent push by seeking to
  *  [tree identifier, all zeroes].
  *
- * Column family "s" is used for everything, and stands for summary.  It is
+ * Column family "s" is used for overview data, and stands for summary.  It is
  *  further sub-divided like so:
  * - "r": Stores the push info and changeset information for this push for the
-      root repo.
+ *    root repo.
  * - "r:PUSHID": Stores the push and changeset information for sub-repo pushes.
  * - "b:(PUSHID:)BUILDID": Stores the build info scraped from the tinderbox
  *    without augmentation.  In the event of a complex tree (ex: comm-central)
  *    we include the push id of the sub-repo used to perform the build.  This
  *    information can change and be updated it the build status progresses or
  *    the note changes because of starring or what not.
- * - "l:(PUSHID:)BUILDID": Stores any information derived from processing the
- *    build log for information.
+ * - "l:(PUSHID:)BUILDID": Stores summary information derived from processing
+ *    the build log for information.  Voluminous data is stored in the "d"
+ *    column using the same column name (but prefixed with "d" instead of "s").
+ *    The presence of voluminous data is conveyed by setting the "hasDetails"
+ *    attribute to true rather than false.
+ *
+ *
+ * Column family "d" is used for detailed run information.  We separate the
+ *  data out from the summary data because we do not expect that everyone
+ *  looking at the pushlog is actually going to investigate the failures in
+ *  detail.  We keep everything in the same row primarily for compression
+ *  reasons; for true error failures, we expect to see basically the same
+ *  failure across multiple builders in the same row.  In practice, we expect
+ *  the log fetching to happen on a per-cell basis because you can only
+ *  focus on so much stuff at once.  (The UI is free to pre-fetch or request
+ *  multiple cells for comparison, of course.)
+ *
+ * It is definitely worth considering an alternate arrangement where the row
+ *  is specific to a specific builder run and the columns are the failed tests
+ *  within the run.  We would do this to be able to address individual test
+ *  failures in the case the data becomes too voluminous on a per-log basis.
+ *
+ * Subdivison is:
+ * - "l:(PUSHID:)BUILDID": The details corresponding to the same (apart from
+ *    the prefix) column from the summary column family.  Only present when
+ *    the "hasDetails" attribute is true in the summary.
  */
 var TDEF_PUSH_FOCUSED = {
   name: TABLE_PUSH_FOCUSED,
   columnFamilies: [
     new $baseTypes.ColumnDescriptor({
       name: "s",
+      maxVersions: 1,
+      // it does not like compression: RECORD and the javadoc says the option
+      //  is deprecated, although jerks do not mention what it is deprecated
+      //  in favor of...
+      bloomFilterType: "ROW",
+      blockCacheEnabled: 1,
+    }),
+    new $baseTypes.ColumnDescriptor({
+      name: "d",
       maxVersions: 1,
       // it does not like compression: RECORD and the javadoc says the option
       //  is deprecated, although jerks do not mention what it is deprecated
