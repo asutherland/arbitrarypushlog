@@ -235,8 +235,9 @@ HStore.prototype = {
 
   getPushInfo: function(treeId, pushId) {
     var deferred = $Q.defer();
-    this.client.getRow(
+    this.client.getRowWithColumns(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
+      ["s"],
       function(err, rowResults) {
         if (err) {
           console.error("Unhappiness getting row: " +
@@ -245,6 +246,24 @@ HStore.prototype = {
         }
         else {
           deferred.resolve(rowResults);
+        }
+      });
+    return deferred.promise;
+  },
+
+  getPushLogDetail: function(treeId, pushId, buildId) {
+    var deferred = $Q.defer();
+    this.client.getRowWithColumns(
+      TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
+      "d:l:" + buildId,
+      function(err, cell) {
+        if (err) {
+          console.error("Unhappiness getting cell: " +
+                        treeId + "," + transformPushId(pushId));
+          deferred.reject(err);
+        }
+        else {
+          deferred.resolve(JSON.parse(cell.value));
         }
       });
     return deferred.promise;

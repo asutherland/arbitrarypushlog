@@ -109,6 +109,7 @@ switch (options.command) {
         when(chewer.chew(options[1]),
           function(pushId) {
             console.log("chewed log as push id:", pushId);
+            process.exit(0);
           });
       }
     );

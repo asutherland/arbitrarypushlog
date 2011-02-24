@@ -382,12 +382,25 @@ var TINDER_TREES = exports.TINDER_TREES = {
 
 };
 
+/**
+ * A special magic dummy tree for "localchew" inserted logs.
+ */
+var DUMMY_LOCAL_TREE = new TinderTreeDef({
+  id: "local",
+  name: "Local",
+  product: "Local",
+  repos: [REPOS["comm-central"]],
+  mount: {},
+});
+
 exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
   for (var key in TINDER_TREES) {
     var tree = TINDER_TREES[key];
     if (tree.name == treeName)
       return tree;
   }
+  if (treeName == "Local")
+    return DUMMY_LOCAL_TREE;
   return null;
 };
 

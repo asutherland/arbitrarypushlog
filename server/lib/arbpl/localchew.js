@@ -74,7 +74,6 @@ var LOCAL_TREE_ID = "local";
  *  of thing.
  */
 function LocalChewer() {
-  this._path = path;
   this._chewDeferred = null;
   this._db = new $datastore.HStore();
   this._usePushId = null;
@@ -87,19 +86,25 @@ LocalChewer.prototype = {
    *  again until we fulfill the promise.
    */
   chew: function(path) {
+    this._path = path;
     this._chewDeferred = $Q.defer();
 
-    when(this._db.getMostRecentKnownPushes(LOCAL_TREE_ID, 1),
-      function(rowResults) {
-        if (rowResults.length) {
-          var normalized = this._db.normalizeOneRow(rowResults);
-          this._usePushId = parseInt(normalized["s:r"].id) + 1;
-        }
-        else {
-          this._usePushId = 1;
-        }
+    var self = this;
+    when(this._db.bootstrap(),
+      function() {
+        when(self._db.getMostRecentKnownPushes(LOCAL_TREE_ID, 1),
+          function(rowResults) {
+            if (rowResults.length) {
+              var normalized = self._db.normalizeOneRow(rowResults);
+              self._usePushId = parseInt(normalized["s:r"].id) + 1;
+            }
+            else {
+              self._usePushId = 1;
+            }
 
-        this._goParse();
+            console.log("Decided on push id:", self._usePushId);
+            self._goParse();
+          });
       });
 
     return this._chewDeferred.promise;
@@ -113,6 +118,7 @@ LocalChewer.prototype = {
   },
 
   _parsed: function(failures) {
+    console.log("all parsed, writing");
     var logFileInfo = $fs.statSync(this._path);
     var logDate = new Date(logFileInfo.mtime);
     var logStamp = Math.floor(logDate.valueOf / 1000);
@@ -136,7 +142,8 @@ LocalChewer.prototype = {
       ],
     };
     // the synthetic-ish log entry
-    setstate["s:b:" + this._path] = {
+    // (this needs to be redundantly encoded)
+    setstate["s:b:" + this._path] = JSON.stringify({
       builder: {
         name: "local mozmill",
         os: {
@@ -160,11 +167,34 @@ LocalChewer.prototype = {
       errorParser: "mozmill",
       _scrape: "",
       }
-    };
-    // and put the log results in...
-    setstate["s:l:" + this._path] = {
+    });
 
+    var overviewFailures = [], detailedFailures = failures;
+    for (var i = 0; i < failures.length; i++) {
+      var failure = failures[i];
+      var overviewFail = {};
+      for (var key in failure) {
+        if (key != "failureContext")
+          overviewFail[key] = failure[key];
+      }
+    }
+
+    // put the summary results in...
+    setstate["s:l:" + this._path] = {
+      type: "mozmill",
+      failures: overviewFailures,
     };
+    // put the detailed results in...
+    setstate["d:l:" + this._path] = {
+      type: "mozmill",
+      failures: detailedFailures,
+    };
+
+    var self = this;
+    when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
+      function() {
+        self._chewDeferred.resolve(self._usePushId);
+      });
   },
 };
 exports.LocalChewer = LocalChewer;
