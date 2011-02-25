@@ -45,6 +45,22 @@ define(
 
 var wy = new $wmsy.WmsyDomain({id: "ui-page-testlog", domain: "arbpl"});
 
+wy.defineStyleBase("coolio-bars", [
+  ".coolio-bar (@height: 16px) {",
+  "  display: inline-block;",
+  "  background-color: #e8e8e8;",
+  "  margin-left: -4px;",
+  "  margin-top: 8px;",
+  "  margin-bottom: 2px;",
+  "  padding-left: 4px;",
+  "  padding-right: @height / 2 - 4;",
+  "  height: @height;",
+  "  vertical-align: middle;",
+  "  border-top-right-radius: @height / 2;",
+  "  border-bottom-right-radius: @height / 2;",
+  "}",
+]);
+
 wy.defineWidget({
   name: "page-testlog",
   constraint: {
@@ -106,9 +122,18 @@ wy.defineWidget({
     body: [
       "padding: 4px;",
     ],
+    windowsLabel: ".coolio-bar;",
     windows: [
       "vertical-align: 50%;",
       "margin-left: 8px;",
+    ],
+    preEventsLabel: ".coolio-bar;",
+    preEvents: [
+      "margin-left: 4px;",
+    ],
+    eventsLabel: ".coolio-bar;",
+    events: [
+      "margin-left: 4px;",
     ],
   },
 });
@@ -203,7 +228,7 @@ wy.defineWidget({
         "display: none;",
       ],
       ":hover": [
-        "border: 2px solid 34beda;",
+        "border: 2px solid #34beda;",
         "background-color: rgba(52, 190, 218, 0.3);",
       ],
     },
