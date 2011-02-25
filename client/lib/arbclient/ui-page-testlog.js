@@ -88,7 +88,7 @@ wy.defineWidget({
       windowsLabel: "Windows:",
       windows: wy.vertList({type: "window"},
                            ["failureContext", "windows", "windows"]),
-      preEventsLabel: "Events preceding the test:",
+      preEventsLabel: "Events just preceding the test:",
       preEvents: wy.vertList({type: "log4moz-record"},
                              ["failureContext", "preEvents"]),
       eventsLabel: "Events from the test:",
@@ -131,9 +131,15 @@ wy.defineWidget({
     preEvents: [
       "margin-left: 4px;",
     ],
+    "preEvents-item": [
+      "margin-bottom: 1px;",
+    ],
     eventsLabel: ".coolio-bar;",
     events: [
       "margin-left: 4px;",
+    ],
+    "events-item": [
+      "margin-bottom: 1px;",
     ],
   },
 });
@@ -153,7 +159,7 @@ wy.defineWidget({
       screenshot: wy.bindImage("screenshotDataUrl"),
       focusBox: {},
     },
-    focusedElem: wy.widget({type: "log-entry"}, "focusedElem"),
+    focusedElem: ["Focused: ", wy.widget({type: "logstream"}, "focusedElem")],
   }, {active: "isActive"}),
   impl: {
     postInitUpdate: function() {
@@ -164,7 +170,6 @@ wy.defineWidget({
       var shotElem = this.screenshot_element;
       var focusElem = this.focusBox_element;
       var scale = 480 / dims.width;
-      console.log(scale, shotElem.clientWidth, dims.width);
       var focusBounds = this.obj.focusedElem.boundingClientRect;
 
       focusElem.setAttribute("style",
@@ -212,14 +217,9 @@ wy.defineWidget({
     screenshotContainer: [
       "position: relative;",
     ],
-    screenshot: {
-      _: [
-        //"image-fit: fill;",
-        "width: 480px;",
-      ],
-      ':not(mode="full")': [
-      ],
-    },
+    screenshot: [
+      "width: 480px;",
+    ],
     focusBox: {
       _: [
         "position: absolute;",

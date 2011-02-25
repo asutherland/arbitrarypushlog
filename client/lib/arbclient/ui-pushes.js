@@ -360,6 +360,9 @@ wy.defineWidget({
     buildersLabel: [
       "color: #888;",
     ],
+    types: [
+      "cursor: pointer;",
+    ],
   },
 });
 
