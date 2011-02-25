@@ -368,13 +368,67 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "logdetails-msgHdr",
+  constraint: {
+    type: "logdetail",
+    obj: { type: "msgHdr" },
+  },
+  structure: {
+    uri: wy.bind("name"),
+    subject: ["subject: ", wy.bind("subject")],
+    from: ["from: ", wy.bind("from")],
+    to: ["to: ", wy.bind("to")],
+    messageId: ["message-id: ", wy.bind("messageId")],
+    flags: ["flags: ", wy.bind("flags")],
+    // XXX do a proper display thing instead of a JSON copout
+    properties: ""
+  },
+  impl: {
+    postInit: function() {
+      this.properties_element.textContent =
+        JSON.stringify(this.obj.interestingProperties);
+    }
+  },
+  style: {
+    root: [
+      // XXX we should not have to explicitly set this...
+      "background-color: white;",
+    ],
+  },
+});
+
+wy.defineWidget({
   name: "log-msgHdr",
   constraint: {
     type: "logstream",
     obj: { type: "msgHdr" },
   },
   structure: {
-    messageKey: wy.bind("name"),
+    uri: wy.bind("name"),
+  },
+  popups: {
+    details: {
+      constraint: {
+        type: "logdetail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
+  events: {
+    root: {
+      click: function() {
+        this.popup_details(this.obj, this);
+      }
+    }
+  },
+  style: {
+    root: [
+      "cursor: pointer;",
+    ],
   },
 });
 
@@ -402,7 +456,7 @@ wy.defineWidget({
   impl: {
     postInit: function () {
       if (this.obj.stack)
-        this.stack_elem.textContent = this.obj.stack.join("\n");
+        this.stack_element.textContent = this.obj.stack.join("\n");
     },
   },
   style: {
