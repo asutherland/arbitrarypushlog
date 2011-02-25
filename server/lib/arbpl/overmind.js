@@ -240,6 +240,7 @@ Overmind.prototype = {
     var earliest = null, latest = null;
     var expectedRevCount = this.tinderTree.repos.length;
 
+    buildLoop:
     for (var buildId in results) {
       var build = results[buildId];
 
@@ -258,8 +259,10 @@ Overmind.prototype = {
         seenRevs++;
         revision = build.revs[revRepo];
         repoDef = findRepoDef(revRepo);
-        if (!repoDef || !familyPrioMap.hasOwnProperty(repoDef.family))
-          throw new Error("Completely unknown repo: " + revRepo);
+        if (!repoDef || !familyPrioMap.hasOwnProperty(repoDef.family)) {
+          console.warn("unknown repo:", revRepo);
+          continue buildLoop;
+        }
         orderedRevInfo[familyPrioMap[repoDef.family]] = [repoDef, revision];
 
         // update our pushlog fetch info

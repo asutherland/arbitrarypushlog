@@ -169,6 +169,7 @@ wy.defineWidget({
       "margin-left: 4px;",
     ],
     "preEvents-item": [
+      "border-bottom: 1px solid #eeeeee;",
       "margin-bottom: 1px;",
     ],
     eventsLabel: ".coolio-bar;",
