@@ -65,16 +65,52 @@ wy.defineWidget({
   focus: wy.focus.domain.vertical("windows", "preEvents", "events"),
   structure: {
     header: {
-      fileName: wy.bind("fileName"),
       testName: wy.bind("testName"),
+      fileName: wy.bind("fileName"),
     },
-    windows: wy.vertList({type: "window"},
-                         ["failureContext", "windows", "windows"]),
-    preEvents: wy.vertList({type: "log4moz-record"},
-                           ["failureContext", "preEvents"]),
-    events: wy.vertList({type: "log4moz-record"},
-                        ["failureContext", "events"]),
-  }
+    body: {
+      windowsLabel: "Windows:",
+      windows: wy.vertList({type: "window"},
+                           ["failureContext", "windows", "windows"]),
+      preEventsLabel: "Events preceding the test:",
+      preEvents: wy.vertList({type: "log4moz-record"},
+                             ["failureContext", "preEvents"]),
+      eventsLabel: "Events from the test:",
+      events: wy.vertList({type: "log4moz-record"},
+                          ["failureContext", "events"]),
+    },
+  },
+  style: {
+    root: [
+      "border-radius: 4px;",
+      "border: 2px solid black;",
+      "background-color: white;",
+      "margin-bottom: 16px;",
+    ],
+    header: [
+      "background-color: #eee;",
+      "border-top-left-radius: 4px;",
+      "border-top-right-radius: 4px;",
+      "border-bottom: 1px solid #ccc;",
+      "padding: 4px;",
+    ],
+    testName: [
+      "display: inline-block;",
+      "font-size: 150%;",
+      "margin-right: 1em;",
+    ],
+    fileName: [
+      "display: inline-block;",
+      "font-size: 125%;",
+    ],
+    body: [
+      "padding: 4px;",
+    ],
+    windows: [
+      "vertical-align: 50%;",
+      "margin-left: 8px;",
+    ],
+  },
 });
 
 
@@ -87,28 +123,90 @@ wy.defineWidget({
     header: {
       id: wy.bind("id"),
       title: wy.bind("title"),
-      active: wy.bind("isActive"),
     },
-    screenshot: wy.bindImage("screenshotDataUrl"),
+    screenshotContainer: {
+      screenshot: wy.bindImage("screenshotDataUrl"),
+      focusBox: {},
+    },
     focusedElem: wy.widget({type: "log-entry"}, "focusedElem"),
   }, {active: "isActive"}),
+  impl: {
+    postInitUpdate: function() {
+      if (!this.obj.focusedElem)
+        return;
+
+      var dims = this.obj.dims;
+      var shotElem = this.screenshot_element;
+      var focusElem = this.focusBox_element;
+      var scale = 480 / dims.width;
+      console.log(scale, shotElem.clientWidth, dims.width);
+      var focusBounds = this.obj.focusedElem.boundingClientRect;
+
+      focusElem.setAttribute("style",
+        "display: block; " +
+        "top: " + Math.floor(scale * focusBounds.top - 1) + "px; " +
+        "left: " + Math.floor(scale * focusBounds.left - 1) + "px; " +
+        "height: " + Math.floor(scale * focusBounds.height) + "px; " +
+        "width: " + Math.floor(scale * focusBounds.width) + "px;");
+    },
+  },
   style: {
     root: {
       _: [
+        "display: inline-block;",
         "border: 1px solid black;",
+        "border-radius: 2px;",
+        "margin-right: 8px;",
       ],
-      '[active="true"]': [
-        "background-color: #eeeeff;",
-      ],
+      '[active="true"]': {
+        _: [
+        ],
+        header: {
+          id: [
+            "font-weight: bold;",
+            "background-color: #34beda;",
+          ],
+        }
+      },
     },
+    header: [
+      "margin-bottom: 2px;",
+    ],
     id: [
       "display: inline-block;",
-      "width: 16em;",
+      "padding: 2px;",
+      "border-right: 1px solid black;",
+      "border-bottom: 1px solid black;",
+      "border-bottom-right-radius: 2px;",
+      "margin-right: 0.5em;",
     ],
     title: [
       "display: inline-block;",
-      "width: 32em;",
+      "font-size: 75%;",
     ],
+    screenshotContainer: [
+      "position: relative;",
+    ],
+    screenshot: {
+      _: [
+        //"image-fit: fill;",
+        "width: 480px;",
+      ],
+      ':not(mode="full")': [
+      ],
+    },
+    focusBox: {
+      _: [
+        "position: absolute;",
+        "border: 2px dashed #34beda;",
+        "background-color: rgba(52, 190, 218, 0.1);",
+        "display: none;",
+      ],
+      ":hover": [
+        "border: 2px solid 34beda;",
+        "background-color: rgba(52, 190, 218, 0.3);",
+      ],
+    },
   },
 });
 
