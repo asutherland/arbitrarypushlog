@@ -101,7 +101,7 @@ wy.defineWidget({
   structure: {
     type: "failish",
     // we need to slice off/ignore the first entry
-    entries: wy.stream({type: "log-entry"}, wy.NONE),
+    entries: wy.stream({type: "logstream"}, wy.NONE),
   },
   impl: {
     postInit: function() {
@@ -364,7 +364,7 @@ wy.defineWidget({
     type: "logstream",
     obj: { type: "folder" },
   },
-  structure: [wy.bind("name"), " (", wy.bind("uri"), ")"],
+  structure: ['"', wy.bind("name"), '" (', wy.bind("uri"), ")"],
 });
 
 wy.defineWidget({
@@ -418,8 +418,8 @@ wy.defineWidget({
     type: "logstream",
     obj: { type: "stackFrame" },
   },
-  structure: {
-  },
+  structure: ['"', wy.bind("name"), '" @ ',
+              wy.bind("fileName"), ":", wy.bind("lineNumber")],
 });
 
 wy.defineWidget({

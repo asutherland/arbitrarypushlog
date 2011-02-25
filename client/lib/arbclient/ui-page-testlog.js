@@ -73,6 +73,41 @@ wy.defineWidget({
   }
 });
 
+/**
+ * Quantize to 100ms intervals as a pre-filter to the actual 200ms filter in
+ *  the maker.
+ */
+var eventDelayInterposer = wy.defineInterposingViewSlice({
+  classifier: function(logMessage) {
+    return logMessage.time / 100;
+  },
+  maker: function(pre, post) {
+    var delta = post.time - pre.time;
+    if (delta < 200)
+      return undefined;
+    return {timeDelta: delta};
+  },
+  makeFirst: false,
+  makeLast: false,
+});
+
+wy.defineWidget({
+  name: "time-delta",
+  constraint: {
+    type: "interposed-delay",
+  },
+  structure: {
+    delay: [wy.bind("timeDelta"), " ms"],
+  },
+  style: {
+    root: [
+      "text-align: center;",
+      "color: gray;",
+      "font-size: 80%;",
+    ]
+  }
+});
+
 wy.defineWidget({
   name: "build-test-failure",
   constraint: {
@@ -92,7 +127,9 @@ wy.defineWidget({
       preEvents: wy.vertList({type: "log4moz-record"},
                              ["failureContext", "preEvents"]),
       eventsLabel: "Events from the test:",
-      events: wy.vertList({type: "log4moz-record"},
+      events: wy.vertList(eventDelayInterposer(
+                            {type: "interposed-delay"},
+                            {type: "log4moz-record"}),
                           ["failureContext", "events"]),
     },
   },
