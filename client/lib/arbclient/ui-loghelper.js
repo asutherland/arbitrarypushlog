@@ -324,17 +324,6 @@ wy.defineWidget({
   },
 });
 
-wy.defineWidget({
-  name: "log-failure",
-  constraint: {
-    type: "log-entry",
-    obj: { type: "failure" },
-  },
-  structure: {
-    entries: wy.bind("text"),
-  },
-});
-
 ////////////////////////////////////////////////////////////////////////////////
 // Log Entry Contents (logstream)
 
@@ -444,6 +433,32 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "error-details",
+  constraint: {
+    type: "logdetail",
+    obj: { type: "error" },
+  },
+  structure: {
+    stack: "",
+  },
+  impl: {
+    postInit: function() {
+      this.stack_element.textContent = this.obj.stack.join("\n");
+    },
+  },
+  style: {
+    root: [
+      // XXX we should not have to explicitly set this...
+      "background-color: white;",
+    ],
+    stack: [
+      "display: block;",
+      "white-space: pre-wrap;",
+    ],
+  },
+});
+
+wy.defineWidget({
   name: "log-error",
   constraint: {
     type: "logstream",
@@ -451,17 +466,29 @@ wy.defineWidget({
   },
   structure: {
     message: wy.bind("message"),
-    stack: "",
   },
-  impl: {
-    postInit: function () {
-      if (this.obj.stack)
-        this.stack_element.textContent = this.obj.stack.join("\n");
+  popups: {
+    details: {
+      constraint: {
+        type: "logdetail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
+  events: {
+    root: {
+      click: function() {
+        this.popup_details(this.obj, this);
+      },
     },
   },
   style: {
-    stack: [
-      "white-space: pre-wrap;",
+    root: [
+      "cursor: pointer;",
     ],
   }
 });
@@ -475,6 +502,19 @@ wy.defineWidget({
   structure: ['"', wy.bind("name"), '" @ ',
               wy.bind("fileName"), ":", wy.bind("lineNumber")],
 });
+
+wy.defineWidget({
+  name: "log-failure",
+  constraint: {
+    type: "logstream",
+    obj: { type: "failure" },
+  },
+  structure: {
+    stack: wy.widget({type: "logstream"}, "stack"),
+  },
+});
+
+
 
 wy.defineWidget({
   name: "log-XPCOM",

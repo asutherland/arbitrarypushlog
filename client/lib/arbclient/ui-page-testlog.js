@@ -176,6 +176,7 @@ wy.defineWidget({
       "margin-left: 4px;",
     ],
     "events-item": [
+      "border-bottom: 1px solid #eeeeee;",
       "margin-bottom: 1px;",
     ],
   },
