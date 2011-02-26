@@ -115,10 +115,14 @@ wy.defineWidget({
   },
   focus: wy.focus.domain.vertical("windows", "preEvents", "events"),
   structure: {
-    header: {
+    testHeader: {
       testName: wy.bind("testName"),
       fileName: wy.bind("fileName"),
     },
+    failureHeader: {
+      failMessage: wy.bind(["exception", "message"]),
+    },
+
     body: {
       windowsLabel: "Windows:",
       windows: wy.vertList({type: "window"},
@@ -140,12 +144,17 @@ wy.defineWidget({
       "background-color: white;",
       "margin-bottom: 16px;",
     ],
-    header: [
+    testHeader: [
       "background-color: #eee;",
       "border-top-left-radius: 4px;",
       "border-top-right-radius: 4px;",
       "border-bottom: 1px solid #ccc;",
       "padding: 4px;",
+    ],
+    failureHeader: [
+      "display: block;",
+      "font-size: 150%;",
+      "padding: 8px;",
     ],
     testName: [
       "display: inline-block;",
