@@ -346,6 +346,15 @@ wy.defineWidget({
   },
 });
 
+wy.defineWidget({
+  name: "log-array",
+  constraint: {
+    type: "logstream",
+    obj: { type: "array" },
+  },
+  structure: wy.stream({type: "logstream"}, "items"),
+});
+
 
 wy.defineWidget({
   name: "log-folder",

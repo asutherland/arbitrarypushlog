@@ -41,6 +41,7 @@ define(
     "narscribblus-plat/utils/env",
     "./rstore",
     "arbcommon/repodefs",
+    "./chew-loghelper",
     "./ui-main",
     "exports"
   ],
@@ -49,6 +50,7 @@ define(
     $env,
     $rstore,
     $repodefs,
+    $chew_loghelper,
     $ui_main,
     exports
   ) {
@@ -224,9 +226,10 @@ ArbApp.prototype = {
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
       function gotPushes(logDetails) {
+        var chewedDetails = $chew_loghelper.chewMozmillFailures(logDetails);
         self.page = {
           page: "testlog",
-          failures: logDetails.failures,
+          failures: chewedDetails.failures,
         };
         self._updateState("good");
       },
