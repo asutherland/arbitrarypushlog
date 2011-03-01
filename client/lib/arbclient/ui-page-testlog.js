@@ -127,7 +127,7 @@ wy.defineWidget({
       windowsLabel: "Windows:",
       windows: wy.vertList({type: "window"},
                            ["failureContext", "windows", "windows"]),
-      preEventsLabel: "Events just preceding the test:",
+      preEventsLabel: "Events preceding the test:",
       preEvents: wy.vertList({type: "log4moz-record"},
                              ["failureContext", "preEvents"]),
       eventsLabel: "Events from the test:",
@@ -208,6 +208,7 @@ wy.defineWidget({
       focusBox: {},
     },
     focusedElem: ["Focused: ", wy.widget({type: "logstream"}, "focusedElem")],
+    openPopups: ["Open Popups: ", wy.stream({type: "logstream"}, "openPopups")],
   }, {active: "isActive"}),
   impl: {
     postInitUpdate: function() {

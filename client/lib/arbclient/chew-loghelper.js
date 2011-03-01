@@ -131,6 +131,7 @@
  *     @key[dims]
  *     @key[pageOffsets]
  *     @key[focusedElem]
+ *     @key[openPopups @listof[JsonedDomElem]]
  *   ]]]
  * ]]
  **/

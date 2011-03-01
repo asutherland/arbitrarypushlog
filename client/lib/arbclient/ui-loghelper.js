@@ -54,7 +54,7 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl"});
 
 wy.defineStyleBase("logs", [
-  "@logIndent: 15em;",
+  "@logIndent: 16em;",
   ".action-bubble (@color) {",
       "display: inline-block;",
       "padding: 0px 6px;",
@@ -62,6 +62,10 @@ wy.defineStyleBase("logs", [
       "background-color: @color;",
       "color: white;",
       "margin: 1px;",
+  "}",
+  ".clickable {",
+  "  cursor: pointer;",
+  "  border-bottom: 1px dotted gray;",
   "}",
 ]);
 
@@ -425,7 +429,7 @@ wy.defineWidget({
   },
   style: {
     root: [
-      "cursor: pointer;",
+      ".clickable;",
     ],
   },
 });
@@ -497,7 +501,7 @@ wy.defineWidget({
   },
   style: {
     root: [
-      "cursor: pointer;",
+      ".clickable;",
     ],
   }
 });
