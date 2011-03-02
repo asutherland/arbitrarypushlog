@@ -207,6 +207,9 @@ function chewEvents(rawEvents) {
           // no need to copy/mutate if there is no such arg
           if (!(rawMsgObj.args.some(Array.isArray))) {
             outMsgObjs.push(rawMsgObj);
+            // XXX horrible layout hack to force it to have an arg for sizing
+            if (!rawMsgObj.args.length)
+              rawMsgObj.args.push("\u00a0");
             continue;
           }
           // (need to mutate)
@@ -230,6 +233,9 @@ function chewEvents(rawEvents) {
               outArgs.push(curArg);
             }
           }
+        // XXX horrible layout hack to force it to have an arg for sizing
+          if (!outArgs.length)
+            outArgs.push("\u00a0");
         }
         else {
           outMsgObjs.push(rawMsgObj);
@@ -239,6 +245,85 @@ function chewEvents(rawEvents) {
   }
 
   return outEvents;
+}
+
+var RE_BASE_DIR_PARTS =
+      /\/(?:comm|mozilla)-(?:central|(?:\d+\.\d+(?:\.\d+)?))\//;
+
+/**
+ * Transform a serialized exception so that the Spidermonkey "stack" string
+ *  representation becomes something we can display that does not look like
+ *  line noise.
+ *
+ * Processing consists of:
+ * @itemize[
+ *   @item{
+ *     Subscript loaded paths that look like "loader.js -> actual_thing.js"
+ *     get converted to actual_thing.js.
+ *   }
+ *   @item{
+ *     Absolute file-system paths get stripped to comm-central or
+ *     mozilla-central relative paths.  It would probably be better to get
+ *     mozmill or our test runner to dump some general context like path
+ *     information instead...
+ *   }
+ *   @item{
+ *     toSource'd functions just become function(){} because they are usually
+ *     boring and the quality bar is not so high right now.  Because I
+ *     really don't want to write curly brace counting logic right now, we
+ *     also do this super naively.
+ *   }
+ * ]
+ */
+function chewException(rawEx) {
+  var outEx = {
+    fileName: rawEx.fileName,
+    lineNumber: rawEx.lineNumber,
+    message: rawEx.message,
+    stackFrames: [],
+  };
+  var frames = outEx.stackFrames;
+
+  var stackLines = rawEx.stack.split("\n");
+  for (var iLine = 0; iLine < stackLines.length; iLine++) {
+    var line = stackLines[iLine];
+    if (!line)
+      continue;
+    var iColon = line.lastIndexOf(":");
+    var iAt = line.lastIndexOf("@", iColon - 1);
+    var funcPart = line.substring(0, iAt);
+    var filePart = line.substring(iAt + 1, iColon);
+    var linePart = line.substring(iColon + 1);
+
+    // -- normalize function name (badly)
+    var idxLeftSquiggle = funcPart.indexOf("{");
+    if (idxLeftSquiggle != -1) {
+      var idxRightSquiggle = funcPart.lastIndexOf("}");
+      if (idxRightSquiggle != -1) {
+        funcPart = funcPart.substring(0, idxLeftSquiggle + 1) +
+                   funcPart.substring(idxRightSquiggle);
+      }
+    }
+
+    // -- normalize file path
+    // de-arrow
+    var idxArrow = filePart.lastIndexOf(" -> ");
+    if (idxArrow != -1)
+      filePart = filePart.substring(idxArrow + 4);
+
+    var pathMatch = RE_BASE_DIR_PARTS.exec(filePart);
+    if (pathMatch)
+      filePart = filePart.substring(pathMatch.index +
+                                      pathMatch[0].length);
+
+    frames.push({
+      func: funcPart,
+      fileName: filePart,
+      lineNumber: parseInt(linePart)
+    });
+  }
+
+  return outEx;
 }
 
 /**
@@ -273,6 +358,9 @@ exports.chewMozmillFailures = function(rawDetails) {
           else
             outContext[subkey] = rawContext[subkey];
         }
+      }
+      else if (key === "exception") {
+        outFailure[key] = chewException(rawFailure[key]);
       }
       else {
         outFailure[key] = rawFailure[key];

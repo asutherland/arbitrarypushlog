@@ -62,6 +62,7 @@ wy.defineStyleBase("logs", [
       "background-color: @color;",
       "color: white;",
       "margin: 1px;",
+      "white-space: nowrap;",
   "}",
   ".clickable {",
   "  cursor: pointer;",
@@ -435,6 +436,36 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "logdetails-domNode",
+  constraint: {
+    type: "logdetail",
+    obj: { type: "domNode" },
+  },
+  structure: {
+    name: ["name: ", wy.bind("name")],
+    value: ["value: ", wy.bind("value")],
+    boundingRect: "",
+    namespace: ["namespace: ", wy.bind("namespace")],
+    attributes: "",
+  },
+  impl: {
+    postInit: function() {
+      this.boundingRect_element.textContent =
+        JSON.stringify(this.obj.boundingClientRect);
+      this.attributes_element.textContent =
+        JSON.stringify(this.obj.attrs);
+    }
+  },
+  style: {
+    root: [
+      // XXX we should not have to explicitly set this...
+      "background-color: white;",
+    ],
+  },
+});
+
+
+wy.defineWidget({
   name: "log-domNode",
   constraint: {
     type: "logstream",
@@ -443,6 +474,30 @@ wy.defineWidget({
   structure: {
     name: wy.bind("name"),
   },
+  popups: {
+    details: {
+      constraint: {
+        type: "logdetail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
+  events: {
+    root: {
+      click: function() {
+        this.popup_details(this.obj, this);
+      }
+    }
+  },
+  style: {
+    root: [
+      ".clickable;",
+    ],
+  }
 });
 
 wy.defineWidget({

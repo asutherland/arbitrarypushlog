@@ -68,6 +68,9 @@ Frobber.prototype = {
   _gobbleJsonFromLines: function(dstr) {
     var bits = dstr.split("\n");
     for (var i = 0; i < bits.length; i++) {
+      // ignore blank lines...
+      if (!bits[i])
+        continue;
       this.jsonObjs.push(JSON.parse(bits[i]));
     }
   },

@@ -73,6 +73,26 @@ wy.defineWidget({
   }
 });
 
+wy.defineWidget({
+  name: "page-testlog-no-failures",
+  constraint: {
+    type: "page",
+    obj: { page: "testlog",
+           failures: {length: 0 }},
+  },
+  structure: {
+    noFailuresLabel: "No Failures!",
+  },
+  style: {
+    root: [
+      "text-align: center;",
+      "color: green;",
+      "font-size: 300%;",
+    ],
+  },
+});
+
+
 /**
  * Quantize to 100ms intervals as a pre-filter to the actual 200ms filter in
  *  the maker.
@@ -122,13 +142,16 @@ wy.defineWidget({
     failureHeader: {
       failMessage: wy.bind(["exception", "message"]),
     },
-
     body: {
+      stackLabel: "Stack:",
+      stack: wy.widget({type: "SpiderStack"}, ["exception", "stackFrames"]),
       windowsLabel: "Windows:",
       windows: wy.vertList({type: "window"},
                            ["failureContext", "windows", "windows"]),
       preEventsLabel: "Events preceding the test:",
-      preEvents: wy.vertList({type: "log4moz-record"},
+      preEvents: wy.vertList(eventDelayInterposer(
+                               {type: "interposed-delay"},
+                               {type: "log4moz-record"}),
                              ["failureContext", "preEvents"]),
       eventsLabel: "Events from the test:",
       events: wy.vertList(eventDelayInterposer(
@@ -155,6 +178,14 @@ wy.defineWidget({
       "display: block;",
       "font-size: 150%;",
       "padding: 8px;",
+    ],
+    failMessage: [
+      "display: block;",
+    ],
+    stackLabel: ".coolio-bar;",
+    stack: [
+      "display: block;",
+      "white-space: pre-wrap;",
     ],
     testName: [
       "display: inline-block;",
@@ -192,6 +223,70 @@ wy.defineWidget({
   },
 });
 
+
+wy.defineWidget({
+  name: "SpiderStackFrame",
+  constraint: {
+    type: "SpiderStackFrame",
+  },
+  structure: {
+    scriptName: wy.bind("fileName"),
+    scriptLine: ["line ", wy.bind("lineNumber")],
+    functionName: wy.bind("func"),
+  },
+  style: {
+    root: [
+      "vertical-align: top;",
+    ],
+    // Taking colors from syntax-js-proton.css from narscribblus/jstut which is
+    //  based on the proton vim theme:
+    //  http://vimcolorschemetest.googlecode.com/svn/colors/proton.vim
+    scriptName: [
+      "display: inline-block;",
+      "width: 20em;",
+      "padding: 0 0.5em;",
+      "color: #607080;",
+    ],
+    scriptLine: [
+      "display: inline-block;",
+      "width: 4em;",
+      "padding: 0 0.5em;",
+      "text-align: right;",
+      "color: #508040;",
+    ],
+    functionName: [
+      "display: inline-block;",
+      "padding: 0 0.5em;",
+      "color: #b08020;",
+    ],
+  },
+});
+
+wy.defineWidget({
+  name: "SpiderStack",
+  constraint: {
+    type: "SpiderStack",
+  },
+  structure: {
+    frames: wy.vertList({type: "SpiderStackFrame"}, wy.SELF),
+  },
+  style: {
+    frames: [
+      "margin-left: 1em;",
+    ],
+  }
+});
+
+wy.defineWidget({
+  name: "SpiderStack",
+  constraint: {
+    type: "SpiderStack",
+    obj: null,
+  },
+  structure: {
+    message: "No JS stack available.",
+  },
+});
 
 wy.defineWidget({
   name: "window",
