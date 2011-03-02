@@ -150,24 +150,40 @@ var SCHEMA_TABLES = [
   TDEF_PUSH_FOCUSED,
 ];
 
+/**
+ * HBase datastore abstraction.
+ */
 function HStore() {
-  this.connection = $thrift.createConnection("localhost", 9090);
-  this.client = $thrift.createClient($thriftHbase, this.connection);
-
-  this.connection.on("connect", this._onConnect.bind(this));
-  this.connection.on("error", this._errConnection.bind(this));
+  this._connect();
 
   this.bootstrapped = false;
 
-  this.state = "connecting";
   this._iNextTableSchema = 0;
 
   this._bootstrapDeferred = $Q.defer();
 }
 HStore.prototype = {
+  _connect: function() {
+    this.state = "connecting";
+
+    this.connection = $thrift.createConnection("localhost", 9090);
+    this.client = $thrift.createClient($thriftHbase, this.connection);
+
+    this.connection.on("connect", this._onConnect.bind(this));
+    this.connection.on("close", this._onClose.bind(this));
+    this.connection.on("timeout", this._onTimeout.bind(this));
+    this.connection.on("error", this._errConnection.bind(this));
+  },
+
   _onConnect: function() {
     this.state = "connected";
     this._ensureSchema();
+  },
+  _onClose: function() {
+    console.warn("thrift connection closed!");
+  },
+  _onTimeout: function() {
+    console.warn("thrift connection timed out!");
   },
   _errConnection: function(err) {
     console.error(err);

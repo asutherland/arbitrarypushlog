@@ -74,8 +74,13 @@ wy.defineWidget({
   },
   impl: {
     postInitUpdate: function() {
-      if (this.obj.topLevelPush)
+      if (this.obj.topLevelPush) {
         this.__context.pushId = this.obj.push.id;
+        this.__context.subPushId = "";
+      }
+      else {
+        this.__context.subPushId = this.obj.push.id;
+      }
     },
   },
   style: {
@@ -333,7 +338,8 @@ wy.defineWidget({
       click: function(buildBinding) {
         console.log("context", this.__context, "obj", this.obj);
         this.emit_navigate({pushid: this.__context.pushId,
-                            log: buildBinding.obj.builder.id});
+                            log: this.__context.subPushId + ":" +
+                                buildBinding.obj.id});
       },
     },
   },

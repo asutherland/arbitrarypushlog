@@ -513,10 +513,12 @@ Overmind.prototype = {
 
         if (isBuildLoggable(build)) {
           var lKey = "s:l" + keyExtra + ":" + build.id;
+          var dKey = "d:l" + keyExtra + ":" + build.id;
           if (!dbstate.hasOwnProperty(lKey)) {
             self._logProcJobs.push({
               pushId: rootPush.id,
-              key: lKey,
+              summaryKey: lKey,
+              detailKey: dKey,
               build: build,
             });
           }
@@ -578,7 +580,10 @@ Overmind.prototype = {
         self._processNextPush();
       },
       function(err) {
-        console.error("failed to write our many stories!");
+        console.error("failed to write our many stories! keys were:");
+        for (var key in setstate) {
+          console.log("  ", key);
+        }
       });
   },
 
@@ -652,15 +657,36 @@ Overmind.prototype = {
    *   }
    * ]
    */
-  _frobberDone: function(frobber, job, logResultObj) {
+  _frobberDone: function(frobber, job, failures) {
     var self = this;
     var stateObj = {};
-    stateObj[job.key] = logResultObj;
+
+    var overviewFailures = [], detailedFailures = failures;
+    for (var i = 0; i < failures.length; i++) {
+      var failure = failures[i];
+      var overviewFail = {};
+      for (var key in failure) {
+        if (key != "failureContext")
+          overviewFail[key] = failure[key];
+      }
+      overviewFailures.push(overviewFail);
+    }
+
+    var summaryObj = {
+      type: job.build.builder.type.subtype,
+      failures: overviewFailures,
+    };
+    var detailObj = {
+      type: job.build.builder.type.subtype,
+      failures: detailedFailures,
+    };
+    stateObj[job.summaryKey] = summaryObj;
+    stateObj[job.detailKey] = detailObj;
     // Although we could potentially overlap the next request with this
     //  request, this is the easiest way to make sure that _allDone does not
     //  kill the VM prematurely.  XXX The datastore should probably be able to
     //  handle out a promise for when it has quiesced.
-    console.log("frobber db write to", job.pushId);
+    console.log("frobber db write to", job.pushId, job.summaryKey, job.detailKey);
     when(DB.putPushStuff(this.tinderTree.id, job.pushId, stateObj),
       function() {
         console.log(" frobber db write completed");

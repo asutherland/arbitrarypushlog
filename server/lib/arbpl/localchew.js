@@ -157,6 +157,7 @@ LocalChewer.prototype = {
           type: "test",
           subtype: "mozmill",
         },
+      },
       id: this._path,
       state: failures.length ? "testfailed" : "success",
       startTime: logStamp,
@@ -166,7 +167,6 @@ LocalChewer.prototype = {
       note: "",
       errorParser: "mozmill",
       _scrape: "",
-      }
     });
 
     var overviewFailures = [], detailedFailures = failures;
