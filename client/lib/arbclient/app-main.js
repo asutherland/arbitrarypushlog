@@ -141,7 +141,7 @@ ArbApp.prototype = {
     var env = $env.getEnv(this.win);
     var loc = this._loc = {};
     var clobbering = false;
-    var pathNodes = [{type: "root"}];
+    var pathNodes = [{type: "root", value: "ArbPL"}];
     for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
       var key = this.ORDERED_LOCATION_KEYS[iKey];
       if (clobbering) {
@@ -187,11 +187,7 @@ ArbApp.prototype = {
         break;
     }
 
-    var navUrl;
-    if (qbits.length)
-      navUrl = "?" + qbits.join("&");
-    else
-      navUrl = "";
+    var navUrl = "?" + qbits.join("&");
     this.history.pushState(null, "", navUrl);
 
     if (!alreadyInEffect) {

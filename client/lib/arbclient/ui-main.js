@@ -166,6 +166,7 @@ wy.defineWidget({
       state: "good",
     },
   },
+  emit: ["navigate"],
   structure: {
     header: {
       pathNodes: wy.horizList({type: "header-pathnode"}, ["page", "pathNodes"]),
@@ -174,22 +175,19 @@ wy.defineWidget({
   },
   events: {
     pathNodes: {
-      command: function pathNodes_command() {
-
+      command: function pathNodes_command(binding) {
+        var domNode = binding.domNode;
+        domNode = domNode.nextSibling;
+        // nothing to do if there is nothing to null
+        if (!domNode)
+          return;
+        var navDelta = {};
+        for (; domNode; domNode = domNode.nextSibling) {
+          navDelta[domNode.binding.obj.type] = null;
+        }
+        this.emit_navigate(navDelta);
       },
     },
-  },
-});
-
-wy.defineWidget({
-  name: "pathnode-root",
-  doc: "Root pathnode, shows ArbPL's name.",
-  constraint: {
-    type: "header-pathnode",
-    obj: {type: "root"},
-  },
-  structure: {
-    label: "ArbPL",
   },
 });
 
@@ -202,6 +200,8 @@ wy.defineWidget({
   },
   structure: {
     label: wy.bind("value"),
+    arrowOutline: {},
+    arrow: {},
   },
 });
 
