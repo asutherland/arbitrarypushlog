@@ -46,23 +46,26 @@
 define(
   [
     "wmsy/wmsy",
+    "text!./ui-loghelper.css"
   ],
   function(
-    $wmsy
+    $wmsy,
+    $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl",
+                               css: $_css});
 
 wy.defineStyleBase("logs", [
   "@logIndent: 16em;",
   ".action-bubble (@color) {",
-      "display: inline-block;",
-      "padding: 0px 6px;",
-      "border-radius: 6px;",
-      "background-color: @color;",
-      "color: white;",
-      "margin: 1px;",
-      "white-space: nowrap;",
+  "  display: inline-block;",
+  "  padding: 0px 6px;",
+  "  border-radius: 6px;",
+  "  background-color: @color;",
+  "  color: white;",
+  "  margin: 1px;",
+  "  white-space: nowrap;",
   "}",
   ".clickable {",
   "  cursor: pointer;",
@@ -83,13 +86,6 @@ wy.defineWidget({
     postInit: function() {
       this.entries_set(this.obj.messageObjects.slice(1));
     },
-  },
-  style: {
-    root: [
-      "display: block;",
-    ],
-    entries: [
-    ],
   },
 });
 
@@ -114,25 +110,6 @@ wy.defineWidget({
       spacifyConsoleAssumingStream(amended);
       this.entries_set(amended);
     },
-  },
-  style: {
-    root: [
-      "display: block;",
-      "position: relative;",
-    ],
-    type: [
-      "position: absolute;",
-      ".action-bubble(#5f084b);",
-      "margin-left: 2em;",
-    ],
-    entries: [
-      "display: block;",
-      "margin-left: @logIndent;",
-      "color: #5f084b;",
-    ],
-    "entries-item": [
-      "margin-bottom: 1px;",
-    ],
   },
 });
 
@@ -230,22 +207,28 @@ wy.defineWidget({
       spacifyConsoleAssumingStream(this.obj.args);
     },
   },
-  style: {
-    root: [
-      "color: #006f71;",
-      "position: relative;",
-    ],
-    what: [
-      "position: absolute;",
-      ".action-bubble(#006f71);",
-      "margin-left: 1em;",
-    ],
-    stream: [
-      "display: block;",
-      "margin-left: @logIndent;",
-    ],
+});
+
+wy.defineWidget({
+  name: "log-action-test",
+  constraint: {
+    type: "log-entry",
+    obj: {
+      type: "action",
+      who: "test",
+    },
+  },
+  structure: {
+    what: wy.bind("what"),
+    stream: wy.stream({type: "logstream"}, "args"),
+  },
+  impl: {
+    preInit: function() {
+      spacifyConsoleAssumingStream(this.obj.args);
+    },
   },
 });
+
 
 wy.defineWidget({
   name: "log-action-fdh",
@@ -264,20 +247,6 @@ wy.defineWidget({
     preInit: function() {
       spacifyConsoleAssumingStream(this.obj.args);
     },
-  },
-  style: {
-    root: [
-      "color: #472255;",
-      "position: relative;",
-    ],
-    what: [
-      "position: absolute;",
-      ".action-bubble(#472255);",
-    ],
-    stream: [
-      "display: block;",
-      "margin-left: @logIndent;",
-    ],
   },
 });
 
@@ -298,21 +267,6 @@ wy.defineWidget({
     preInit: function() {
       spacifyConsoleAssumingStream(this.obj.args);
     },
-  },
-  style: {
-    root: [
-      "color: #175567;",
-      "position: relative;",
-    ],
-    what: [
-      "position: absolute;",
-      ".action-bubble(#175567);",
-      "margin-left: 1em;",
-    ],
-    stream: [
-      "display: block;",
-      "margin-left: @logIndent;",
-    ],
   },
 });
 
@@ -392,12 +346,6 @@ wy.defineWidget({
         JSON.stringify(this.obj.interestingProperties);
     }
   },
-  style: {
-    root: [
-      // XXX we should not have to explicitly set this...
-      "background-color: white;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -428,11 +376,6 @@ wy.defineWidget({
       }
     }
   },
-  style: {
-    root: [
-      ".clickable;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -455,12 +398,6 @@ wy.defineWidget({
       this.attributes_element.textContent =
         JSON.stringify(this.obj.attrs);
     }
-  },
-  style: {
-    root: [
-      // XXX we should not have to explicitly set this...
-      "background-color: white;",
-    ],
   },
 });
 
@@ -493,11 +430,6 @@ wy.defineWidget({
       }
     }
   },
-  style: {
-    root: [
-      ".clickable;",
-    ],
-  }
 });
 
 wy.defineWidget({
@@ -513,16 +445,6 @@ wy.defineWidget({
     postInit: function() {
       this.stack_element.textContent = this.obj.stack.join("\n");
     },
-  },
-  style: {
-    root: [
-      // XXX we should not have to explicitly set this...
-      "background-color: white;",
-    ],
-    stack: [
-      "display: block;",
-      "white-space: pre-wrap;",
-    ],
   },
 });
 
@@ -554,11 +476,6 @@ wy.defineWidget({
       },
     },
   },
-  style: {
-    root: [
-      ".clickable;",
-    ],
-  }
 });
 
 wy.defineWidget({

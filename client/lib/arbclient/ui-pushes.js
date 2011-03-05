@@ -38,12 +38,15 @@
 define(
   [
     "wmsy/wmsy",
+    "text!./ui-pushes.css",
   ],
   function(
-    $wmsy
+    $wmsy,
+    $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-pushes", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-pushes", domain: "arbpl",
+                               css: $_css});
 
 wy.defineWidget({
   name: "generic-push",
@@ -83,25 +86,6 @@ wy.defineWidget({
       }
     },
   },
-  style: {
-    root: [
-    ],
-    headingBox: [
-      "border-top: 1px solid #357fa5;",
-      "background-color: #b9e4ff;",
-      "margin-bottom: 0.3em;",
-      "padding: 2px;",
-    ],
-    pushDate: [
-      "display: inline-block;",
-      "margin-right: 1em",
-    ],
-
-    kids: [
-      "padding-left: 2em;",
-      "margin-bottom: 0.5em;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -119,28 +103,6 @@ wy.defineWidget({
     desc: wy.bind("rawDesc"),
     summaryGroups: wy.vertList({type: "change-summary-group"},
                                ["changeSummary", "changeGroups"]),
-  },
-  style: {
-    root: [
-      "border-top: 1px solid #dddddd;",
-      "background-color: #eeeeee;",
-      "padding: 2px;",
-      "margin-bottom: 0.5em;",
-    ],
-    author: [
-      "position: absolute;",
-      "width: 12em;",
-    ],
-    desc: [
-      "display: block;",
-      "margin-left: 12.5em;",
-      "font-weight: bolder;",
-    ],
-    summaryGroups: [
-      "margin-top: 0.5em;",
-      "background-color: #f8f8f8;",
-      "padding: 2px;",
-    ],
   },
 });
 
@@ -177,20 +139,6 @@ wy.defineWidget({
       },
     },
   },
-  style: {
-    root: {
-      _: [
-        "display: block;",
-        "cursor: default;",
-      ],
-      ":hover": [
-        "background-color: #dddddd;",
-      ],
-    },
-    fileList: [
-      "margin-left: 1em;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -212,13 +160,6 @@ wy.defineWidget({
     types: wy.widgetFlow({type: "build-type-group"}, "types",
                          {separator: ", "}),
   }),
-  style: {
-    name: [
-      "display: inline-block;",
-      "width: 4em;",
-      "text-align: right;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -227,24 +168,6 @@ wy.defineWidget({
     type: "build-type-group",
   },
   structure: wy.bind("name", {state: "state"}),
-  style: {
-    root: {
-      _: [
-      ],
-      '[state="building"]': [
-        "color: #999;",
-      ],
-      '[state="success"]': [
-        "color: #390;",
-      ],
-      '[state="testfailed"]': [
-        "color: #f60;",
-      ],
-      '[state="busted"]': [
-        "color: #d00;",
-      ],
-    },
-  },
 });
 
 wy.defineWidget({
@@ -281,30 +204,6 @@ wy.defineWidget({
         this.__context.tinderTree.name +
         "?name=xpcshell/tests/" + this.obj.name;
     },
-  },
-  style: {
-    root: [
-      "position: relative;",
-    ],
-    name: [
-      "font-weight: 600;",
-    ],
-    testGroup: [
-      "display: inline-block;",
-      "width: 48em;",
-    ],
-    signature: [
-      "display: inline-block;",
-      "float: right;",
-    ],
-    builderGroup: [
-      "clear: both;",
-      "display: block;",
-      "margin-left: 1em;",
-    ],
-    buildersLabel: [
-      "color: #888;",
-    ],
   },
 });
 
@@ -343,33 +242,6 @@ wy.defineWidget({
       },
     },
   },
-  style: {
-    root: [
-      "position: relative;",
-    ],
-    name: [
-      "font-weight: 600;",
-    ],
-    testGroup: [
-      "display: inline-block;",
-      "width: 48em;",
-    ],
-    signature: [
-      "display: inline-block;",
-      "float: right;",
-    ],
-    builderGroup: [
-      "clear: both;",
-      "display: block;",
-      "margin-left: 1em;",
-    ],
-    buildersLabel: [
-      "color: #888;",
-    ],
-    types: [
-      "cursor: pointer;",
-    ],
-  },
 });
 
 
@@ -397,8 +269,6 @@ wy.defineWidget({
 
       this.domNode.textContent = buildStr;
     },
-  },
-  style: {
   },
 });
 

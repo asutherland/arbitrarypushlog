@@ -1,0 +1,144 @@
+@logIndent: 16em;
+.action-bubble (@color) {
+  display: inline-block;
+  padding: 0px 6px;
+  border-radius: 6px;
+  background-color: @color;
+  color: white;
+  margin: 1px;
+  white-space: nowrap;
+}
+.clickable {
+  cursor: pointer;
+  border-bottom: 1px dotted gray;
+}
+
+#log4moz-record {
+  #root {
+    display: block;
+  }
+  #entries {
+  }
+}
+
+#log4moz-record-failure {
+  #root {
+    display: block;
+    position: relative;
+  }
+  #type {
+    position: absolute;
+    .action-bubble(#5f084b);
+    margin-left: 2em;
+  }
+  #entries {
+    display: block;
+    margin-left: @logIndent;
+    color: #5f084b;
+  }
+  #entries-item {
+    margin-bottom: 1px;
+  }
+}
+
+#log-action-msgEvent {
+  #root {
+    color: #006f71;
+    position: relative;
+  }
+  #what {
+    position: absolute;
+    .action-bubble(#006f71);
+    margin-left: 1em;
+  }
+  #stream {
+    display: block;
+    margin-left: @logIndent;
+  }
+}
+
+#log-action-test {
+  #root {
+    color: #2f3c5e;
+    position: relative;
+  }
+  #what {
+    position: absolute;
+    .action-bubble(#2f3c5e);
+  }
+  #stream {
+    display: block;
+    margin-left: @logIndent;
+  }
+}
+
+#log-action-fdh {
+  #root {
+    color: #472255;
+    position: relative;
+  }
+  #what {
+    position: absolute;
+    .action-bubble(#472255);
+  }
+  #stream {
+    display: block;
+    margin-left: @logIndent;
+  }
+}
+
+#log-action-winhelp {
+  #root {
+    color: #175567;
+    position: relative;
+  }
+  #what {
+    position: absolute;
+    .action-bubble(#175567);
+    margin-left: 1em;
+  }
+  #stream {
+    display: block;
+    margin-left: @logIndent;
+  }
+}
+
+#logdetails-msgHdr {
+  #root {
+    background-color: white;
+  }
+}
+
+#log-msgHdr {
+  #root {
+    .clickable;
+  }
+}
+
+#logdetails-domNode {
+  #root {
+    background-color: white;
+  }
+}
+
+#log-domNode {
+  #root {
+    .clickable;
+  }
+}
+
+#error-details {
+  #root {
+    background-color: white;
+  }
+  #stack {
+    display: block;
+    white-space: pre-wrap;
+  }
+}
+
+#log-error {
+  #root {
+    .clickable;
+  }
+}

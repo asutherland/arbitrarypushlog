@@ -38,12 +38,15 @@
 define(
   [
     "wmsy/wmsy",
+    "text!./ui-page-testlog.css"
   ],
   function(
-    $wmsy
+    $wmsy,
+    $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-page-testlog", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-page-testlog", domain: "arbpl",
+                               css: $_css});
 
 wy.defineStyleBase("coolio-bars", [
   ".coolio-bar (@height: 16px) {",
@@ -83,13 +86,6 @@ wy.defineWidget({
   structure: {
     noFailuresLabel: "No Failures!",
   },
-  style: {
-    root: [
-      "text-align: center;",
-      "color: green;",
-      "font-size: 300%;",
-    ],
-  },
 });
 
 
@@ -119,13 +115,6 @@ wy.defineWidget({
   structure: {
     delay: [wy.bind("timeDelta"), " ms"],
   },
-  style: {
-    root: [
-      "text-align: center;",
-      "color: gray;",
-      "font-size: 80%;",
-    ]
-  }
 });
 
 wy.defineWidget({
@@ -160,67 +149,6 @@ wy.defineWidget({
                           ["failureContext", "events"]),
     },
   },
-  style: {
-    root: [
-      "border-radius: 4px;",
-      "border: 2px solid black;",
-      "background-color: white;",
-      "margin-bottom: 16px;",
-    ],
-    testHeader: [
-      "background-color: #eee;",
-      "border-top-left-radius: 4px;",
-      "border-top-right-radius: 4px;",
-      "border-bottom: 1px solid #ccc;",
-      "padding: 4px;",
-    ],
-    failureHeader: [
-      "display: block;",
-      "font-size: 150%;",
-      "padding: 8px;",
-    ],
-    failMessage: [
-      "display: block;",
-    ],
-    stackLabel: ".coolio-bar;",
-    stack: [
-      "display: block;",
-      "white-space: pre-wrap;",
-    ],
-    testName: [
-      "display: inline-block;",
-      "font-size: 150%;",
-      "margin-right: 1em;",
-    ],
-    fileName: [
-      "display: inline-block;",
-      "font-size: 125%;",
-    ],
-    body: [
-      "padding: 4px;",
-    ],
-    windowsLabel: ".coolio-bar;",
-    windows: [
-      "vertical-align: 50%;",
-      "margin-left: 8px;",
-    ],
-    preEventsLabel: ".coolio-bar;",
-    preEvents: [
-      "margin-left: 4px;",
-    ],
-    "preEvents-item": [
-      "border-bottom: 1px solid #eeeeee;",
-      "margin-bottom: 1px;",
-    ],
-    eventsLabel: ".coolio-bar;",
-    events: [
-      "margin-left: 4px;",
-    ],
-    "events-item": [
-      "border-bottom: 1px solid #eeeeee;",
-      "margin-bottom: 1px;",
-    ],
-  },
 });
 
 
@@ -234,32 +162,6 @@ wy.defineWidget({
     scriptLine: ["line ", wy.bind("lineNumber")],
     functionName: wy.bind("func"),
   },
-  style: {
-    root: [
-      "vertical-align: top;",
-    ],
-    // Taking colors from syntax-js-proton.css from narscribblus/jstut which is
-    //  based on the proton vim theme:
-    //  http://vimcolorschemetest.googlecode.com/svn/colors/proton.vim
-    scriptName: [
-      "display: inline-block;",
-      "width: 20em;",
-      "padding: 0 0.5em;",
-      "color: #607080;",
-    ],
-    scriptLine: [
-      "display: inline-block;",
-      "width: 4em;",
-      "padding: 0 0.5em;",
-      "text-align: right;",
-      "color: #508040;",
-    ],
-    functionName: [
-      "display: inline-block;",
-      "padding: 0 0.5em;",
-      "color: #b08020;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -270,11 +172,6 @@ wy.defineWidget({
   structure: {
     frames: wy.vertList({type: "SpiderStackFrame"}, wy.SELF),
   },
-  style: {
-    frames: [
-      "margin-left: 1em;",
-    ],
-  }
 });
 
 wy.defineWidget({
@@ -322,59 +219,6 @@ wy.defineWidget({
         "left: " + Math.floor(scale * focusBounds.left - 1) + "px; " +
         "height: " + Math.floor(scale * focusBounds.height) + "px; " +
         "width: " + Math.floor(scale * focusBounds.width) + "px;");
-    },
-  },
-  style: {
-    root: {
-      _: [
-        "display: inline-block;",
-        "border: 1px solid black;",
-        "border-radius: 2px;",
-        "margin-right: 8px;",
-      ],
-      '[active="true"]': {
-        _: [
-        ],
-        header: {
-          id: [
-            "font-weight: bold;",
-            "background-color: #34beda;",
-          ],
-        }
-      },
-    },
-    header: [
-      "margin-bottom: 2px;",
-    ],
-    id: [
-      "display: inline-block;",
-      "padding: 2px;",
-      "border-right: 1px solid black;",
-      "border-bottom: 1px solid black;",
-      "border-bottom-right-radius: 2px;",
-      "margin-right: 0.5em;",
-    ],
-    title: [
-      "display: inline-block;",
-      "font-size: 75%;",
-    ],
-    screenshotContainer: [
-      "position: relative;",
-    ],
-    screenshot: [
-      "width: 480px;",
-    ],
-    focusBox: {
-      _: [
-        "position: absolute;",
-        "border: 2px dashed #34beda;",
-        "background-color: rgba(52, 190, 218, 0.1);",
-        "display: none;",
-      ],
-      ":hover": [
-        "border: 2px solid #34beda;",
-        "background-color: rgba(52, 190, 218, 0.3);",
-      ],
     },
   },
 });

@@ -57,7 +57,9 @@ define(
 var when = $pwomise.when;
 
 /**
- *
+ * Responsible for tracking the general state of the application and handling
+ *  navigation amongst various supported pages including web browser history
+ *  ramifications.  Bound into wmsy widgets in ui-main.js.
  */
 function ArbApp(win) {
   this.tinderTree = null;
@@ -107,7 +109,7 @@ function ArbApp(win) {
   this.error = null;
 
   /**
-   *
+   * The active UI page
    */
   this.page = null;
 
@@ -139,6 +141,7 @@ ArbApp.prototype = {
     var env = $env.getEnv(this.win);
     var loc = this._loc = {};
     var clobbering = false;
+    var pathNodes = [{type: "root"}];
     for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
       var key = this.ORDERED_LOCATION_KEYS[iKey];
       if (clobbering) {
@@ -146,6 +149,7 @@ ArbApp.prototype = {
       }
       else if (env.hasOwnProperty(key)) {
         loc[key] = env[key];
+        pathNodes.push({type: key, value: loc[key]});
       }
       else {
         loc[key] = null;
@@ -164,12 +168,12 @@ ArbApp.prototype = {
 
     // no log, show pushes (either most recent or from a specific push)
     if (!loc.log) {
-      this._getPushes(loc.pushid);
+      this._getPushes(loc.pushid, pathNodes);
       return;
     }
 
     // yes log, request it
-    this._getLog(loc.pushid, loc.log, loc.test);
+    this._getLog(loc.pushid, loc.log, loc.test, pathNodes);
   },
 
   _setLocation: function(loc, alreadyInEffect) {
@@ -203,13 +207,14 @@ ArbApp.prototype = {
     this._setLocation(this._loc);
   },
 
-  _getPushes: function(highPushId) {
+  _getPushes: function(highPushId, pathNodes) {
     this._updateState("connecting");
     var self = this;
     when(this.rstore.getRecentPushes(highPushId),
       function gotPushes(pushes) {
         self.page = {
           page: "pushes",
+          pathNodes: pathNodes,
           pushes: pushes,
         };
         self._updateState("good");
@@ -221,7 +226,7 @@ ArbApp.prototype = {
       });
   },
 
-  _getLog: function(pushId, buildId, filterToTest) {
+  _getLog: function(pushId, buildId, filterToTest, pathNodes) {
     this._updateState("connecting");
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
@@ -229,6 +234,7 @@ ArbApp.prototype = {
         var chewedDetails = $chew_loghelper.chewMozmillFailures(logDetails);
         self.page = {
           page: "testlog",
+          pathNodes: pathNodes,
           failures: chewedDetails.failures,
         };
         self._updateState("good");

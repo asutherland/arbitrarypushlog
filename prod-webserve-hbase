@@ -1,0 +1,21 @@
+#!/bin/sh
+
+## Production webserving!
+# Differences are:
+# - We serve the optimized JS blob (which we build prior to serving.)
+# - We let browsers cache our HTML and JS blobs for a bit!
+#
+# Things that should not be different:
+# - Caching of database requests.  We keep this the same to avoid ugly
+#    surprises in production and because my local machine is more memory laden
+#    than the current production VM anyways.
+#
+# Things you probably want to be doing, though:
+
+# Build optimized JS blob
+cd client
+./optibuild
+
+# Run production web server
+cd ../server/lib
+node r.js arbpl/cmdline.js production-web

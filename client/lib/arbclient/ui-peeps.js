@@ -38,12 +38,14 @@
 define(
   [
     "wmsy/wmsy",
+    "text!./ui-peeps.css"
   ],
   function(
-    $wmsy
+    $wmsy,
+    $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-peeps", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-peeps", domain: "arbpl", css: $_css});
 
 wy.defineWidget({
   name: "mozperson",
@@ -52,11 +54,6 @@ wy.defineWidget({
   },
   structure: {
     displayName: wy.bind("displayName"),
-  },
-  style: {
-    root: [
-      "display: inline-block;",
-    ],
   },
 });
 

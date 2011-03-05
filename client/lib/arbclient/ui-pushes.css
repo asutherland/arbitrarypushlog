@@ -1,0 +1,134 @@
+#generic-push {
+  #headingBox {
+    border-top: 1px solid #357fa5;
+    background-color: #b9e4ff;
+    margin-bottom: 0.3em;
+    padding: 2px;
+  }
+  #pushDate {
+    display: inline-block;
+    margin-right: 1em
+  }
+  #kids {
+    padding-left: 2em;
+    margin-bottom: 0.5em;
+  }
+}
+
+#changeset {
+  #root {
+    border-top: 1px solid #dddddd;
+    background-color: #eeeeee;
+    padding: 2px;
+    margin-bottom: 0.5em;
+  }
+  #author {
+    position: absolute;
+    width: 12em;
+  }
+  #desc {
+    display: block;
+    margin-left: 12.5em;
+    font-weight: bolder;
+  }
+  #summaryGroups {
+    margin-top: 0.5em;
+    background-color: #f8f8f8;
+    padding: 2px;
+  }
+}
+
+#change-summary-group {
+  #root {
+      display: block;
+      cursor: default;      
+
+  }
+  #root:hover {
+    background-color: #dddddd;
+  }
+  #fileList {
+    margin-left: 1em;
+  }
+}
+
+#build-platform-group {
+  #name {
+    display: inline-block;
+    width: 4em;
+    text-align: right;
+  }
+}
+
+#build-type-group {
+  #root {
+  }
+  #root[state="building"] {
+    color: #999;
+  }
+  #root[state="success"] {
+    color: #390;
+  }
+  #root[state="testfailed"] {
+    color: #f60;
+  }
+  #root[state="busted"] {
+    color: #d00;
+  }
+}
+
+#xpcshell-build-fail-group {
+  #root {
+    position: relative;
+  }
+  #name {
+    font-weight: 600;
+  }
+  #testGroup {
+    display: inline-block;
+    width: 48em;
+  }
+  #signature {
+    display: inline-block;
+    float: right;
+  }
+  #builderGroup {
+    clear: both;
+    display: block;
+    margin-left: 1em;
+  }
+  #buildersLabel {
+    color: #888;
+  }
+}
+
+#mozmill-build-fail-group {
+  #root {
+    position: relative;
+  }
+  #name {
+    font-weight: 600;
+  }
+  #testGroup {
+    display: inline-block;
+    width: 48em;
+  }
+  #signature {
+    display: inline-block;
+    float: right;
+  }
+  #builderGroup {
+    clear: both;
+    display: block;
+    margin-left: 1em;
+  }
+  #buildersLabel {
+    color: #888;
+  }
+  #types {
+    cursor: pointer;
+  }
+}
+
+#build-info {
+}

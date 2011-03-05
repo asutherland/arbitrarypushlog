@@ -35,6 +35,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/**
+ * Defines top-level app state ui binding (app lives in app-main); when things
+ *  are "good", specific pages are displayed, which are defined in ui-page-*.js
+ *  files.
+ **/
+
 define(
   [
     "wmsy/wmsy",
@@ -43,6 +49,7 @@ define(
     "./ui-peeps",
     "./ui-page-testlog",
     "./ui-loghelper",
+    "text!./ui-main.css",
     "exports"
   ],
   function(
@@ -52,10 +59,11 @@ define(
     $ui_peeps,
     $ui_page_testlog,
     $ui_loghelper,
+    $_css,
     exports
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-main", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-main", domain: "arbpl", css: $_css});
 
 wy.defineWidget({
   name: "app-root",
@@ -105,18 +113,6 @@ wy.defineWidget({
       },
     },
   },
-  style: {
-    heading: [
-      "display: block;",
-      "font-size: 400%;",
-      "text-align: center;",
-      "color: black;",
-      "margin-bottom: 40px;",
-    ],
-    possibleTrees: [
-      "text-align: center;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -129,33 +125,6 @@ wy.defineWidget({
   structure: {
     name: wy.bind("name"),
     url: wy.bind(["repos", 0, "url"]),
-  },
-  style: {
-    root: [
-      "display: inline-block;",
-      "border-radius: 10px;",
-      "width: 40em;",
-      "margin: 8px;",
-      "cursor: pointer;",
-    ],
-    name: [
-      "display: block;",
-      "color: black;",
-      "border-top-left-radius: 10px;",
-      "border-top-right-radius: 10px;",
-      "padding: 8px;",
-      "background-color: #F8ECC9;",
-      "font-size: 200%;",
-    ],
-    url: [
-      "display: block;",
-      "color: white;",
-      "border-bottom-left-radius: 10px;",
-      "border-bottom-right-radius: 10px;",
-      "padding: 8px;",
-      "background-color: #A79C8E;",
-      "font-size: 150%;",
-    ]
   },
 });
 
@@ -172,14 +141,6 @@ wy.defineWidget({
   structure: {
     heading: "Connecting..."
   },
-  style: {
-    heading: [
-      "display: block;",
-      "font-size: 300%;",
-      "text-align: center;",
-      "color: black;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -194,14 +155,6 @@ wy.defineWidget({
   structure: {
     heading: "Something is rotten in the state of this state machine.",
   },
-  style: {
-    heading: [
-      "display: block;",
-      "font-size: 300%;",
-      "text-align: center;",
-      "color: red;",
-    ],
-  },
 });
 
 wy.defineWidget({
@@ -214,12 +167,43 @@ wy.defineWidget({
     },
   },
   structure: {
+    header: {
+      pathNodes: wy.horizList({type: "header-pathnode"}, ["page", "pathNodes"]),
+    },
     page: wy.widget({type: "page"}, "page"),
   },
-  style: {
+  events: {
+    pathNodes: {
+      command: function pathNodes_command() {
+
+      },
+    },
   },
 });
 
+wy.defineWidget({
+  name: "pathnode-root",
+  doc: "Root pathnode, shows ArbPL's name.",
+  constraint: {
+    type: "header-pathnode",
+    obj: {type: "root"},
+  },
+  structure: {
+    label: "ArbPL",
+  },
+});
+
+wy.defineWidget({
+  name: "pathnode-generic",
+  doc: "Generic pathnode where the only desired behaviour is to be clicked.",
+  constraint: {
+    type: "header-pathnode",
+    obj: {type: wy.WILD},
+  },
+  structure: {
+    label: wy.bind("value"),
+  },
+});
 
 
 exports.bindApp = function bindApp(appObj) {
