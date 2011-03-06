@@ -1,3 +1,5 @@
 #!/bin/sh
 
 deps/requirejs/build/build.sh arbclient.build.js
+gzip --best -c built-arbclient.js > built-arbclient.js.gz
+gzip --best -c index-optimized.html > index-optimized.html.gz

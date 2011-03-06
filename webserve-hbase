@@ -1,4 +1,4 @@
 #!/bin/sh
 
 cd server/lib
-node r.js arbpl/cmdline.js web
+NODE_ENV=development node r.js arbpl/cmdline.js web

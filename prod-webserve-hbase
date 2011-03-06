@@ -3,7 +3,11 @@
 ## Production webserving!
 # Differences are:
 # - We serve the optimized JS blob (which we build prior to serving.)
+# - We server pre-gzipped versions of everything and we keep'em in memory.
 # - We let browsers cache our HTML and JS blobs for a bit!
+# - We bind to port 2080 and assume you will iptables port 80 to that.
+#    Allegedly something like this will work:
+#    iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to 2080
 #
 # Things that should not be different:
 # - Caching of database requests.  We keep this the same to avoid ugly
@@ -18,4 +22,4 @@ cd client
 
 # Run production web server
 cd ../server/lib
-node r.js arbpl/cmdline.js production-web
+NODE_ENV=production node r.js arbpl/cmdline.js web
