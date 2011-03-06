@@ -68,7 +68,11 @@ app.configure("development", function() {
   LISTEN_PORT - 8008;
 });
 
-var STATIC_MAX_AGE_SECS = 60;
+/**
+ * Given that we only serve two files and do proper "hey, not modified"
+ *  handling, let's have people check at least once an hour for changes.
+ */
+var STATIC_MAX_AGE_SECS = 60 * 60;
 
 /**
  * Return static files served via gzip.  Because we serve so few static files,
