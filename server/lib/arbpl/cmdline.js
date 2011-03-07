@@ -38,6 +38,7 @@
 
 process.on("uncaughtException",
   function(err) {
+    console.log("==== UNCAUGHT ====");
     console.error(err.stack);
   });
 
@@ -86,6 +87,22 @@ switch (options.command) {
     break;
 
   case "sync":
+    $require(
+      ["arbpl/hivemind"],
+      function($hivemind) {
+        when($hivemind.HIVE_MIND.syncAll(),
+          function() {
+            console.log("synchronized everyone! woo!");
+            process.exit(0);
+          },
+          function() {
+            console.error("suspiciously impossible failure!");
+          });
+      }
+    );
+    break;
+
+  case "backfill":
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {

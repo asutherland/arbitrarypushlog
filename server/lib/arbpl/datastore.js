@@ -156,6 +156,7 @@ var SCHEMA_TABLES = [
 function HStore() {
   this._connect();
 
+  this._ensuringUnderway = false;
   this.bootstrapped = false;
 
   this._iNextTableSchema = 0;
@@ -164,29 +165,48 @@ function HStore() {
 }
 HStore.prototype = {
   _connect: function() {
+    console.log("opening thrift connection");
     this.state = "connecting";
 
-    this.connection = $thrift.createConnection("localhost", 9090);
-    this.client = $thrift.createClient($thriftHbase, this.connection);
+    this._connection = $thrift.createConnection("localhost", 9090);
+    this._client = $thrift.createClient($thriftHbase, this._connection);
 
-    this.connection.on("connect", this._onConnect.bind(this));
-    this.connection.on("close", this._onClose.bind(this));
-    this.connection.on("timeout", this._onTimeout.bind(this));
-    this.connection.on("error", this._errConnection.bind(this));
+    this._connection.on("connect", this._onConnect.bind(this));
+    this._connection.on("close", this._onClose.bind(this));
+    this._connection.on("timeout", this._onTimeout.bind(this));
+    this._connection.on("error", this._errConnection.bind(this));
+  },
+
+  /**
+   * re-establish our connection on-demand.
+   */
+  get client() {
+    if (!this._client)
+      this._connect();
+    return this._client;
   },
 
   _onConnect: function() {
     this.state = "connected";
-    this._ensureSchema();
+    //this._ensureSchema();
   },
   _onClose: function() {
     console.warn("thrift connection closed!");
+    this._connection = null;
+    this._client = null;
+    this._ensuringUnderway = false;
   },
   _onTimeout: function() {
     console.warn("thrift connection timed out!");
+    this._connection = null;
+    this._client = null;
+    this._ensuringUnderway = false;
   },
   _errConnection: function(err) {
-    console.error(err);
+    console.error(err, err.stack);
+    this._connection = null;
+    this._client = null;
+    this._ensuringUnderway = false;
   },
 
   _ensureSchema: function() {
@@ -213,6 +233,8 @@ HStore.prototype = {
   },
 
   bootstrap: function() {
+    if (!this.bootstrapped && !this._ensuringUnderway)
+      this._ensureSchema();
     return this._bootstrapDeferred.promise;
   },
 

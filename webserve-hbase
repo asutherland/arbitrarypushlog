@@ -1,4 +1,8 @@
 #!/bin/sh
 
+# development web server running, y'all
+
+NODE=`which node-dev || which node`
+
 cd server/lib
-NODE_ENV=development node r.js arbpl/cmdline.js web
+NODE_ENV=development $NODE r.js arbpl/cmdline.js web

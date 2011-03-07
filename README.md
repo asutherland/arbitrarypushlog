@@ -14,7 +14,7 @@ Mozilla Tinderbox processor and UI.
 - Talks to the server.
 
 
-## Client Deps:
+## Client Deps (Included):
 
 All of these are present as git submodules, you need do nothing if you check us
 out with "--recursive".  If you forgot to do that, do "git submodule init" then
@@ -39,11 +39,11 @@ package.json...
 The npm version is no good and so you need to git clone the below and then
 install using npm somehow.  (I use "npm link".)
 
-- compress: decompress, npm packageable one from git://github.com/sjmulder/node-compress.git
+- compress: decompress, npm packageable one from
+   git://github.com/sjmulder/node-compress.git
 
-## Server Development Notes:
+## Server Optional Deps
 
-There appears to be a bug in connect where it serves an incorrect cache-control
-header that is space delimited rather than comma delimited.  I saw a connect
-rewrite going on, so I have not tried to upstream.  You may want to hack your
-connect install in the event the caching screw-up is harshing your development.
+For development:
+- node-dev: Auto-restart helper; the webserve scripts use this if present on
+   the path.
