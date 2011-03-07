@@ -559,6 +559,11 @@ Overmind.prototype = {
         var repoDef = subRepos[0];
         for (var csKey in revMap) {
           var minfo = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
+          if (!minfo) {
+            console.warn("No rev info for '" +
+                         repoDef.name + ":" + csKey + "', skipping");
+            continue;
+          }
           var curPush = minfo.push;
 
           var kidAccumKey = accumKey + ":" + curPush.id;

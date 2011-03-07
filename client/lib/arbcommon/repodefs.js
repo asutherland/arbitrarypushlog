@@ -374,6 +374,14 @@ var TINDER_TREES = exports.TINDER_TREES = {
   // try => mtry
 
   // tracemonkey => tm
+  mc_tm: new TinderTreeDef({
+    id: "tm",
+    name: "TraceMonkey",
+    product: "Firefox",
+    repos: [REPOS["tracemonkey"]],
+    mount: {
+    },
+  }),
   // projects/places => places
 
   // releases/mozilla-2.0 => m20
