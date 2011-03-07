@@ -233,8 +233,11 @@ HStore.prototype = {
   },
 
   bootstrap: function() {
-    if (!this.bootstrapped && !this._ensuringUnderway)
+    if (!this.bootstrapped && !this._ensuringUnderway) {
+      this._iNextTableSchema = 0;
       this._ensureSchema();
+      this._ensuringUnderway = true;
+    }
     return this._bootstrapDeferred.promise;
   },
 

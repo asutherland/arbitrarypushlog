@@ -190,9 +190,8 @@ Overmind.prototype = {
   },
 
   syncTimeRange: function(timeRange) {
-    console.log("syncTimeRange...");
-    if (!this._syncDeferred)
-      this._syncDeferred = $Q.defer();
+    console.log("syncTimeRange... through", new Date(timeRange.endTime));
+    this._syncDeferred = $Q.defer();
 
     this._logProcJobs = [];
 
@@ -343,6 +342,12 @@ Overmind.prototype = {
 
     // map (repo+rev) => {push: blah, changeset: blah}
     this._revInfoByRepoAndRev = {};
+
+    // no date range means no revisions means just go to the next push
+    if (earliestTime == null) {
+      this._processNextPush();
+      return;
+    }
 
     // normalize to millis
     earliestTime = earliestTime.valueOf();

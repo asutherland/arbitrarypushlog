@@ -73,6 +73,7 @@ function HiveMind(treeDefs) {
   this._unprocessedTrees = null;
   this._syncDeferred = null;
   this._curOvermind = null;
+  this._timeRanges = null;
 }
 HiveMind.prototype = {
   syncAll: function syncAll() {
@@ -100,7 +101,57 @@ HiveMind.prototype = {
             self._syncNext();
           });
       });
-  }
+  },
+
+  _getBackfillTimeRanges: function _getBackfillTimeRanges(numDays) {
+     // start slightly in the future, same rationale as overMind.syncUp()
+     var endTime = Date.now() + (20 * 1000);
+     var firstTime = endTime - numDays * 24 * 60 * 60 * 1000;
+     var duration = 12 * 60 * 60 * 1000;
+     var timeRanges = [];
+     // go backwards in time so results are immediately interesting
+     while (endTime > firstTime) {
+       timeRanges.push({
+         endTime: endTime,
+         duration: duration,
+       });
+       endTime -= duration;
+     }
+     return timeRanges;
+   },
+
+  backfillAll: function backfillAll(numDays) {
+    this._syncDeferred = $Q.defer();
+
+    this._unprocessedTrees = this.trees.concat();
+    this._timeRanges = this._getBackfillTimeRanges(numDays);
+    console.log("TIME RANGES", this._timeRanges);
+    this._backfillNext();
+
+    return this._syncDeferred.promise;
+  },
+
+  _backfillNext: function _syncNext() {
+    if (!this._unprocessedTrees.length) {
+      this._syncDeferred.resolve();
+      return;
+    }
+
+    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop());
+    var self = this, iRange = 0;
+    function procNextRange() {
+      if (iRange >= self._timeRanges.length) {
+        self._curOvermind = null;
+        self._backfillNext();
+        return;
+      }
+      when(self._curOvermind.syncTimeRange(self._timeRanges[iRange++]),
+           procNextRange);
+    }
+
+    when(self._curOvermind.bootstrap(), procNextRange);
+  },
+
 };
 exports.HIVE_MIND = new HiveMind($repodefs.TINDER_TREES);
 

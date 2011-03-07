@@ -106,7 +106,7 @@ switch (options.command) {
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
-        when($hivemind.HIVE_MIND.syncAll(),
+        when($hivemind.HIVE_MIND.backfillAll(5),
           function() {
             console.log("synchronized everyone! woo!");
             process.exit(0);
