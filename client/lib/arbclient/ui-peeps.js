@@ -38,10 +38,12 @@
 define(
   [
     "wmsy/wmsy",
+    "wmsy/examples/md5",
     "text!./ui-peeps.css"
   ],
   function(
     $wmsy,
+    $md5,
     $_css
   ) {
 
@@ -53,7 +55,15 @@ wy.defineWidget({
     type: "person",
   },
   structure: {
+    pic: wy.bindImage(wy.computed("gravatarUrl")),
     displayName: wy.bind("displayName"),
+  },
+  impl: {
+    gravatarUrl: function() {
+      return "http://www.gravatar.com/avatar/" +
+               $md5.hex_md5(this.obj.emails[0]) +
+               "?s=16&d=retro";
+    },
   },
 });
 

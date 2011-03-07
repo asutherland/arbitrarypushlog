@@ -22,13 +22,15 @@
     padding: 2px;
     margin-bottom: 0.5em;
   }
+  #header {
+    display: table-row;
+  }
   #author {
-    position: absolute;
+    display: table-cell;
     width: 12em;
   }
   #desc {
-    display: block;
-    margin-left: 12.5em;
+    display: table-cell;
     font-weight: bolder;
   }
   #summaryGroups {

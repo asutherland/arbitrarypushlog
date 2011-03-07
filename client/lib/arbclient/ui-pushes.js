@@ -99,8 +99,10 @@ wy.defineWidget({
     //  information about the push or want to cite it to someone else, so
     //  let's forget about it for now.
     //shortRev: wy.bind("shortRev"),
-    author: wy.widget({type: "person"}, "author"),
-    desc: wy.bind("rawDesc"),
+    header: {
+      author: wy.widget({type: "person"}, "author"),
+      desc: wy.bind("rawDesc"),
+    },
     summaryGroups: wy.vertList({type: "change-summary-group"},
                                ["changeSummary", "changeGroups"]),
   },
