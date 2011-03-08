@@ -40,7 +40,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "linux",
-      arch: "amd64",
+      arch: "x64",
       ver: null,
     },
   },
@@ -49,7 +49,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "linux",
-      arch: "ia32",
+      arch: "x32",
       ver: null,
     },
   },
@@ -58,7 +58,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "mac",
-      arch: "amd64",
+      arch: "x64",
       ver: "10.6",
     },
   },
@@ -67,7 +67,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "mac",
-      arch: "amd64",
+      arch: "x64",
       ver: "10.5",
     },
   },
@@ -76,7 +76,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "win",
-      arch: "amd64",
+      arch: "x64",
       ver: "7",
     },
   },
@@ -85,7 +85,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "win",
-      arch: "ia32",
+      arch: "x32",
       ver: "XP",
     },
   },
@@ -94,7 +94,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "win",
-      arch: "ia32",
+      arch: "x32",
       ver: "7",
     },
   },
@@ -103,7 +103,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "win",
-      arch: "ia32",
+      arch: "x32",
       ver: "7",
     },
   },
@@ -112,7 +112,7 @@ var OS_PLATFORMS = [
     plat: {
       idiom: "desktop",
       platform: "win",
-      arch: "ia32",
+      arch: "x32",
       ver: "2003",
     },
   },
@@ -133,7 +133,7 @@ var OS_PLATFORMS = [
  */
 var BUILD_TYPES = [
   {
-    regexes: [/talos/i, /(a11y|chrome|cold|dirty|dromaeo|scroll|svg|tp4)/],
+    regexes: [/talos (a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4)/],
     buildType: {
       type: "perf",
       subtype: "talos",
@@ -147,10 +147,17 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/mochitest/i, /unit (browser-)?chrome/i],
+    regexes: [/mochitest-(other)/, /mochitests-(\d+)\//i,],
     buildType: {
       type: "test",
       subtype: "mochitest",
+    },
+  },
+  {
+    regexes: [/crashtest-ipc/i],
+    buildType: {
+      type: "test",
+      subtype: "crash-ipc",
     },
   },
   {
@@ -165,6 +172,13 @@ var BUILD_TYPES = [
     buildType: {
       type: "test",
       subtype: "jsref",
+    },
+  },
+  {
+    regexes: [/reftest-ipc/i],
+    buildType: {
+      type: "test",
+      subtype: "reftest-ipc",
     },
   },
   {
@@ -303,7 +317,7 @@ Tinderboxer.prototype = {
     if (this._buildersByName.hasOwnProperty(name))
       return this._buildersByName[name];
 
-    var iRegex, goodOs = null, goodBuildType = null;
+    var iRegex, goodOs = null, goodBuildType = null, match;
     outerOSLoop:
     for (var iOS = 0; iOS < OS_PLATFORMS.length; iOS++) {
       var osDef = OS_PLATFORMS[iOS];
@@ -321,7 +335,7 @@ Tinderboxer.prototype = {
     for (var iBT = 0; iBT < BUILD_TYPES.length; iBT++) {
       var buildType = BUILD_TYPES[iBT];
       for (iRegex = 0; iRegex < buildType.regexes.length; iRegex++) {
-        if (buildType.regexes[iRegex].test(name)) {
+        if ((match = buildType.regexes[iRegex].exec(name))) {
           goodBuildType = buildType;
           break outerBuildLoop;
         }
@@ -340,6 +354,8 @@ Tinderboxer.prototype = {
       isDebug: isDebug,
       type: goodBuildType.buildType,
     };
+    if (match[1])
+      buildInfo.capture = match[1];
     return (this._buildersByName[name] = buildInfo);
   },
 

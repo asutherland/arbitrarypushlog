@@ -192,7 +192,7 @@ RemoteStore.prototype = {
     // - summarize builds
     retBuildPush.visitLeafBuildPushes(function(buildPush) {
       buildPush.buildSummary =
-        $buildAggregator.aggregateBuilds(buildPush.builds);
+        $buildAggregator.aggregateBuilds(self.tinderTree, buildPush.builds);
     });
     return retBuildPush;
   },

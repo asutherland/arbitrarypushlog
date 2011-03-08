@@ -331,6 +331,7 @@ function TinderTreeDef(def) {
   this.product = def.product;
   this.repos = def.repos;
   this.mount = def.mount;
+  this.typeGroups = def.typeGroups;
 }
 TinderTreeDef.prototype = {
   toString: function() {
@@ -338,6 +339,11 @@ TinderTreeDef.prototype = {
   },
 };
 
+var TB_TYPE_GROUPS = [
+  "build",
+  "xpcshell",
+  "mozmill",
+];
 
 var TINDER_TREES = exports.TINDER_TREES = {
   tb_trunk: new TinderTreeDef({
@@ -348,6 +354,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     mount: {
       mozilla: REPOS["mozilla-central"],
     },
+    typeGroups: TB_TYPE_GROUPS,
   }),
   tb_try: new TinderTreeDef({
     id: "ctry",
@@ -357,6 +364,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     mount: {
       mozilla: REPOS["mozilla-central"],
     },
+    typeGroups: TB_TYPE_GROUPS,
   }),
 
   // releases/comm-1.9.2 => c192
@@ -370,6 +378,43 @@ var TINDER_TREES = exports.TINDER_TREES = {
     repos: [REPOS["mozilla-central"]],
     mount: {
     },
+    typeGroups: [
+      "build",
+      "xpcshell",
+      {
+        name: "mochitest",
+        subgroups: [
+          {name: "1", subtype: "mochitest", capture: "1"},
+          {name: "2", subtype: "mochitest", capture: "2"},
+          {name: "3", subtype: "mochitest", capture: "3"},
+          {name: "4", subtype: "mochitest", capture: "4"},
+          {name: "5", subtype: "mochitest", capture: "5"},
+          {name: "oth", subtype: "mochitest", capture: "other"},
+        ]
+      },
+      {
+        name: "reftest",
+        subgroups: [
+          "crash",
+          "crash-ipc",
+          {name: "js", subtype: "jsref"},
+          "reftest",
+          "reftest-ipc"
+        ]
+      },
+      {
+        name: "talos", subgroups: [
+          {name: "a11y", subtype: "talos", capture: "a11y"},
+          {name: "chrome", subtype: "talos", capture: "chrome"},
+          {name: "dirty", subtype: "talos", capture: "dirty"},
+          {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+          {name: "nochrome", subtype: "talos", capture: "nochrome"},
+          {name: "scroll", subtype: "talos", capture: "scroll"},
+          {name: "svg", subtype: "talos", capture: "svg"},
+          {name: "tp4", subtype: "talos", capture: "tp4"},
+        ]
+      },
+    ],
   }),
   // try => mtry
 

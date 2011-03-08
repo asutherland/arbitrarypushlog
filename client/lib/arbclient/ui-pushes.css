@@ -42,9 +42,8 @@
 
 #change-summary-group {
   #root {
-      display: block;
-      cursor: default;      
-
+    display: block;
+    cursor: default;
   }
   #root:hover {
     background-color: #dddddd;
@@ -54,28 +53,142 @@
   }
 }
 
-#build-platform-group {
-  #name {
+.stateFgMixin {
+  [state="building"] {
+    color: #999;
+  }
+  [state="success"] {
+    color: #390;
+  }
+  [state="testfailed"] {
+    color: #f60;
+  }
+  [state="busted"] {
+    color: #d00;
+  }
+}
+
+.stateBgMixin {
+  color: white;
+  [state="building"] {
+    background-color: #999;
+  }
+  [state="success"] {
+    background-color: #390;
+  }
+  [state="testfailed"] {
+    background-color: #f60;
+  }
+  [state="busted"] {
+    background-color: #d00;
+  }
+}
+
+.stateBorderMixin {
+  border-width: 1px;
+  border-style: solid;
+  [state="building"] {
+    border-color: #999;
+  }
+  [state="success"] {
+    border-color: #390;
+  }
+  [state="testfailed"] {
+    border-color: #f60;
+  }
+  [state="busted"] {
+    border-color: #d00;
+  }
+}
+
+#aggr-build-summary {
+  @longestLabel: 5.5em;
+  @buildMatrixInertBG: gray;
+  @buildColColor: #eee;
+  @hoverColor: #ccc;
+
+  #root {
+  }
+  #table {
+    border-collapse: collapse;
+    border: 0;
+  }
+  #col {
+    background-color: @buildColColor;
+    border-left: 2px solid white;
+    min-width: 1em;
+  }
+  #protoHeader {
+    position: relative;
+    height: @longestLabel;
+    text-align: left;
+    background-color: white;
+  }
+  #protoRotated {
+    text-align: left;
+    position: absolute;
+    transform: rotate(-45deg);
+    min-width: @longestLabel;
+    width: @longestLabel;
+    max-width: @longestLabel;
+  }
+  #summaryHeader {
+    text-align: center;
+    background-color: @buildColColor - #111;
+  }
+  #platRow {
+    :hover {
+      background-color: @hoverColor;
+    }
+  }
+  #platCell {
+    .stateBgMixin;
+    border-bottom: 1px solid white;
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+  #resultCell {
+    min-width: 1em;
+    text-align: center;
+  }
+  #buildNode {
+    .stateBgMixin;
     display: inline-block;
-    width: 4em;
+    width: 1em;
+    height: 1em;
+    border: 1px solid gray;
+    border-radius: 4px;
+    margin-right: 1px;
+  }
+}
+
+#build-platform-group {
+  #root {
+    display: table-row;
+    .stateBgMixin;
+
+    :last-child {
+      #name {
+        border-bottom-left-radius: 8px;
+      }
+    }
+  }
+  #name {
+    display: table-cell;
+    width: 5em;
     text-align: right;
+  }
+  #types {
+    display: table-co
   }
 }
 
 #build-type-group {
   #root {
-  }
-  #root[state="building"] {
-    color: #999;
-  }
-  #root[state="success"] {
-    color: #390;
-  }
-  #root[state="testfailed"] {
-    color: #f60;
-  }
-  #root[state="busted"] {
-    color: #d00;
+    display: table-cell;
+    background-color: white;
+    .stateFgMixin;
+    .stateBorderMixin;
   }
 }
 
