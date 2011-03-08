@@ -131,6 +131,7 @@
     min-width: @longestLabel;
     width: @longestLabel;
     max-width: @longestLabel;
+    z-index: 1;
   }
   #summaryHeader {
     text-align: center;
