@@ -462,6 +462,9 @@ wy.defineWidget({
         buildStr += " " + this.obj.builder.capture;
 
       this.domNode.textContent = buildStr;
+
+      if (this.obj.note)
+        this.domNode.setAttribute("starred", "true");
     },
   },
 });

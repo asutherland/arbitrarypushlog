@@ -54,7 +54,7 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/snowleopard/, /OS\s?X.*10\.6/],
+    regexes: [/snowleopard/, /OS\s?X.*10\.6/, /macosx64/],
     plat: {
       idiom: "desktop",
       platform: "mac",
@@ -63,7 +63,7 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/leopard/, /OS\s?X.*10\.5/],
+    regexes: [/leopard/, /OS\s?X.*10\.5/, /macosx/],
     plat: {
       idiom: "desktop",
       platform: "mac",
@@ -108,7 +108,7 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/WINNT 5\.2/i],
+    regexes: [/WINNT 5\.2/i, /* ??? */ /win32/],
     plat: {
       idiom: "desktop",
       platform: "win",
@@ -117,12 +117,21 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/android/i],
+    regexes: [/Android/i],
     plat: {
       idiom: "mobile",
       platform: "android",
       arch: "arm",
       ver: null,
+    },
+  },
+  {
+    regexes: [/Maemo/i, /n900/],
+    plat: {
+      idiom: "mobile",
+      platform: "maemo",
+      arch: "arm",
+      ver: "5",
     },
   },
 ];
@@ -133,17 +142,10 @@ var OS_PLATFORMS = [
  */
 var BUILD_TYPES = [
   {
-    regexes: [/talos (a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4)/],
+    regexes: [/talos (a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4|v8)/],
     buildType: {
       type: "perf",
       subtype: "talos",
-    },
-  },
-  {
-    regexes: [/nightly/i, /shark/i],
-    buildType: {
-      type: "nightly",
-      subtype: "nightly",
     },
   },
   {
@@ -195,11 +197,62 @@ var BUILD_TYPES = [
       subtype: "mozmill",
     },
   },
+  // tracemonkey shenanigans
+  {
+    regexes: [/QT/],
+    buildType: {
+      type: "build",
+      subtype: "qt",
+    },
+  },
+  {
+    regexes: [/Mobile/],
+    buildType: {
+      type: "build",
+      subtype: "mobile",
+    },
+  },
+  {
+    regexes: [/nomethodjit/i],
+    buildType: {
+      type: "build",
+      subtype: "nomethodjit",
+    },
+  },
+  {
+    regexes: [/notracejit/i],
+    buildType: {
+      type: "build",
+      subtype: "notracejit",
+    },
+  },
+  {
+    regexes: [/spidermonkey-dtrace/i],
+    buildType: {
+      type: "build",
+      subtype: "dtrace",
+    },
+  },
+  {
+    regexes: [/spidermonkey-shark/i],
+    buildType: {
+      type: "build",
+      subtype: "shark",
+    },
+  },
+  // catch-all builder
   {
     regexes: [/depend/i, /build/i],
     buildType: {
       type: "build",
       subtype: "build",
+    },
+  },
+  {
+    regexes: [/nightly/i, /shark/i],
+    buildType: {
+      type: "nightly",
+      subtype: "nightly",
     },
   },
   {
@@ -281,8 +334,8 @@ Tinderboxer.prototype = {
     console.log("fetching tinderbox data from", url);
     when($Qhttp.read(url),
       function(dataBuffer) {
-        var tinderObj = parseStupidJsonBlob(dataBuffer.toString("utf8"));
         try {
+          var tinderObj = parseStupidJsonBlob(dataBuffer.toString("utf8"));
           deferred.resolve(self._parseTinderbox(tinderObj));
         }
         catch (ex) {
@@ -328,8 +381,10 @@ Tinderboxer.prototype = {
         }
       }
     }
-    if (!goodOs)
+    if (!goodOs) {
+      console.warn("IGNORING BUILDER on OS", name);
       return (this._buildersByName[name] = null);
+    }
 
     outerBuildLoop:
     for (var iBT = 0; iBT < BUILD_TYPES.length; iBT++) {
@@ -342,7 +397,7 @@ Tinderboxer.prototype = {
       }
     }
     if (!goodBuildType) {
-      console.warn("IGNORING BUILDER", name);
+      console.warn("IGNORING BUILDER on type", name);
       return (this._buildersByName[name] = null);
     }
 
@@ -356,6 +411,7 @@ Tinderboxer.prototype = {
     };
     if (match[1])
       buildInfo.capture = match[1];
+    console.log("BUILDER: ", buildInfo.name, buildInfo.os, buildInfo.isDebug, buildInfo.type);
     return (this._buildersByName[name] = buildInfo);
   },
 
@@ -368,7 +424,7 @@ Tinderboxer.prototype = {
     if (!scrape)
       return revs;
     var matches;
-    var re = /http:\/\/hg.mozilla.org\/([^"]*)\/rev\/([0-9a-f]{12})/g;
+    var re = /http:\/\/hg.mozilla.org\/([^/]+(?:\/[^/]+)?)\/rev\/([0-9a-f]{12})/g;
     for (var i = 0; i < scrape.length; i++) {
       // There may be multiple revs in different repos in one line of the
       // scrape, so keep exec()ing until we run out.
@@ -440,6 +496,7 @@ Tinderboxer.prototype = {
     return machineResults;
   },
 };
+exports.Tinderboxer = Tinderboxer;
 
 function MachineResult(data) {
   for (var i in data) {
@@ -448,79 +505,6 @@ function MachineResult(data) {
 }
 
 MachineResult.prototype = {
-  getTestResults: function MachineResult_getTestResults() {
-    var self = this;
-    var machine = this.machine;
-    var scrape = this._scrape;
-    if (!scrape)
-      return [];
-    return (function callRightScrapeParser(fun) {
-      return (fun[machine.type] ? fun[machine.type] : fun.generic).call(self, scrape);
-    })({
-      "Unit Test": self.getUnitTestResults,
-      "Mochitest": self.getUnitTestResults,
-      "Everythingelse Test": self.getUnitTestResults,
-      "Talos Performance": self.getTalosResults,
-      "Build": self.getScrapeResults,
-      "generic": self.getScrapeResults
-    });
-  },
-
-  getScrapeResults: function MachineResult_getScrapeResults(scrape) {
-    return $(scrape).map(function parseGenericTestScrapeLine() {
-      if (this.match(/rev\:/) || this.match(/s\:/) || this.match(/try\-/))
-        return null;
-      var match = this.match(/(.*)(\:|<br\/>)(.*)/);
-      return (match ? { name: match[1], result: match[3]} : { name: this });
-    }).filter(function filterNull() { return this; }).get();
-  },
-
-  getUnitTestResults: function MachineResult_getUnitTestResults(scrape) {
-    return $(scrape).map(function parseUnitTestScrapeLine() {
-      var match = this.match(/(.*)<br\/>(.*)/);
-      return match && {
-        name: match[1],
-        result: match[2]
-      };
-    }).filter(function filterNull() { return this; }).get();
-  },
-
-  getTalosResults: function MachineResult_getTalosResults(scrape) {
-    var seriesURLs = {};
-    var foundSomething = false;
-    var cell = document.createElement("td");
-    cell.innerHTML = scrape.join("<br>\n");
-    $('p a', cell).each(function lookForGraphLink() {
-      if (this.getAttribute("href").indexOf("http://graphs") != 0)
-        return;
-      seriesURLs[this.textContent] = this.getAttribute("href");
-      foundSomething = true;
-    });
-
-    if (!foundSomething)
-      return this.getScrapeResults(scrape);
-
-    var failLines = $(scrape).map(function parseFailedTalosRunScrapeLine() {
-      return this.match(/FAIL\:(.*)/) && { name: this };
-    }).filter(function filterNull() { return this; }).get();
-
-    return failLines.concat($('a', cell).map(function parseEachGraphLink() {
-      var resultURL = $(this).attr("href");
-      if (resultURL.indexOf("http://graphs") != 0)
-        return;
-      var match = this.textContent.match(/(.*)\:(.*)/);
-      if (!match)
-        return null;
-      var testname = match[1].trim();
-      return {
-        name: testname,
-        result: match[2].trim(),
-        detailsURL: seriesURLs[testname],
-        "resultURL": resultURL
-      };
-    }).filter(function filterNull() { return this; }).get());
-  },
 };
-exports.Tinderboxer = Tinderboxer;
 
 }); // end define

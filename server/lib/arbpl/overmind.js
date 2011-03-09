@@ -201,7 +201,10 @@ Overmind.prototype = {
 
     when(this.tinderboxer.fetchRange(timeRange),
       this._procTinderboxBuildResults.bind(this),
-      function(err) { console.error("problem getting tinderbox results."); });
+      function(err) {
+        console.error("problem getting tinderbox results.");
+        this._syncDeferred.reject();
+      });
 
     return this._syncDeferred.promise;
   },
@@ -261,7 +264,15 @@ Overmind.prototype = {
         revision = build.revs[revRepo];
         repoDef = findRepoDef(revRepo);
         if (!repoDef || !familyPrioMap.hasOwnProperty(repoDef.family)) {
-          console.warn("unknown repo:", revRepo);
+          // tracemonkey uses mobile-browser for _some_ builds, but not all,
+          //  which is an annoying inconsistency that we are punting on by
+          //  just pretending we aren't hearing about this at all.
+          if (revRepo == "mobile-browser") {
+            seenRevs--;
+            delete build.revs[revRepo];
+            continue;
+          }
+          console.warn("unknown repo:", revRepo, "in", build);
           continue buildLoop;
         }
         orderedRevInfo[familyPrioMap[repoDef.family]] = [repoDef, revision];

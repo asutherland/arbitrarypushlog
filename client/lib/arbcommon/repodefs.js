@@ -426,6 +426,55 @@ var TINDER_TREES = exports.TINDER_TREES = {
     repos: [REPOS["tracemonkey"]],
     mount: {
     },
+    typeGroups: [
+      {
+        name: "build",
+        subgroups: [
+          {name: "build", subtype: "build"},
+          {name: "QT", subtype: "qt"},
+          {name: "mobile", subtype: "mobile"},
+          {name: "no mjit", subtype: "nomethodjit"},
+          {name: "no trace", subtype: "notracejit"},
+          {name: "dtrace", subtype: "dtrace"},
+          {name: "shark", subtype: "shark"},
+        ],
+      },
+      "xpcshell",
+      {
+        name: "mochitest",
+        subgroups: [
+          {name: "1", subtype: "mochitest", capture: "1"},
+          {name: "2", subtype: "mochitest", capture: "2"},
+          {name: "3", subtype: "mochitest", capture: "3"},
+          {name: "4", subtype: "mochitest", capture: "4"},
+          {name: "5", subtype: "mochitest", capture: "5"},
+          {name: "oth", subtype: "mochitest", capture: "other"},
+        ]
+      },
+      {
+        name: "reftest",
+        subgroups: [
+          {name: "crash", subtype: "reftest", capture: "crashtest"},
+          {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
+          {name: "js", subtype: "reftest", capture: "jsreftest"},
+          {name: "reftest", subtype: "reftest", capture: "reftest"},
+          {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
+        ]
+      },
+      {
+        name: "talos", subgroups: [
+          {name: "a11y", subtype: "talos", capture: "a11y"},
+          {name: "chrome", subtype: "talos", capture: "chrome"},
+          {name: "dirty", subtype: "talos", capture: "dirty"},
+          {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+          {name: "nochrome", subtype: "talos", capture: "nochrome"},
+          {name: "scroll", subtype: "talos", capture: "scroll"},
+          {name: "svg", subtype: "talos", capture: "svg"},
+          {name: "tp4", subtype: "talos", capture: "tp4"},
+          {name: "v8", subtype: "talos", capture: "v8"},
+        ]
+      },
+    ],
   }),
 
   // projects/places => places

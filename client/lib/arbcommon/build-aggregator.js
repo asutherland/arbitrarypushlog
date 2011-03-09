@@ -67,12 +67,13 @@ function PlatformCluster(name) {
   this.kids = [];
 }
 PlatformCluster.prototype = {
-  getOrCreateKid: function(name, cls, extra) {
+  getOrCreateKid: function(name, cls, extraFunc) {
     for (var i = 0; i < this.kids.length; i++) {
       if (this.kids[i].name == name)
         return this.kids[i];
     }
-    var kid = new (cls || PlatformCluster)(name, extra);
+    var kid = new (cls || PlatformCluster)(name,
+                                           extraFunc ? extraFunc() : undefined);
     this.kids.push(kid);
     this.kids.sort(nameSorter);
     return kid;
@@ -205,7 +206,7 @@ exports.aggregateBuilds = function aggregateBuilds(tinderTree, builds) {
     var verCluster = topCluster.getOrCreateKid(builder.os.ver || "");
     var archCluster = verCluster.getOrCreateKid(builder.os.arch);
     var platGroup = archCluster.getOrCreateKid(
-      builder.isDebug ? "debug" : "opt", PlatformGroup, makeEmptyBuckets());
+      builder.isDebug ? "debug" : "opt", PlatformGroup, makeEmptyBuckets);
     return platGroup;
   }
 
@@ -227,8 +228,10 @@ exports.aggregateBuilds = function aggregateBuilds(tinderTree, builds) {
     var bucketKey = builder.type.subtype + "-" +
                               (builder.hasOwnProperty("capture") ?
                                  builder.capture : "");
-    if (!bucketMap.hasOwnProperty(bucketKey))
+    if (!bucketMap.hasOwnProperty(bucketKey)) {
+      console.log("ignoring bucket key", bucketKey, build);
       continue;
+    }
     var bucketIdx = bucketMap[bucketKey];
     platGroup.buckets[bucketIdx].push(build);
 

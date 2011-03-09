@@ -100,6 +100,8 @@ MochiFrobber.prototype = {
         relPath = fullPath.substring(GOBBLE_URL_LEN);
       else
         relPath = fullPath;
+      if (relPath[0] == "/")
+        relPath = relPath.substring(1);
       var goodBit = line.substring(match[0].length);
       if (this.curFailure && this.curFailure.test == relPath) {
         this.curFailure.details.push(goodBit);

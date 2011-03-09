@@ -291,6 +291,11 @@
 
 #build-info {
   #root {
-    background-color: #f4f4f4;
+    /* be orange unless starred */
+    background-color: #ffcc99;
+
+    [starred="true"] {
+      background-color: #f4f4f4;
+    }
   }
 }
