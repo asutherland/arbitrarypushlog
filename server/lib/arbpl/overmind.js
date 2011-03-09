@@ -63,6 +63,7 @@ define(
     "./datastore",
     "./tinderboxer",
     "./xpcshell-logfrob", "./mozmill-logfrob",
+    "./mochitest-logfrob", "./reftest-logfrob",
     "arbcommon/repodefs",
     "./hackjobs",
     "exports"
@@ -72,6 +73,7 @@ define(
     $datastore,
     $tinderboxer,
     $frobXpcshell, $frobMozmill,
+    $frobMochitest, $frobReftest,
     $repodefs,
     $hackjobs,
     exports
@@ -487,13 +489,23 @@ Overmind.prototype = {
 
     /**
      * Figure out if the build is something we can perform follow-on processing
-     *  for.  Currently this is true for xpcshell and Thunderbird mozmill runs.
-     *  Everything else can go pound sand.
+     *  for.  The requirements are that the test failed according to the
+     *  tinderbox and we have a processor.  Once we have success data we care
+     *  about (like runtimes), we may stop requiring a failure.
      */
     function isBuildLoggable(build) {
-      return ((build.builder.type.type === "test") &&
-              ((build.builder.type.subtype === "mozmill") ||
-               (build.builder.type.subtype === "xpcshell")));
+      var buildType = build.builder.type;
+      if (buildType.type != "test")
+        return false;
+      switch (buildType.subtype) {
+        case "mozmill":
+        case "xpcshell":
+        case "mochitest":
+        case "reftest":
+          return build.state == "testfailed";
+        default:
+          return false;
+      }
     }
 
     // -- normalized logic for both 'b' variants and log job checking
@@ -628,6 +640,14 @@ Overmind.prototype = {
           frobber = this._processMozmillLog(job);
           break;
 
+        case "mochitest":
+          frobber = this._processMochitestLog(job);
+          break;
+
+        case "reftest":
+          frobber = this._processReftestLog(job);
+          break;
+
         default:
           console.error("dunnae how to frobben", job);
           break;
@@ -697,6 +717,7 @@ Overmind.prototype = {
     //  kill the VM prematurely.  XXX The datastore should probably be able to
     //  handle out a promise for when it has quiesced.
     console.log("frobber db write to", job.pushId, job.summaryKey, job.detailKey);
+    //console.log("    ", stateObj);
     when(DB.putPushStuff(this.tinderTree.id, job.pushId, stateObj),
       function() {
         console.log(" frobber db write completed");
@@ -723,6 +744,28 @@ Overmind.prototype = {
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
     var frobber = new $frobXpcshell.XpcshellFrobber(stream, function(failures) {
+      self._frobberDone(frobber, job, failures);
+    });
+    return frobber;
+  },
+
+  _processMochitestLog: function(job) {
+    console.log("MOCHITEST LOG GOBBLE", job.build.logURL);
+    var self = this;
+
+    var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
+    var frobber = new $frobMochitest.MochiFrobber(stream, function(failures) {
+      self._frobberDone(frobber, job, failures);
+    });
+    return frobber;
+  },
+
+  _processReftestLog: function(job) {
+    console.log("REFTEST LOG GOBBLE", job.build.logURL);
+    var self = this;
+
+    var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
+    var frobber = new $frobReftest.ReftestFrobber(stream, function(failures) {
       self._frobberDone(frobber, job, failures);
     });
     return frobber;

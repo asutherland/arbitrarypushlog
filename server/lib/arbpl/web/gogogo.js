@@ -62,10 +62,13 @@ var app = $express.createServer();
 
 var LISTEN_PORT = 8008;
 
+var RECENT_PUSHES_CACHE_DURATION_MS = 60 * 1000;
+
 app.configure("development", function() {
   console.log("cur dir", process.cwd());
   app.use($express.static(process.cwd() + "/../../client"));
   LISTEN_PORT = 8008;
+  RECENT_PUSHES_CACHE_DURATION_MS = 1 * 1000;
 });
 
 /**
@@ -150,7 +153,6 @@ app.configure("production", function() {
  *  could be wrong.
  */
 var RECENT_PUSHES_CACHE = {};
-var RECENT_PUSHES_CACHE_DURATION_MS = 60 * 1000;
 
 app.get("/tree/:tree/pushes", function(req, res) {
   var tinderTree = $repodefs.safeGetTreeByName(req.params.tree);

@@ -57,8 +57,9 @@ function nameSorter(a, b) {
 var BUILD_STATE_PRIORITY_MAP = {
   success: 0,
   building: 1,
-  testfailed: 2,
-  busted: 3,
+  exception: 2,
+  testfailed: 3,
+  busted: 4,
 };
 
 function PlatformCluster(name) {
@@ -243,10 +244,15 @@ exports.aggregateBuilds = function aggregateBuilds(tinderTree, builds) {
           testName = bfail.testName;
           signature = "";
         }
-        else {
+        else if (testType === "xpcshell") {
           failGroupKey = testType + ":" + bfail.test + ":" + bfail.hash;
           testName = bfail.test;
           signature = bfail.hash;
+        }
+        else {
+          failGroupKey = testType + ":" + bfail.test;
+          testName = bfail.test;
+          signature = "";
         }
 
         var failGroup;

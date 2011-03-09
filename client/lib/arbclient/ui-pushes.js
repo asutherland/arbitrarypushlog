@@ -396,6 +396,44 @@ wy.defineWidget({
   },
 });
 
+wy.defineWidget({
+  name: "mochitest-build-fail-group",
+  doc: "characterize mochitest failure groups",
+  constraint: {
+    type: "build-fail-group",
+    obj: { type: "mochitest" },
+  },
+  structure: {
+    testGroup: wy.flow({
+      name: wy.bind("name"),
+    }),
+    builderGroup: wy.flow({
+      buildersLabel: "Builders: ",
+      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+                           {separator: ", "}),
+    }),
+  },
+});
+
+wy.defineWidget({
+  name: "reftest-build-fail-group",
+  doc: "characterize reftest failure groups",
+  constraint: {
+    type: "build-fail-group",
+    obj: { type: "reftest" },
+  },
+  structure: {
+    testGroup: wy.flow({
+      name: wy.bind("name"),
+    }),
+    builderGroup: wy.flow({
+      buildersLabel: "Builders: ",
+      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+                           {separator: ", "}),
+    }),
+  },
+});
+
 
 wy.defineWidget({
   name: "build-info",
@@ -409,15 +447,19 @@ wy.defineWidget({
       var platform = this.obj.builder.os;
       var type = this.obj.builder.type;
       var buildStr = platform.platform;
-      if (platform.arch)
-        buildStr += " " + platform.arch;
       if (platform.ver)
         buildStr += " " + platform.ver;
+      if (platform.arch)
+        buildStr += " " + platform.arch;
 
       if (this.obj.builder.isDebug)
-        buildStr += " " + debug;
+        buildStr += " debug";
 
       buildStr += " " + type.subtype;
+
+      if (this.obj.builder.hasOwnProperty("capture") &&
+          this.obj.builder.capture)
+        buildStr += " " + this.obj.builder.capture;
 
       this.domNode.textContent = buildStr;
     },

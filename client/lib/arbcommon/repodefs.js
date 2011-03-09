@@ -395,11 +395,11 @@ var TINDER_TREES = exports.TINDER_TREES = {
       {
         name: "reftest",
         subgroups: [
-          "crash",
-          "crash-ipc",
-          {name: "js", subtype: "jsref"},
-          "reftest",
-          "reftest-ipc"
+          {name: "crash", subtype: "reftest", capture: "crash"},
+          {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
+          {name: "js", subtype: "reftest", capture: "jsreftest"},
+          {name: "reftest", subtype: "reftest", capture: "reftest"},
+          {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
         ]
       },
       {
@@ -427,6 +427,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     mount: {
     },
   }),
+
   // projects/places => places
 
   // releases/mozilla-2.0 => m20

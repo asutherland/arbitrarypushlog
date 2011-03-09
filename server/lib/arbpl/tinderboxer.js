@@ -154,35 +154,35 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/crashtest-ipc/i],
+    regexes: [/(crashtest-ipc)/i],
     buildType: {
       type: "test",
-      subtype: "crash-ipc",
+      subtype: "reftest",
     },
   },
   {
-    regexes: [/crashtest/i],
+    regexes: [/(crashtest)/i],
     buildType: {
       type: "test",
-      subtype: "crash",
+      subtype: "reftest",
     },
   },
   {
-    regexes: [/jsreftest/i],
+    regexes: [/(jsreftest)/i],
     buildType: {
       type: "test",
-      subtype: "jsref",
+      subtype: "reftest",
     },
   },
   {
-    regexes: [/reftest-ipc/i],
+    regexes: [/(reftest-ipc)/i],
     buildType: {
       type: "test",
-      subtype: "reftest-ipc",
+      subtype: "reftest",
     },
   },
   {
-    regexes: [/reftest/i, /reftest-d2d/i, /direct3d/i, /opengl/i],
+    regexes: [/(reftest)/i, /(reftest)-d2d/i, /direct3d/i, /opengl/i],
     buildType: {
       type: "test",
       subtype: "reftest",

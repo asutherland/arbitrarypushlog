@@ -141,6 +141,24 @@ switch (options.command) {
     );
     break;
 
+  case "frob-mochitest":
+    $require(
+      ["arbpl/mochitest-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+      }
+    );
+    break;
+
+  case "frob-reftest":
+    $require(
+      ["arbpl/reftest-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+      }
+    );
+    break;
+
   case "frob-mozmill":
     $require(
       ["arbpl/mozmill-logfrob"],

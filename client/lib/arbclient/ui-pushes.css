@@ -76,6 +76,9 @@
   [state="success"] {
     background-color: #390;
   }
+  [state="exception"] {
+    background-color: #708;
+  }
   [state="testfailed"] {
     background-color: #f60;
   }
@@ -108,6 +111,7 @@
   @hoverColor: #ccc;
 
   #root {
+    cursor: default;
   }
   #table {
     border-collapse: collapse;
@@ -159,6 +163,7 @@
     height: 1em;
     border: 1px solid gray;
     border-radius: 4px;
+    margin-top: 2px;
     margin-right: 1px;
   }
 }
@@ -233,6 +238,9 @@
     display: inline-block;
     float: right;
   }
+  #types {
+    cursor: pointer;
+  }
   #builderGroup {
     clear: both;
     display: block;
@@ -241,10 +249,48 @@
   #buildersLabel {
     color: #888;
   }
-  #types {
-    cursor: pointer;
+}
+
+#mochitest-build-fail-group {
+  #root {
+    position: relative;
+  }
+  #name {
+    font-weight: 600;
+  }
+  #testGroup {
+  }
+  #builderGroup {
+    clear: both;
+    display: block;
+    margin-left: 1em;
+  }
+  #buildersLabel {
+    color: #888;
+  }
+}
+
+#reftest-build-fail-group {
+  #root {
+    position: relative;
+  }
+  #name {
+    font-weight: 600;
+  }
+  #testGroup {
+  }
+  #builderGroup {
+    clear: both;
+    display: block;
+    margin-left: 1em;
+  }
+  #buildersLabel {
+    color: #888;
   }
 }
 
 #build-info {
+  #root {
+    background-color: #f4f4f4;
+  }
 }
