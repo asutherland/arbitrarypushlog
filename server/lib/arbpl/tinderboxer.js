@@ -411,7 +411,7 @@ Tinderboxer.prototype = {
     };
     if (match[1])
       buildInfo.capture = match[1];
-    console.log("BUILDER: ", buildInfo.name, buildInfo.os, buildInfo.isDebug, buildInfo.type);
+    //console.log("BUILDER: ", buildInfo.name, buildInfo.os, buildInfo.isDebug, buildInfo.type);
     return (this._buildersByName[name] = buildInfo);
   },
 

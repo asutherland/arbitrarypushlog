@@ -36,12 +36,6 @@
  * ***** END LICENSE BLOCK ***** */
 
 
-process.on("uncaughtException",
-  function(err) {
-    console.log("==== UNCAUGHT ====");
-    console.error(err.stack);
-  });
-
 require(
   {
     baseUrl: "../../",
@@ -66,6 +60,29 @@ require(
   ) {
 var when = $Q.when;
 
+var DEATH_PRONE = false;
+
+process.on("uncaughtException",
+  function(err) {
+    console.log("==== UNCAUGHT ====");
+    console.error(err.stack);
+    if (DEATH_PRONE)
+      process.exit(1);
+  });
+
+/**
+ * Although our cron jobs happen every 5 minutes right now, let's time-out
+ *  after 10 minutes since we aren't a proper inactivity/watchdog timeout.
+ */
+var WATCHDOG_TIMEOUT = 10 * 60 * 1000;
+function deathClock() {
+  DEATH_PRONE = true;
+  setTimeout(function() {
+    console.log("WATCHDOG KILLIN");
+    process.exit(10);
+  }, WATCHDOG_TIMEOUT);
+}
+
 var OPTS = [
   {
     name: "command",
@@ -87,6 +104,7 @@ switch (options.command) {
     break;
 
   case "sync":
+    deathClock();
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
