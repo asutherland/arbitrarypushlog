@@ -32,6 +32,7 @@
   #desc {
     display: table-cell;
     font-weight: bolder;
+    white-space: pre-wrap;
   }
   #summaryGroups {
     margin-top: 0.5em;
