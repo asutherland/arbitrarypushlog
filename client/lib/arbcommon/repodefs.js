@@ -483,6 +483,38 @@ var TINDER_TREES = exports.TINDER_TREES = {
   // releases/mozilla-1.9.2 => m192
   // releases/mozilla-1.9.1 => m191
 
+  sea_trunk: new TinderTreeDef({
+    id: "st",
+    name: "SeaMonkey",
+    product: "SeaMonkey",
+    repos: [REPOS["comm-central"], REPOS["mozilla-central"]],
+    mount: {
+      mozilla: REPOS["mozilla-central"],
+    },
+    typeGroups: [
+      "build",
+      "xpcshell",
+      {
+        name: "mochitest",
+        subgroups: [
+          {name: "1", subtype: "mochitest", capture: "1"},
+          {name: "2", subtype: "mochitest", capture: "2"},
+          {name: "3", subtype: "mochitest", capture: "3"},
+          {name: "4", subtype: "mochitest", capture: "4"},
+          {name: "5", subtype: "mochitest", capture: "5"},
+          {name: "oth", subtype: "mochitest", capture: "other"},
+        ]
+      },
+      {
+        name: "reftest",
+        subgroups: [
+          {name: "crash", subtype: "reftest", capture: "crash"},
+          {name: "reftest", subtype: "reftest", capture: "reftest"},
+        ]
+      },
+    ],
+  }),
+
 };
 
 /**
