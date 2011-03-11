@@ -312,24 +312,53 @@
   }
 }
 
+@buildDetailsPadding: 6px;
 #build-details-container {
   #root {
     background-color: white;
-    padding: 6px;
+    padding: @buildDetailsPadding;
   }
+}
+
+
+.coolio-bar (@height: 16px) {
+  display: inline-block;
+  background-color: #e8e8e8;
+  margin-left: -1 * @buildDetailsPadding;
+  margin-top: 8px;
+  margin-bottom: 2px;
+  padding-left: 4px;
+  padding-right: @height / 2 - 4;
+  height: @height;
+  vertical-align: middle;
+  border-top-right-radius: @height / 2;
+  border-bottom-right-radius: @height / 2;
 }
 
 #build-details {
   #builderName {
     display: block;
     font-size: 150%;
+    margin-bottom: 8px;
   }
 
   #noteHeaderLabel {
-    display: block;
+    .coolio-bar;
   }
-  #note {
-    display: block;
+  #notes {
+    margin-left: 1em;
+  }
+  #notes-item {
+    margin-bottom: 6px;
+  }
+
+  #logHeaderLabel {
+    .coolio-bar;
+  }
+  #briefLogLink, #fullLogLink, #rawLogLink {
+    display: inline-block;
+    width: 8em;
+    text-decoration: none;
   }
 }
 

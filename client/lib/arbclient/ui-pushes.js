@@ -386,7 +386,7 @@ wy.defineWidget({
     testGroup: wy.flow({
       name: wy.bind("name"),
       delimContextLinks: " (",
-      topfailsLink: wy.hyperlink(wy.computed("topfailsLabel"), {
+      topfailsLink: wy.hyperlink(wy.localizableString("topfails"), {
                                    href: wy.computed("topfailsLink"),
                                  }),
       endDelimContextLinks: ")",
@@ -398,11 +398,6 @@ wy.defineWidget({
     }),
   },
   impl: {
-    topfailsLabel: function() {
-      // XXX this will not vary, this should not be computed and instead
-      //  we should use wy.static or something.
-      return "topfails";
-    },
     topfailsLink: function() {
       return "http://brasstacks.mozilla.com/topfails/test/" +
         this.__context.tinderTree.name +
@@ -546,7 +541,35 @@ wy.defineWidget({
       notes: wy.vertList({type: "build-note"}, "richNotes"),
     },
 
+    logBlock: {
+      logHeaderLabel: "Logs:",
+      logLinks: {
+        briefLogLink: wy.hyperlink(wy.localizableString("brief log"), {
+                                     href: wy.computed("briefLogLink"),
+                                   }),
+        fullLogLink: wy.hyperlink(wy.localizableString("full log"), {
+                                     href: wy.computed("fullLogLink"),
+                                  }),
+        rawLogLink: wy.hyperlink(wy.localizableString("raw log"), {
+                                     href: "logURL",
+                                  }),
 
+      }
+    }
+  },
+  impl: {
+    briefLogLink: function briefLogLink() {
+      // logURL looks like http://tinderbox.mozilla.org/Tree/BuildId.gz,
+      //  we want to insert the cgi script directive in the middle.
+      var url = this.obj.logURL;
+      var idxPath = url.indexOf("/", 9) + 1;
+      return url.substring(0, idxPath) +
+        "showlog.cgi?log=" +
+        url.substring(idxPath);
+    },
+    fullLogLink: function fullLogLink() {
+      return this.briefLogLink() + "&fulltext=1";
+    },
   },
 });
 
