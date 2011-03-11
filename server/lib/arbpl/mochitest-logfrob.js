@@ -55,7 +55,7 @@ define(
 var RE_FAILED_TEST_STARTS = /TEST-UNEXPECTED-FAIL \| (.+) \| /;
 
 var RE_GOBBLE_PREFIX = /^chrome:/;
-var RE_IGNORE_PREFIX = /^automation/;
+var RE_IGNORE_PREFIX = /^automation|plugin/;
 var GOBBLE_URL_LEN = ("chrome://mochitests/content/").length;
 
 /**
