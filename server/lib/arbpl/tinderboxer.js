@@ -284,6 +284,7 @@ var RE_DOUBLE_QUOTE = /"/g;
 var RE_XFFE = /\xfffe/g;
 
 var RE_PRE = /<\/?pre>/g;
+var RE_NBSP = /&nbsp;/g;
 var RE_NOTE_HUNK =
   /^\n*\[<b><a href=[^>]+>([^<]+)<\/a> - ([^<]+)<\/b>\]\n(.+)\n*$/;
 
@@ -420,7 +421,7 @@ Tinderboxer.prototype = {
   },
 
   _processNote: function TinderboxJSONUser_processNote(note) {
-    var s =  note.replace(RE_PRE, "").replace("&nbsp;", " ");
+    var s =  note.replace(RE_PRE, "").replace(RE_NBSP, " ");
     // Given that there is a very precise pattern used for tinderbox notes, let's
     //  manually scan on that rather than potentially screwing up the regexp
     //  by making it brittle or computationally nuts.
