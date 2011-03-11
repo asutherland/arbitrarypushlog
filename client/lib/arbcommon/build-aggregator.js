@@ -118,6 +118,7 @@ PlatformGroup.prototype = {
 exports.PlatformGroup = PlatformGroup;
 
 function FailGroup(type, name, signature) {
+  // these field names are explicitly chosen to mimic the failure info!
   this.type = type;
   this.name = name;
   this.signature = signature;

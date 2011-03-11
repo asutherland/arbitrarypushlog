@@ -186,37 +186,8 @@
   }
 }
 
-#xpcshell-build-fail-group {
+#build-fail-group {
   #root {
-    position: relative;
-  }
-  #name {
-    font-weight: 600;
-  }
-  #testGroup {
-    display: inline-block;
-    width: 48em;
-  }
-  #builderGroup {
-    clear: both;
-    display: block;
-    margin-left: 1em;
-  }
-  #buildersLabel {
-    color: #888;
-  }
-}
-
-#mozmill-build-fail-group {
-  #root {
-    position: relative;
-  }
-  #name {
-    font-weight: 600;
-  }
-  #testGroup {
-    display: inline-block;
-    width: 48em;
   }
   #builderGroup {
     display: block;
@@ -227,41 +198,28 @@
   }
 }
 
-#mochitest-build-fail-group {
-  #root {
-    position: relative;
-  }
+
+#xpcshell-build-fail-summary {
   #name {
     font-weight: 600;
-  }
-  #testGroup {
-  }
-  #builderGroup {
-    clear: both;
-    display: block;
-    margin-left: 1em;
-  }
-  #buildersLabel {
-    color: #888;
   }
 }
 
-#reftest-build-fail-group {
-  #root {
-    position: relative;
-  }
+#mozmill-build-fail-summary {
   #name {
     font-weight: 600;
   }
-  #testGroup {
+}
+
+#mochitest-build-fail-summary {
+  #name {
+    font-weight: 600;
   }
-  #builderGroup {
-    clear: both;
-    display: block;
-    margin-left: 1em;
-  }
-  #buildersLabel {
-    color: #888;
+}
+
+#reftest-build-fail-summary {
+  #name {
+    font-weight: 600;
   }
 }
 

@@ -349,27 +349,51 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "xpcshell-build-fail-group",
-  doc: "characterize xpcshell failure groups",
+  name: "build-fail-group",
+  doc: "failure group binds a specific failure breakout with builder list",
   constraint: {
     type: "build-fail-group",
-    obj: { type: "xpcshell" },
   },
+  emit: ["navigate"],
   structure: {
-    testGroup: wy.flow({
-      name: wy.bind("name"),
-      delimContextLinks: " (",
-      topfailsLink: wy.hyperlink(wy.localizableString("topfails"), {
-                                   href: wy.computed("topfailsLink"),
-                                 }),
-      endDelimContextLinks: ")",
-    }),
+    testDetail: wy.widget({type: "build-fail-summary"}, wy.SELF),
     builderGroup: wy.flow({
       buildersLabel: "Builders: ",
       types: wy.widgetFlow({type: "build-info"}, "inBuilds",
                            {separator: ", "}),
     }),
   },
+  events: {
+    types: {
+      click: function(buildBinding) {
+        // bail if it's not mozmill
+        if (buildBinding.obj.builder.type.subtype != "mozmill")
+          return;
+        console.log("context", this.__context, "obj", this.obj);
+        this.emit_navigate({pushid: this.__context.pushId,
+                            log: this.__context.subPushId + ":" +
+                                buildBinding.obj.id});
+      },
+    },
+  },
+});
+
+
+wy.defineWidget({
+  name: "xpcshell-build-fail-summary",
+  doc: "characterize xpcshell failures",
+  constraint: {
+    type: "build-fail-summary",
+    obj: { type: "xpcshell" },
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    delimContextLinks: " (",
+    topfailsLink: wy.hyperlink(wy.localizableString("topfails"), {
+                                 href: wy.computed("topfailsLink"),
+                               }),
+    endDelimContextLinks: ")",
+  }),
   impl: {
     topfailsLink: function() {
       return "http://brasstacks.mozilla.com/topfails/test/" +
@@ -380,72 +404,38 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "mozmill-build-fail-group",
-  doc: "characterize mozmill failure groups",
+  name: "mozmill-build-fail-summary",
+  doc: "characterize mozmill failures",
   constraint: {
-    type: "build-fail-group",
+    type: "build-fail-summary",
     obj: { type: "mozmill" },
   },
-  emit: ["navigate"],
   structure: {
-    testGroup: wy.flow({
-      name: wy.bind("name"),
-    }),
-    builderGroup: wy.flow({
-      buildersLabel: "Builders: ",
-      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
-                           {separator: ", "}),
-    }),
-  },
-  impl: {
-  },
-  events: {
-    types: {
-      click: function(buildBinding) {
-        console.log("context", this.__context, "obj", this.obj);
-        this.emit_navigate({pushid: this.__context.pushId,
-                            log: this.__context.subPushId + ":" +
-                                buildBinding.obj.id});
-      },
-    },
+    name: wy.bind("name"),
   },
 });
 
 wy.defineWidget({
-  name: "mochitest-build-fail-group",
-  doc: "characterize mochitest failure groups",
+  name: "mochitest-build-fail-summary",
+  doc: "characterize mochitest failures",
   constraint: {
-    type: "build-fail-group",
+    type: "build-fail-summary",
     obj: { type: "mochitest" },
   },
   structure: {
-    testGroup: wy.flow({
-      name: wy.bind("name"),
-    }),
-    builderGroup: wy.flow({
-      buildersLabel: "Builders: ",
-      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
-                           {separator: ", "}),
-    }),
+    name: wy.bind("name"),
   },
 });
 
 wy.defineWidget({
-  name: "reftest-build-fail-group",
-  doc: "characterize reftest failure groups",
+  name: "reftest-build-fail-summary",
+  doc: "characterize reftest failures",
   constraint: {
-    type: "build-fail-group",
+    type: "build-fail-summary",
     obj: { type: "reftest" },
   },
   structure: {
-    testGroup: wy.flow({
-      name: wy.bind("name"),
-    }),
-    builderGroup: wy.flow({
-      buildersLabel: "Builders: ",
-      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
-                           {separator: ", "}),
-    }),
+    name: wy.bind("name"),
   },
 });
 
