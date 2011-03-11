@@ -56,23 +56,6 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl",
                                css: $_css});
 
-wy.defineStyleBase("logs", [
-  "@logIndent: 16em;",
-  ".action-bubble (@color) {",
-  "  display: inline-block;",
-  "  padding: 0px 6px;",
-  "  border-radius: 6px;",
-  "  background-color: @color;",
-  "  color: white;",
-  "  margin: 1px;",
-  "  white-space: nowrap;",
-  "}",
-  ".clickable {",
-  "  cursor: pointer;",
-  "  border-bottom: 1px dotted gray;",
-  "}",
-]);
-
 wy.defineWidget({
   name: "log4moz-record",
   constraint: {
@@ -169,57 +152,15 @@ function spacifyConsoleAssumingStream(l) {
 }
 
 wy.defineWidget({
-  name: "log-action",
-  constraint: {
-    type: "log-entry",
-    obj: { type: "action" },
-  },
-  structure: {
-    who: wy.bind("who"),
-    what: wy.bind("what"),
-    stream: wy.stream({type: "logstream"}, "args"),
-  },
-  impl: {
-    preInit: function() {
-      spacifyConsoleAssumingStream(this.obj.args);
-    },
-  },
-});
-
-wy.defineWidget({
-  name: "log-action-msgEvent",
+  name: "log-action-generic",
   constraint: {
     type: "log-entry",
     obj: {
       type: "action",
-      who: "msgEvent",
     },
   },
   structure: {
-    what: wy.bind("what"),
-    stream: wy.stream({type: "logstream"}, "args"),
-  },
-  impl: {
-    preInit: function() {
-      // fixup stupidly long event descriptions:
-      if (this.obj.what == "OnItemPropertyFlagChanged")
-        this.obj.what = "FlagChanged";
-      spacifyConsoleAssumingStream(this.obj.args);
-    },
-  },
-});
-
-wy.defineWidget({
-  name: "log-action-test",
-  constraint: {
-    type: "log-entry",
-    obj: {
-      type: "action",
-      who: "test",
-    },
-  },
-  structure: {
-    what: wy.bind("what"),
+    what: wy.bind("what", {who: "who"}),
     stream: wy.stream({type: "logstream"}, "args"),
   },
   impl: {
@@ -228,48 +169,6 @@ wy.defineWidget({
     },
   },
 });
-
-
-wy.defineWidget({
-  name: "log-action-fdh",
-  constraint: {
-    type: "log-entry",
-    obj: {
-      type: "action",
-      who: "fdh",
-    },
-  },
-  structure: {
-    what: wy.bind("what"),
-    stream: wy.stream({type: "logstream"}, "args"),
-  },
-  impl: {
-    preInit: function() {
-      spacifyConsoleAssumingStream(this.obj.args);
-    },
-  },
-});
-
-wy.defineWidget({
-  name: "log-action-winhelp",
-  constraint: {
-    type: "log-entry",
-    obj: {
-      type: "action",
-      who: "winhelp",
-    },
-  },
-  structure: {
-    what: wy.bind("what"),
-    stream: wy.stream({type: "logstream"}, "args"),
-  },
-  impl: {
-    preInit: function() {
-      spacifyConsoleAssumingStream(this.obj.args);
-    },
-  },
-});
-
 
 
 wy.defineWidget({
