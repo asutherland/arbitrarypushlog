@@ -161,11 +161,30 @@ wy.defineWidget({
   },
 });
 
+/**
+ * Flyweight style build matrix that uses a table for display.  We don't create
+ *  widgets for the intermediary grouping constructs because it does not work
+ *  well with our use of an actual HTML table.  We do not create proper widgets
+ *  for the builds either because they are reasonably boring, there can be a
+ *  lot of them, and our table not looking stupid depends on them all being
+ *  largely homogeneous.  We do, however, provide click events for them and
+ *  will provide other fancy hookups as needed.
+ */
 wy.defineWidget({
   name: "aggr-build-summary",
   doc: "build summary matrix",
   constraint: {
     type: "aggr-build-summary",
+  },
+  popups: {
+    buildDetails: {
+      popupWidget: wy.libWidget({type: "popup"}),
+      constraint: {type: "build-details-container"},
+      clickAway: true,
+      position: {
+        abovish: "root",
+      },
+    },
   },
   structure: {
   },
@@ -274,7 +293,8 @@ wy.defineWidget({
                   var buildNode = doc.createElement("div");
                   buildNode.setAttribute("class", clsBuildNode);
                   buildNode.setAttribute("state", build.state);
-                  if (build.note)
+                  buildNode.setAttribute("build-id", build.id);
+                  if (build.richNotes.length)
                     buildNode.textContent = "*";
                   bucketNode.appendChild(buildNode);
                 }
@@ -291,6 +311,40 @@ wy.defineWidget({
       }
 
       this.domNode.appendChild(rootNode);
+    },
+
+    /**
+     * Locate a build by ID in O(n) time, so only use this on rare events.
+     */
+    getBuildById: function(buildId) {
+      var builds = this.obj.allBuilds;
+      for (var i = 0; i < builds.length; i++) {
+        if (builds[i].id === buildId)
+          return builds[i];
+      }
+      throw new Error("Impossibly did not find build for id: " + buildId);
+    },
+
+    clickedBuild: function(build, node) {
+      console.log("popping up", build);
+      node.setAttribute("popped", "true");
+      this.popup_buildDetails(build, {domNode: node},
+        function allGone() {
+          node.removeAttribute("popped");
+        }, /* explicit parent because we fake out the relBinding */ this);
+    },
+  },
+  events: {
+    root: {
+      /**
+       * Handle clicks, attempting to localize them to the build in question.
+       */
+      click: function root_click(ignoredBinding, event) {
+        var target = event.target;
+        if (target.hasAttribute("build-id"))
+          this.clickedBuild(this.getBuildById(target.getAttribute("build-id")),
+                            target);
+      },
     },
   },
 });
@@ -338,7 +392,6 @@ wy.defineWidget({
                                  }),
       endDelimContextLinks: ")",
     }),
-    signature: wy.bind("signature"),
     builderGroup: wy.flow({
       buildersLabel: "Builders: ",
       types: wy.widgetFlow({type: "build-info"}, "inBuilds",
@@ -463,12 +516,53 @@ wy.defineWidget({
 
       this.domNode.textContent = buildStr;
 
-      if (this.obj.note)
+      if (this.obj.richNotes.length)
         this.domNode.setAttribute("starred", "true");
     },
   },
 });
 
+wy.defineWidget({
+  name: "build-details-container",
+  doc: "build details popup payload container",
+  constraint: {
+    type: "build-details-container",
+  },
+  structure: {
+    actualDetails: wy.widget({type: "build-details"}, wy.SELF),
+  },
+});
+
+wy.defineWidget({
+  name: "build-details",
+  doc: "build details popup payload",
+  constraint: {
+    type: "build-details",
+  },
+  structure: {
+    builderName: wy.bind(["builder", "name"]),
+
+    noteBlock: {
+      noteHeaderLabel: "Notes:",
+      notes: wy.vertList({type: "build-note"}, "richNotes"),
+    },
+
+
+  },
+});
+
+wy.defineWidget({
+  name: "build-note",
+  doc: "rich build note",
+  constraint: {
+    type: "build-note",
+  },
+  structure: {
+    author: wy.bind("author"),
+    dateStr: wy.bind("dateStr"),
+    note: wy.bind("note"),
+  },
+});
 
 
 }); // end define

@@ -138,6 +138,25 @@ var TDEF_PUSH_FOCUSED = {
   ]
 };
 
+var TABLE_FAIL_ANALYTIC = "arbpl_faily";
+
+/**
+ * Failure analytic table.
+ *
+ * Key is [tree identifier, day number].
+ *
+ * Column family "t" is used for tally data.  The column name is composed like
+ *  so: [test type, ":", test path, ":", signature (can be "")].  The value
+ *  is an atomic count thing.
+ *
+ * Column family "x" is used for cross-reference data.  The column name is
+ *  the same column name as the "t" column for the failure, but with
+ *  ":(PUSHID:)BUILDID" appended.  The value is the JSON builder so that
+ *  the set of failures can be post-processed.
+ */
+var TDEF_FAIL_ANALYTIC = {
+};
+
 /**
  * Map revisions to the push they correspond to.  We could alternatively require
  *  requesters to just bounce things off of the hg repo which has this mapping

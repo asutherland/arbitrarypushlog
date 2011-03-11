@@ -128,11 +128,13 @@ FailGroup.prototype = {
 exports.FailGroup = FailGroup;
 
 function AggrBuildSummary(protoTypeGroups, summaryRuns,
-                          platRootCluster, failGroups) {
+                          platRootCluster, failGroups,
+                          allBuilds) {
   this.protoTypeGroups = protoTypeGroups;
   this.summaryRuns = summaryRuns;
   this.platRootCluster = platRootCluster;
   this.failGroups = failGroups;
+  this.allBuilds = allBuilds;
 }
 AggrBuildSummary.prototype = {
 };
@@ -275,7 +277,8 @@ exports.aggregateBuilds = function aggregateBuilds(tinderTree, builds) {
 
   return new AggrBuildSummary(bucketInfo.meta.protoBuckets,
                               bucketInfo.meta.summaryRuns,
-                              platRootCluster, failGroups);
+                              platRootCluster, failGroups,
+                              builds);
 };
 
 });

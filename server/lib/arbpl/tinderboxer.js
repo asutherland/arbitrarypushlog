@@ -283,6 +283,10 @@ var RE_SINGLE_QUOTE = /'/g;
 var RE_DOUBLE_QUOTE = /"/g;
 var RE_XFFE = /\xfffe/g;
 
+var RE_PRE = /<\/?pre>/g;
+var RE_NOTE_HUNK =
+  /^\n*\[<b><a href=[^>]+>([^<]+)<\/a> - ([^<]+)<\/b>\]\n(.+)\n*$/;
+
 /**
  * The tinderbox JSON format is not actually JSON but rather JSONP without
  *  the callback.
@@ -416,7 +420,33 @@ Tinderboxer.prototype = {
   },
 
   _processNote: function TinderboxJSONUser_processNote(note) {
-    return note.replace(/<\/?pre>/g, "").trim().replace(/\n/g, "<br>");
+    var s =  note.replace(RE_PRE, "").replace("&nbsp;", " ");
+    // Given that there is a very precise pattern used for tinderbox notes, let's
+    //  manually scan on that rather than potentially screwing up the regexp
+    //  by making it brittle or computationally nuts.
+    var richNotes = [];
+    while (s) {
+      var nextS = null;
+      var idxNext = s.indexOf("[<b><a href=mailto:", 16);
+      if (idxNext != -1) {
+        nextS = s.substring(idxNext);
+        s = s.substring(0, idxNext);
+      }
+      var match = RE_NOTE_HUNK.exec(s);
+      if (match) {
+        richNotes.push({
+          author: match[1],
+          dateStr: match[2],
+          note: match[3],
+        });
+      }
+      else {
+        console.warn("tinderbox note match failure on", s, "original:", note);
+      }
+
+      s = nextS;
+    }
+    return richNotes;
   },
 
   _findRevInScrape: function TinderboxJSONUser_findRevInScrape(scrape) {
@@ -477,7 +507,7 @@ Tinderboxer.prototype = {
         if (machineResults[machineRunID])
           continue;
 
-        var note = build.hasnote ? notes[build.noteid * 1] : "";
+        var richNotes = build.hasnote ? notes[build.noteid * 1] : [];
 
         var result = machineResults[machineRunID] = new MachineResult ({
           builder: machine,
@@ -487,7 +517,7 @@ Tinderboxer.prototype = {
           endTime: endTime,
           logURL: SERVER_URL + this.treeName + "/" + machineRunID,
           revs: revs,
-          note: note,
+          richNotes: richNotes,
           errorParser: build.errorparser,
           _scrape: buildScrape,
         });
