@@ -395,7 +395,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
       {
         name: "reftest",
         subgroups: [
-          {name: "crash", subtype: "reftest", capture: "crash"},
+          {name: "crash", subtype: "reftest", capture: "crashtest"},
           {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
           {name: "js", subtype: "reftest", capture: "jsreftest"},
           {name: "reftest", subtype: "reftest", capture: "reftest"},

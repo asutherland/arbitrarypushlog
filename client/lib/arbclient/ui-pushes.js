@@ -326,7 +326,6 @@ wy.defineWidget({
     },
 
     clickedBuild: function(build, node) {
-      console.log("popping up", build);
       node.setAttribute("popped", "true");
       this.popup_buildDetails(build, {domNode: node},
         function allGone() {
