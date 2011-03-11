@@ -186,36 +186,6 @@
   }
 }
 
-#build-platform-group {
-  #root {
-    display: table-row;
-    .stateBgMixin;
-
-    :last-child {
-      #name {
-        border-bottom-left-radius: 8px;
-      }
-    }
-  }
-  #name {
-    display: table-cell;
-    width: 5em;
-    text-align: right;
-  }
-  #types {
-    display: table-co
-  }
-}
-
-#build-type-group {
-  #root {
-    display: table-cell;
-    background-color: white;
-    .stateFgMixin;
-    .stateBorderMixin;
-  }
-}
-
 #xpcshell-build-fail-group {
   #root {
     position: relative;

@@ -349,33 +349,6 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "build-type-group-proto",
-  constraint: {
-    type: "build-type-group-proto",
-  },
-  structure: wy.bind("name"),
-});
-
-wy.defineWidget({
-  name: "build-platform-group",
-  constraint: {
-    type: "build-platform-group",
-  },
-  structure: wy.flow({
-    name: [wy.bind("name"), ":"],
-    types: wy.horizList({type: "build-type-group"}, "types"),
-  }, {state: "state"}),
-});
-
-wy.defineWidget({
-  name: "build-type-group",
-  constraint: {
-    type: "build-type-group",
-  },
-  structure: wy.bind("name", {state: "state"}),
-});
-
-wy.defineWidget({
   name: "xpcshell-build-fail-group",
   doc: "characterize xpcshell failure groups",
   constraint: {
@@ -425,11 +398,6 @@ wy.defineWidget({
     }),
   },
   impl: {
-    investigateLabel: function() {
-      // XXX this will not vary, this should not be computed and instead
-      //  we should use wy.static or something.
-      return "investigate";
-    },
   },
   events: {
     types: {
