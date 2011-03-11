@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Poor man's daemonization by:
+# - killing the previous thing we might have kicked off using pgrep
+# - running the thing using nohup with output to ~/runlogs (have one!)
+
+LOGFILE=~/runlogs/nohup-`date "+%Y-%m-%d--%H-%M.out"`
+
+pkill -f "node r.js arbpl/cmdline.js web"
+nohup ./prod-webserve-hbase > $LOGFILE &
+
