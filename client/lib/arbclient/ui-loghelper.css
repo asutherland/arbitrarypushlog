@@ -12,6 +12,7 @@
 
   padding: 0px 6px;
 
+  max-width: @logIndent - @indent - 1.4em;
   white-space: nowrap;
 
   border-radius: 6px;
