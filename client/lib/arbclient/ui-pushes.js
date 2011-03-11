@@ -38,10 +38,12 @@
 define(
   [
     "wmsy/wmsy",
+    "arbcommon/build-aggregator",
     "text!./ui-pushes.css",
   ],
   function(
     $wmsy,
+    $buildAggr,
     $_css
   ) {
 
@@ -477,6 +479,7 @@ wy.defineWidget({
 wy.defineWidget({
   name: "build-details-container",
   doc: "build details popup payload container",
+  focus: wy.focus.domain.vertical("actualDetails"),
   constraint: {
     type: "build-details-container",
   },
@@ -491,6 +494,8 @@ wy.defineWidget({
   constraint: {
     type: "build-details",
   },
+  // XXX this is very dumb, but I don't want the focus ring outside of us.
+  focus: wy.focus.item,
   structure: {
     builderName: wy.bind(["builder", "name"]),
 
@@ -513,9 +518,36 @@ wy.defineWidget({
                                   }),
 
       }
-    }
+    },
+
+    failBlock: {
+      failHeaderLabel: "Failures:",
+      failures: wy.vertList({type: "build-fail-summary"},
+                            wy.computed("failSummaries")),
+    },
   },
   impl: {
+    preInit: function() {
+      this._failAggr = null;
+    },
+    /**
+     * Run the build aggregator to get a list of failure summaries.  We are
+     *  wasteful about this since we don't need the platform clustering, but
+     *  it's not particularly expensive.
+     * XXX The end goal here is to be using this to break out failures by
+     *  the subsystem they belong to.  This will require a sorta parallel
+     *  structure to build-fail-group and the new widgets used to do that
+     *  since it would be dumb to show a list of builders and just show us
+     *  again...
+     */
+    failSummaries: function() {
+      if (this._failAggr)
+        return this._failAggr;
+
+      this._failAggr = $buildAggr.aggregateBuilds(this.__context.tinderTree,
+                                                  [this.obj]);
+      return this._failAggr.failGroups;
+    },
     briefLogLink: function briefLogLink() {
       // logURL looks like http://tinderbox.mozilla.org/Tree/BuildId.gz,
       //  we want to insert the cgi script directive in the middle.
