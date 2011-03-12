@@ -164,7 +164,7 @@ LocalChewer.prototype = {
       endTime: logStamp,
       logURL: this._path,
       revs: {},
-      note: "",
+      richNotes: [],
       errorParser: "mozmill",
       _scrape: "",
     });

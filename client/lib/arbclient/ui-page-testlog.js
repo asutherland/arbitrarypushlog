@@ -137,16 +137,16 @@ wy.defineWidget({
       windowsLabel: "Windows:",
       windows: wy.vertList({type: "window"},
                            ["failureContext", "windows", "windows"]),
-      preEventsLabel: "Events preceding the test:",
-      preEvents: wy.vertList(eventDelayInterposer(
-                               {type: "interposed-delay"},
-                               {type: "log4moz-record"}),
-                             ["failureContext", "preEvents"]),
       eventsLabel: "Events from the test:",
       events: wy.vertList(eventDelayInterposer(
                             {type: "interposed-delay"},
                             {type: "log4moz-record"}),
                           ["failureContext", "events"]),
+      preEventsLabel: "Events preceding the test:",
+      preEvents: wy.vertList(eventDelayInterposer(
+                               {type: "interposed-delay"},
+                               {type: "log4moz-record"}),
+                             ["failureContext", "preEvents"]),
     },
   },
 });

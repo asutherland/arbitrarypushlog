@@ -59,23 +59,9 @@
   }
 }
 
-.stateFgMixin {
-  [state="building"] {
-    color: #999;
-  }
-  [state="success"] {
-    color: #390;
-  }
-  [state="testfailed"] {
-    color: #f60;
-  }
-  [state="busted"] {
-    color: #d00;
-  }
-}
-
 .stateBgMixin {
   color: white;
+  /* base tinderbox build states */
   [state="building"] {
     background-color: #999;
   }
@@ -91,22 +77,13 @@
   [state="busted"] {
     background-color: #d00;
   }
-}
-
-.stateBorderMixin {
-  border-width: 1px;
-  border-style: solid;
-  [state="building"] {
-    border-color: #999;
+  /* our extended states! */
+  [state="testfailed-someunknown"] {
+    background-color: #f60;
   }
-  [state="success"] {
-    border-color: #390;
-  }
-  [state="testfailed"] {
-    border-color: #f60;
-  }
-  [state="busted"] {
-    border-color: #d00;
+  [state="testfailed-allknown"] {
+    color: gray;
+    background-color: #ffcba8;
   }
 }
 
@@ -271,6 +248,15 @@
     display: block;
     font-size: 150%;
     margin-bottom: 8px;
+  }
+
+  #humanSaysLabel {
+    .coolio-bar;
+  }
+  #humanExplanation {
+    display: block;
+    margin-left: 1em;
+    max-width: 40em;
   }
 
   #noteHeaderLabel {

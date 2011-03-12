@@ -488,6 +488,80 @@ wy.defineWidget({
   },
 });
 
+var BUILDSTATUS_STRINGS = wy.defineLocalizedMap("build-status-strings", {
+  "building":
+    "This build is still building or running tests.",
+  "building*":
+    'This build is still building, but has been pre-emptively annotated ' +
+    'with a note (aka "starred the build"), probably because it is already ' +
+    'known there will be a failure.',
+  "success":
+    'This build built or ran its tests without any problems that it could ' +
+    'detect.  Hooray!',
+  "success*":
+    'This build successfully built/ran its tests, but has been annotated ' +
+    'a note (aka "starred the build") for no reason that we can fathom.  ' +
+    'Maybe someone expected the build to fail?',
+  "exception":
+    'There was a problem running this build that was unrelated to the task ' +
+    'the build was trying to accomplish (compiling/running tests/other).  ' +
+    'Something fundamental like checking out the source code failed.  ' +
+    'This build will automatically be re-run by the buildbot infrastructure.',
+  "exception*":
+    'There was a problem running this build that was unrelated to the task ' +
+    'the build was trying to accomplish (compiling/running tests/other).  ' +
+    'Something fundamental like checking out the source code failed.  ' +
+    'This build will automatically be re-run by the buildbot infrastructure. ' +
+    'Someone was nice enough to leave a note (aka "star") to either explain ' +
+    'the failure or to express that the problem is known and hopefully being ' +
+    'addressed.',
+  "testfailed":
+    'One or more of the tests run in this build failed.',
+  "testfailed*":
+    'One or more of the tests run in this build failed, but someone has left ' +
+    'a note (aka "starred the build") which should indicate that this is ' +
+    'either: a ' +
+    'known intermttent failure (in which case a bug for the intermittent ' +
+    'failure should be referenced), or that action has been taken to rectify ' +
+    'the test failure by backing out the suspected offending changesets.',
+  "testfailed-allknown":
+    'One or more tests run in this build failed, but all of the failed tests ' +
+    'are known to be intermittent failures and so these are probably ' +
+    'nothing to be concerned about, though you should be sad that these ' +
+    'failures are tolerated.',
+  "testfailed-allknown*":
+    'There were some test failures, but they were all known and someone has ' +
+    'added a note (aka "starred the build"), hopefully/probably citing the ' +
+    'bug numbers that are used to "track" these failures.',
+  "testfailed-someunknown":
+    'One or more tests run in this build failed.  At least one of the failed ' +
+    'tests occurs infrequently enough that it is a surprise to this ' +
+    'automated system and should be considered a potential new failure.',
+  "testfailed-someunknown*":
+    'One or more tests run in this build failed.  At least one of the failed ' +
+    'tests occurs infrequently enough that it is a surprise to this ' +
+    'automated system and should be considered a potential new failure. ' +
+    'Someone has added a note (aka "starred the build"), which should ' +
+    'indicate that this is either: a ' +
+    'known intermttent failure (in which case a bug for the intermittent ' +
+    'failure should be referenced), or that action has been taken to rectify ' +
+    'the test failure by backing out the suspected offending changesets.',
+  "busted":
+    'The compilation process in this build failed.  We did not even get to ' +
+    'run tests!  Sometimes this type of failure just ' +
+    'indicates a problem with the build machine, but most of the time ' +
+    'someone pushed a changeset with a problem and that code will need to ' +
+    'be backed out (removed).',
+  "busted*":
+    'The compilation process in this build failed, but someone has left a ' +
+    'note (aka "starred the build") which should explain why the failure is ' +
+    'believed to have happened and what action has been taken or will be ' +
+    'taken to address the problem.  Sometimes this type of failure just ' +
+    'indicates a problem with the build machine, but most of the time ' +
+    'someone pushed a changeset with a problem and that code will need to ' +
+    'be backed out (removed).',
+});
+
 wy.defineWidget({
   name: "build-details",
   doc: "build details popup payload",
@@ -498,6 +572,11 @@ wy.defineWidget({
   focus: wy.focus.item,
   structure: {
     builderName: wy.bind(["builder", "name"]),
+
+    humanBlock: {
+      humanSaysLabel: "Human Translation:",
+      humanExplanation: wy.bind(wy.computed("stateExplanation")),
+    },
 
     noteBlock: {
       noteHeaderLabel: "Notes:",
@@ -547,6 +626,11 @@ wy.defineWidget({
       this._failAggr = $buildAggr.aggregateBuilds(this.__context.tinderTree,
                                                   [this.obj]);
       return this._failAggr.failGroups;
+    },
+    stateExplanation: function() {
+      var richState = this.obj.state +
+                        (this.obj.richNotes.length ? "*" : "");
+      return BUILDSTATUS_STRINGS.lookup(richState);
     },
     briefLogLink: function briefLogLink() {
       // logURL looks like http://tinderbox.mozilla.org/Tree/BuildId.gz,

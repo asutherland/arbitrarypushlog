@@ -70,8 +70,14 @@
     [who="fdh"]{
       .action-bubble(#472255, 0em);
     }
+    [who="fdhb"]{
+      .action-bubble(#4e3b55, 0em);
+    }
     [who="winhelp"]{
       .action-bubble(#175567, 1em);
+    }
+    [who="winhelpb"]{
+      .action-bubble(#305b67, 1em);
     }
   }
   #stream {

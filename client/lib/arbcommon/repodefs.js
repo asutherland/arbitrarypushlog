@@ -526,6 +526,9 @@ var DUMMY_LOCAL_TREE = new TinderTreeDef({
   product: "Local",
   repos: [REPOS["comm-central"]],
   mount: {},
+  typeGroups: [
+    "mozmill",
+  ],
 });
 
 exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
