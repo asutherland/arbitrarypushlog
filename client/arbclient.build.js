@@ -1,6 +1,6 @@
 ({
   baseUrl: "./",
-  optimize: "none",
+  optimize: "uglify",
   packages: [
     { name: "arbclient", location: ".", lib: "lib/arbclient" },
     { name: "arbcommon", location: ".", lib: "lib/arbcommon" },
