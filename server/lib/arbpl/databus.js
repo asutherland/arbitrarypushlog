@@ -48,13 +48,18 @@
 
 define(
   [
+    "buffer",
+    "q", "q-http",
     "arbcommon/repodefs",
     "exports"
   ],
   function(
+    $buffer,
+    $Q, $Qhttp,
     $repodefs,
     exports
   ) {
+var when = $Q.when;
 
 var MAX_PUSH_RANGE = 8;
 
@@ -74,7 +79,7 @@ var MAX_PUSH_RANGE = 8;
  *  include the new push.  For composite trees, only the outermost repo and
  *  its pushes matters for subscription purposes.
  */
-function DataServer(bridgeSink) {
+function DataServer(ioSocky, bridgeSink) {
   /**
    * @typedef[ClientSub @dict[
    *   @key[client IOClient]{
@@ -107,6 +112,10 @@ function DataServer(bridgeSink) {
   this._allSubs = [];
 
   this._bridgeSink = bridgeSink;
+  this._bridgeSink._dataServer = this;
+
+  this._ioSocky = ioSocky;
+  ioSocky.on("connection", this.onConnection.bind(this));
 }
 DataServer.prototype = {
   onConnection: function(client) {
@@ -186,12 +195,17 @@ DataServer.prototype = {
         break;
     }
   },
-  onClientDisconnection: function(client, sub) {
+  
+  onClientDisconnect: function(client, sub) {
     this._allSubs.splice(this._allSubs.indexOf(sub), 1);
     if (sub.treeName) {
       var treeSubs = this._treeSubsMap[sub.treeName];
       treeSubs.splice(treeSubs.indexOf(sub), 1);
     }
+  },
+
+  broadcast: function(msg) {
+    this._ioSocky.broadcast(msg);
   },
 };
 exports.DataServer = DataServer;
@@ -203,13 +217,55 @@ exports.DataServer = DataServer;
  *  so that new subscribers can get the somewhat ephemeral data immediately
  *  and without having to scrape it themselves.
  */
-function ScraperBridgeSink() {
+function ScraperBridgeSink(server) {
   /**
    * Latched tree meta information.
    */
   this._treeMeta = {};
+
+  this._server = server;
+  this._server.on("request", this.onRequest.bind(this));
+
+  this._dataServer = null;
 }
 ScraperBridgeSink.prototype = {
+  onRequest: function(req, resp) {
+    var data = {strSoFar: "", resp: resp};
+    req.on("data", this.onReqData.bind(this, req, data));
+    req.on("end", this.onReqEnd.bind(this, req, data));
+  },
+
+  onReqData: function(req, data, chunk) {
+    data.strSoFar += chunk.toString("utf8");
+  },
+
+  onReqEnd: function(req, data) {
+    var msg;
+    try {
+      msg = JSON.parse(data.strSoFar);
+    }
+    catch (ex) {
+      console.error("received malformed message", ex);
+      data.resp.statusCode = 500;
+      data.resp.write("BAD!");
+      data.resp.end();
+      return;
+    }
+    data.resp.statusCode = 200;
+    data.resp.write("OK");
+    data.resp.end();
+
+    this.onMessage(msg);
+  },
+
+  onMessage: function(msg) {
+    console.log("sideband message", msg);
+    switch (msg.type) {
+      default:
+        this._dataServer.broadcast(msg);
+        break;
+    }
+  },
 };
 exports.ScraperBridgeSink = ScraperBridgeSink;
 
@@ -217,9 +273,44 @@ exports.ScraperBridgeSink = ScraperBridgeSink;
  * Instantiated by the scraper process in order to send information to the data
  *  server process.
  */
-function ScraperBridgeSource() {
+function ScraperBridgeSource(targetPort) {
+  this._targetPort = targetPort;
 }
 ScraperBridgeSource.prototype = {
+  send: function(message) {
+    var deferred = $Q.defer();
+    when(
+      $Qhttp.request({
+        method: "POST",
+        host: "localhost",
+        port: this._targetPort,
+        path: "/",
+        body: [JSON.stringify(message)],
+        charset: "utf8",
+      }),
+      function(resp) {
+        if (resp.status !== 200) {
+          deferred.reject("non-200 status: " + resp.status);
+          return;
+        }
+        // this is vaguely ridiculous...
+        when(resp.body,
+          function(body) {
+            var rstr = "";
+            when(body.read(),
+              function(bodyBuf) {
+                deferred.resolve(bodyBuf.toString("utf8"));
+              }, deferred.reject);
+          },
+          function() {
+            deferred.reject("problem reading body");
+          }
+        );
+      },
+      deferred.reject
+    );
+    return deferred.promise;
+  }
 };
 exports.ScraperBridgeSource = ScraperBridgeSource;
 

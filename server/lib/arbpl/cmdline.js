@@ -136,7 +136,26 @@ switch (options.command) {
     );
     break;
 
-  case "servermsg":
+  // test function to push something to the clients using console.log.
+  case "testpush":
+    $require(
+      ["arbpl/databus"],
+      function($databus) {
+        console.log("creating data bridge");
+        var sink = new $databus.ScraperBridgeSource(8009);
+        console.log("sending message");
+        when(sink.send({type: "test", message: "do it."}),
+          function(rstr) {
+            console.log("message sent");
+            console.log("response body was:", rstr);
+            process.exit(0);
+          },
+          function(errstr) {
+            console.error("problem sending message", errstr);
+          });
+      }
+    );
+    break;
 
 
   case "localchew":

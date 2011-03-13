@@ -37,22 +37,18 @@
 
 define(
   [
-    "fs",
-    "buffer",
-    "connect",
+    "fs", "buffer", "http",
     "q",
-    "express",
+    "connect", "express",
     "socket.io",
     "../datastore",
     "arbcommon/repodefs",
     "../databus",
   ],
   function(
-    $fs,
-    $buffer,
-    $connect,
+    $fs, $buffer, $http,
     $Q,
-    $express,
+    $connect, $express,
     $io,
     // us
     $datastore,
@@ -216,16 +212,15 @@ console.log("LISTENING ON", LISTEN_PORT);
 app.listen(LISTEN_PORT);
 
 ////////////////////////////////////////////////////////////////////////////////
-// socket.io hookup
+// sideband notifications from the scraper, socket.io hookup
 
-/*
+var sideServer = new $http.Server();
+var scraperSink = new $databus.ScraperBridgeSink(sideServer);
+
 var socky = $io.listen(app);
-var dataServer = new $databus.DataServer();
-socky.on("connection", dataServer.onConnection.bind(dataServer));
-*/
+var dataServer = new $databus.DataServer(socky, scraperSink);
 
-////////////////////////////////////////////////////////////////////////////////
-// sideband notifications from the scraper
-
+console.log("SIDEBAND LISTENING ON", LISTEN_PORT + 1);
+sideServer.listen(LISTEN_PORT + 1);
 
 }); // end require.def

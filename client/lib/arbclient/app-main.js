@@ -43,6 +43,7 @@ define(
     "arbcommon/repodefs",
     "./chew-loghelper",
     "./ui-main",
+    "require",
     "exports"
   ],
   function(
@@ -52,6 +53,7 @@ define(
     $repodefs,
     $chew_loghelper,
     $ui_main,
+    $require,
     exports
   ) {
 var when = $pwomise.when;
@@ -199,7 +201,7 @@ ArbApp.prototype = {
     for (var key in keyDeltas) {
       this._loc[key] = keyDeltas[key];
     }
-    console.log("trying to navigate to", this._loc);
+    //console.log("trying to navigate to", this._loc);
     this._setLocation(this._loc);
   },
 
@@ -240,7 +242,32 @@ ArbApp.prototype = {
         self.error = err;
         self._updateState("error");
       });
+  },
 
+  /**
+   * Invoked once socket.io has been loaded and so we should have io.Socket
+   *  available to us.
+   */
+  hookupSocket: function() {
+    console.log("establishing socket");
+    this._sock = new io.Socket();
+    this._sock.on("connect", this.onConnect.bind(this));
+    this._sock.on("message", this.onMessage.bind(this));
+    this._sock.on("disconnect", this.onDisconnect.bind(this));
+    this._sock.connect();
+  },
+
+  onConnect: function() {
+    console.log("socket.io connection established");
+  },
+
+  onMessage: function(msg) {
+    console.log("message!", msg);
+  },
+
+  onDisconnect: function() {
+    console.log("socket.io connection lost");
+    this.hookupSocket();
   },
 };
 
@@ -249,6 +276,10 @@ exports.main = function main() {
 
   var app = window.app = new ArbApp(window);
   $ui_main.bindApp(app);
+
+  $require(["socket.io/socket.io.js"], function() {
+    app.hookupSocket();
+  });
 };
 
 }); // end define
