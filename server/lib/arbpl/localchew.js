@@ -44,14 +44,14 @@ define(
   [
     "fs",
     "q",
-    "./datastore",
+    "./hstore",
     "./mozmill-logfrob",
     "exports"
   ],
   function(
     $fs,
     $Q,
-    $datastore,
+    $hstore,
     $mozmillFrobber,
     exports
   ) {
@@ -75,7 +75,7 @@ var LOCAL_TREE_ID = "local";
  */
 function LocalChewer() {
   this._chewDeferred = null;
-  this._db = new $datastore.HStore();
+  this._db = new $hstore.HStore();
   this._usePushId = null;
 }
 LocalChewer.prototype = {

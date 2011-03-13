@@ -37,8 +37,6 @@
 
 /**
  * HBase interaction.
- *
- *
  **/
 
 define(

@@ -35,6 +35,10 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/**
+ *
+ **/
+
 define(
   [
     "narscribblus/utils/pwomise",

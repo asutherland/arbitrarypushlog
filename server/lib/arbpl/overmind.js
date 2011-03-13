@@ -60,7 +60,7 @@
 define(
   [
     "q", "q-http",
-    "./datastore",
+    "./hstore",
     "./tinderboxer",
     "./xpcshell-logfrob", "./mozmill-logfrob",
     "./mochitest-logfrob", "./reftest-logfrob",
@@ -70,7 +70,7 @@ define(
   ],
   function(
     $Q, $Qhttp,
-    $datastore,
+    $hstore,
     $tinderboxer,
     $frobXpcshell, $frobMozmill,
     $frobMochitest, $frobReftest,
@@ -81,7 +81,7 @@ define(
 
 var when = $Q.when;
 
-var DB = new $datastore.HStore();
+var DB = new $hstore.HStore();
 
 var HOURS_IN_MS = 60 * 60 * 1000;
 

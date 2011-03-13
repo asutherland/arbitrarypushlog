@@ -41,7 +41,7 @@ define(
     "q",
     "connect", "express",
     "socket.io",
-    "../datastore",
+    "../hstore",
     "arbcommon/repodefs",
     "../databus",
   ],
@@ -51,14 +51,14 @@ define(
     $connect, $express,
     $io,
     // us
-    $datastore,
+    $hstore,
     $repodefs,
     $databus
   ) {
 var when = $Q.when;
 var $connectUtils = $connect.utils;
 
-var DB = new $datastore.HStore();
+var DB = new $hstore.HStore();
 var app = $express.createServer();
 
 var LISTEN_PORT = 8008;
