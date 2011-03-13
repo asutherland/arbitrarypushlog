@@ -44,6 +44,7 @@ define(
     "../hstore",
     "arbcommon/repodefs",
     "../databus",
+    "../datastore",
   ],
   function(
     $fs, $buffer, $http,
@@ -53,11 +54,13 @@ define(
     // us
     $hstore,
     $repodefs,
-    $databus
+    $databus,
+    $datastore
   ) {
 var when = $Q.when;
 var $connectUtils = $connect.utils;
 
+// importante: this is only for log fetching.
 var DB = new $hstore.HStore();
 var app = $express.createServer();
 
@@ -218,7 +221,7 @@ var sideServer = new $http.Server();
 var scraperSink = new $databus.ScraperBridgeSink(sideServer);
 
 var socky = $io.listen(app);
-var dataServer = new $databus.DataServer(socky, scraperSink);
+var dataServer = new $datastore.DataServer(socky, scraperSink);
 
 console.log("SIDEBAND LISTENING ON", LISTEN_PORT + 1);
 sideServer.listen(LISTEN_PORT + 1);
