@@ -87,7 +87,7 @@ var OPTS = [
   {
     name: "command",
     position: 0,
-    help: "one of: sync, web, localchew",
+    help: "one of: sync, web, localchew, backfill",
   },
 ];
 
@@ -135,6 +135,9 @@ switch (options.command) {
       }
     );
     break;
+
+  case "servermsg":
+
 
   case "localchew":
     $require(

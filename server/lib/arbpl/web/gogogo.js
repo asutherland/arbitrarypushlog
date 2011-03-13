@@ -41,18 +41,23 @@ define(
     "buffer",
     "connect",
     "q",
+    "express",
+    "socket.io",
     "../datastore",
     "arbcommon/repodefs",
-    "express"
+    "../databus",
   ],
   function(
     $fs,
     $buffer,
     $connect,
     $Q,
+    $express,
+    $io,
+    // us
     $datastore,
     $repodefs,
-    $express
+    $databus
   ) {
 var when = $Q.when;
 var $connectUtils = $connect.utils;
@@ -209,5 +214,18 @@ app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
 
 console.log("LISTENING ON", LISTEN_PORT);
 app.listen(LISTEN_PORT);
+
+////////////////////////////////////////////////////////////////////////////////
+// socket.io hookup
+
+/*
+var socky = $io.listen(app);
+var dataServer = new $databus.DataServer();
+socky.on("connection", dataServer.onConnection.bind(dataServer));
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// sideband notifications from the scraper
+
 
 }); // end require.def

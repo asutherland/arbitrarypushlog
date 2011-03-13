@@ -149,7 +149,7 @@ var BUILD_TYPES = [
     },
   },
   {
-    regexes: [/mochitest-(other)/, /mochitests-(\d+)\//i,],
+    regexes: [/mochitest-?(other)/, /mochitests-?(\d+)\//i,],
     buildType: {
       type: "test",
       subtype: "mochitest",

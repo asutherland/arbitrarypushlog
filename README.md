@@ -35,6 +35,7 @@ package.json...
 - express/connect: web serving framework, used very shallowly.
 - thrift: for hbase talkin'
 - nomnom: option parsing
+- socket.io: realtime updates
 
 The npm version is no good and so you need to git clone the below and then
 install using npm somehow.  (I use "npm link".)

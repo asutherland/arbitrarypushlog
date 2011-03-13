@@ -59,8 +59,17 @@
 
 #state-good {
   #header {
+    position: fixed;
+    top: 0;
+    left: 0;
     background-color: black;
-    margin: -8px -8px 4px -8px;
+    width: 100%;
+    /* be higher than the focus ring since it can physically overlap us. */
+    z-index: 1100;
+  }
+
+  #page {
+    margin-top: 30px;
   }
 }
 
