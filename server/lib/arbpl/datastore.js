@@ -184,34 +184,6 @@ function DataServer(ioSocky, bridgeSink) {
   this._bridgeSink = bridgeSink;
   this._bridgeSink._dataServer = this;
 
-  /**
-   * @typedef[DBOp @dict[
-   *   @key[treeId String]
-   *   @key[op @oneof["summary"]]
-   *   @key[pushId]
-   *   @key[interestedSubs @listof[ClientSub]]{
-   *     The list of clients who want to hear the response.
-   *   }
-   * ]]
-   **/
-  /**
-   * Ordered list of the pending database operations requested.
-   */
-  this._dbOpsList = [];
-  /**
-   * @dictof[
-   *   @key["DBOp hash"]{
-   *     Concatenation of the treeId, op, and pushId for the db operation.
-   *   }
-   *   @value[DBOp]
-   * ]{
-   *   Maps pending DB operations from a hash of their query characteristics
-   *   so that if someone wants to issue a query that is already pending, we
-   *   can just add their subscription to the list.
-   * }
-   */
-  this._dbOpsMap = {};
-
   this._db = new $hstore.HStore();
 
   this._ioSocky = ioSocky;
@@ -252,6 +224,12 @@ DataServer.prototype = {
    * We got a message from a client, dispatch to the right method.
    */
   onClientMessage: function(client, sub, msg) {
+    if (msg.seqId !== sub.seqId + 1) {
+      console.warn("got message with seqId", msg.seqId,
+                   "when our last known seqId was", sub.seqId);
+    }
+    sub.seqId = msg.seqId;
+
     switch (msg.type) {
       case "subtree":
         this.reqSubscribeToTree(client, sub, msg);
@@ -298,19 +276,18 @@ DataServer.prototype = {
       return;
     }
 
-    if (!msg.hasOwnProperty("highPushId") ||
-        !msg.hasOwnProperty("lowPushId") ||
-        (typeof(msg.highPushId) !== "number") ||
-        (typeof(msg.lowPushId) !== "number") ||
-        isNaN(msg.highPushId) || isNaN(msg.lowPushId) ||
-        (msg.highPushdId - msg.lowPushId >= MAX_PUSH_RANGE)) {
-      this._scoldClient(client, "Bad push ranges.");
+    if (!msg.hasOwnProperty("pushId") ||
+        (msg.pushId !== "recent" &&
+         ((typeof(msg.pushId) !== "number") ||
+          isNaN(msg.pushId)))) {
+      this._scoldClient(client, "Illegal pushId: " + msg.pushId);
       return;
     }
 
     // - update
-    sub.highPushId = msg.highPushId;
-    sub.lowPushId = msg.lowPushId;
+    // XXX
+    //sub.highPushId = msg.highPushId;
+    //sub.lowPushId = msg.lowPushId;
 
     if (msg.treeName != sub.treeName) {
       // remove from old tree sub list...
@@ -321,31 +298,30 @@ DataServer.prototype = {
 
       // add to new tree sub list
       if (!this._treeSubsMap.hasOwnProperty(msg.treeName))
-        this._treeSubsMap[msg.treeName] =
+        this._treeSubsMap[msg.treeName] = [];
       treeSubs = this._treeSubsMap[msg.treeName];
 
       sub.treeName = msg.treeName;
       treeSubs.push(sub);
 
+      /*
       var treeMeta = this._bridgeSink.getTreeMeta(sub.treeName);
       if (treeMeta)
-        client.send({type: "treemeta", meta: treeMeta});
+        client.send({seqId: sub.seqId, lastForSeq: false,
+                     type: "treemeta", meta: treeMeta});
+       */
     }
-  },
 
-  /**
-   * Request the database fetch all the summary columns for a given push id
-   *  in the given tree.  If there is already a pending request for the
-   *  same data, the request is consolidated.  Only one outstanding database
-   *  request exists at a time because we only use one hbase thrift connection
-   *  right now and I have no idea whether the thrift/hbase-thrift semantics
-   *  allow for overlapped requests, but I'm suspecting probably not.
-   *  Obviously not a hard thing for us to raise the limit, and we would
-   *  want to limit the number of requests we have in flight at once anyways.
-   */
-  dbPushSummaryFetch: function() {
+    var self = this;
+    when(this._db.getMostRecentKnownPush(treeDef.id),
+      function(rows) {
+        client.send({
+          seqId: sub.seqId, lastForSeq: true,
+          type: "pushinfo",
+          keysAndValues: self._db.normalizeOneRow(rows),
+        });
+      });
   },
-
 
   /**
    * Grow the subscription's push range, potentially conditionally.  A

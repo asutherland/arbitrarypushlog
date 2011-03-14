@@ -146,53 +146,6 @@ app.configure("production", function() {
              "application/javascript");
 });
 
-/**
- * For each tree, we will cache the most recent set of pushes to avoid
- *  generating needless traffic for the most likely cases.  This adds
- *  additionaly latency to our polling interval, although we could have the
- *  scraper help out by hitting a URL we expose...
- *
- * We store the JSON strings for the results on the assumption that the
- *  immutable strings will be better reused by concurrent requests, but this
- *  could be wrong.
- */
-var RECENT_PUSHES_CACHE = {};
-
-app.get("/tree/:tree/pushes", function(req, res) {
-  var tinderTree = $repodefs.safeGetTreeByName(req.params.tree);
-  if (!tinderTree) {
-    res.send(404);
-    return;
-  }
-  var highPushId = req.param("highpushid");
-  // check the cache if this is not specialized...
-  if (highPushId == null) {
-    if (tinderTree.name in RECENT_PUSHES_CACHE) {
-      res.setHeader("Content-Type", "application/json");
-      res.send(RECENT_PUSHES_CACHE[tinderTree.name]);
-      return;
-    }
-  }
-
-  when(DB.getMostRecentKnownPushes(tinderTree.id, 8, highPushId),
-    function(rowResults) {
-      var rowStates = DB.normalizeRowResults(rowResults);
-
-      var resultString = JSON.stringify(rowStates);
-      if (highPushId == null) {
-        RECENT_PUSHES_CACHE[tinderTree.name] = resultString;
-        setTimeout(function() {
-          delete RECENT_PUSHES_CACHE[tinderTree.name];
-        }, RECENT_PUSHES_CACHE_DURATION_MS);
-      }
-      res.setHeader("Content-Type", "application/json");
-      res.send(resultString);
-    },
-    function(err) {
-      res.send(500);
-    });
-});
-
 app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
   var tinderTree = $repodefs.safeGetTreeByName(req.params.tree);
   if (!tinderTree) {

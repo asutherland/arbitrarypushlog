@@ -81,14 +81,82 @@ function commonLoad(url, promiseName, promiseRef) {
 /**
  * Per-tinderbox tree server talking.
  */
-function RemoteStore(tinderTree) {
-  this.tinderTree = tinderTree;
+function RemoteStore(listener) {
+  this._listener = listener;
+
+  this.tinderTree = null;
   this.urlBase = "/";
+
+  this._onPushFunc = null;
+
+  this._pushCache = null;
+  this._nextSeqId = 1;
+
+  this.hookupSocket();
 }
 RemoteStore.prototype = {
-   _pushSorter: function(a, b) {
-     return b.push.pushDate - a.push.pushDate;
-   },
+  useTree: function(tinderTree) {
+    this.tinderTree = tinderTree;
+  },
+
+  /**
+   * Invoked once socket.io has been loaded and so we should have io.Socket
+   *  available to us.
+   */
+  hookupSocket: function() {
+    console.log("establishing socket");
+    this._sock = new io.Socket();
+    this._sock.on("connect", this.onConnect.bind(this));
+    this._sock.on("message", this.onMessage.bind(this));
+    this._sock.on("disconnect", this.onDisconnect.bind(this));
+    this._sock.connect();
+  },
+
+  onConnect: function() {
+    console.log("socket.io connection established");
+  },
+
+  onMessage: function(msg) {
+    switch (msg.type) {
+      case "error":
+        console.error("error from server:", msg.message, msg);
+        break;
+
+      case "treemeta":
+        console.log("treemeta", msg);
+        break;
+
+      case "pushinfo":
+        this.msgPushInfo(msg);
+        break;
+    }
+  },
+
+  onDisconnect: function() {
+    console.log("socket.io connection lost");
+    this.hookupSocket();
+  },
+
+  _pushSorter: function(a, b) {
+    return b.push.pushDate - a.push.pushDate;
+  },
+
+  subscribeToRecent: function(onPushFunc) {
+    this._pushCache = {};
+
+    this._sock.send({
+      seqId: this._nextSeqId++,
+      type: "subtree",
+      treeName: this.tinderTree.name,
+      pushId: "recent"
+    });
+  },
+
+  msgPushInfo: function(msg) {
+    console.log("push info", msg);
+    var push = this._normalizeOnePush(msg.keysAndValues);
+    this._listener.onNewPush(push);
+  },
 
   /**
    * Normalize push data (in the form of raw HBase maps) for a single

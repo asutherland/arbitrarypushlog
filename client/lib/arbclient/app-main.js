@@ -39,20 +39,24 @@ define(
   [
     "narscribblus/utils/pwomise",
     "narscribblus-plat/utils/env",
+    "wmsy/viewslice-array",
     "./rstore",
     "arbcommon/repodefs",
     "./chew-loghelper",
     "./ui-main",
+    "socket.io/socket.io.js",
     "require",
     "exports"
   ],
   function(
     $pwomise,
     $env,
+    $vs_array,
     $rstore,
     $repodefs,
     $chew_loghelper,
     $ui_main,
+    $_na_socketio,
     $require,
     exports
   ) {
@@ -65,7 +69,7 @@ var when = $pwomise.when;
  */
 function ArbApp(win) {
   this.tinderTree = null;
-  this.rstore = null;
+  this.rstore = new $rstore.RemoteStore(this);
 
   this.win = win;
   this._popLocationWrapped = this._popLocation.bind(this);
@@ -128,7 +132,7 @@ ArbApp.prototype = {
   _useTree: function(tinderTree) {
     if (this.tinderTree !== tinderTree) {
       this.tinderTree = tinderTree;
-      this.rstore = new $rstore.RemoteStore(this.tinderTree);
+      this.rstore.useTree(tinderTree);
     }
   },
 
@@ -208,20 +212,20 @@ ArbApp.prototype = {
   _getPushes: function(highPushId, pathNodes) {
     this._updateState("connecting");
     var self = this;
-    when(this.rstore.getRecentPushes(highPushId),
-      function gotPushes(pushes) {
-        self.page = {
-          page: "pushes",
-          pathNodes: pathNodes,
-          pushes: pushes,
-        };
-        self._updateState("good");
-      },
-      function fetchProblem(err) {
-        console.error("No go on the data.");
-        self.error = err;
-        self._updateState("error");
-      });
+
+    self._slice_pushes = new $vs_array.ArrayViewSlice([]);
+    self.page = {
+      page: "pushes",
+      pathNodes: pathNodes,
+      pushes: self._slice_pushes,
+    };
+    self._updateState("good");
+
+    self.rstore.subscribeToRecent();
+  },
+
+  onNewPush: function(push) {
+    this._slice_pushes.mutateSplice(0, 0, push);
   },
 
   _getLog: function(pushId, buildId, filterToTest, pathNodes) {
@@ -243,32 +247,6 @@ ArbApp.prototype = {
         self._updateState("error");
       });
   },
-
-  /**
-   * Invoked once socket.io has been loaded and so we should have io.Socket
-   *  available to us.
-   */
-  hookupSocket: function() {
-    console.log("establishing socket");
-    this._sock = new io.Socket();
-    this._sock.on("connect", this.onConnect.bind(this));
-    this._sock.on("message", this.onMessage.bind(this));
-    this._sock.on("disconnect", this.onDisconnect.bind(this));
-    this._sock.connect();
-  },
-
-  onConnect: function() {
-    console.log("socket.io connection established");
-  },
-
-  onMessage: function(msg) {
-    console.log("message!", msg);
-  },
-
-  onDisconnect: function() {
-    console.log("socket.io connection lost");
-    this.hookupSocket();
-  },
 };
 
 exports.main = function main() {
@@ -276,10 +254,6 @@ exports.main = function main() {
 
   var app = window.app = new ArbApp(window);
   $ui_main.bindApp(app);
-
-  $require(["socket.io/socket.io.js"], function() {
-    app.hookupSocket();
-  });
 };
 
 }); // end define

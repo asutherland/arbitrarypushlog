@@ -50,6 +50,7 @@ define(
     $Q,
     exports
   ) {
+var when = $Q.when;
 
 var TABLE_PUSH_FOCUSED = "arbpl_pushy";
 
@@ -168,17 +169,74 @@ var SCHEMA_TABLES = [
 ];
 
 /**
- * HBase datastore abstraction.
+ * @args[
+ *   @param[opcode @oneof["recent" "pushSummary" "logDetail" "putPush"]]
+ *   @param[treeId String]
+ *   @param[pushId Number]
+ *   @param[buildId String]{
+ *     The build id string, if relevant, or an empty string otherwise.
+ *   }
+ * ]
+ */
+function DBReadOp(opcode, treeId, pushId, buildId) {
+  this.opcode = opcode;
+  this.treeId = treeId;
+  this.pushId = pushId;
+  this.buildId = buildId;
+
+  // should be set only after verifying the op does not already exist!
+  this.deferred = null;
+
+  this.hash = treeId + "-" + opcode + "-" + pushId + "-" + buildId;
+}
+DBReadOp.prototype = {
+};
+
+function DBWriteOp(opcode, treeId, pushId, keysAndValues) {
+  this.opcode = opcode;
+  this.treeId = treeId;
+  this.pushId = pushId;
+  this.keysAndValues = keysAndValues;
+}
+DBWriteOp.prototype = {
+};
+
+/**
+ * HBase datastore abstraction built using promises.  All requests result in
+ *  a promise.  We serialize requests into a queue, but also utilize a hash
+ *  so that if an already pending request is received we can just provide the
+ *  promise for the already pending/outstanding request.
+ *
+ * Clients must not assume requests will be answered in the same order they are
+ *  issued because of request consolidation and the potential that we may use
+ *  multiple concurrent connections.
  */
 function HStore() {
-  this._connect();
+  /**
+   * Ordered list of the pending database operations requested.
+   */
+  this._dbOpsList = [];
+  /**
+   * @dictof[
+   *   @key["DBOp hash"]{
+   *     Concatenation of the treeId, op, and pushId for the db operation.
+   *   }
+   *   @value[DBOp]
+   * ]{
+   *   Maps pending DB operations from a hash of their query characteristics
+   *   so that if someone wants to issue a query that is already pending, we
+   *   can just add their subscription to the list.
+   * }
+   */
+  this._dbOpsMap = {};
 
   this._ensuringUnderway = false;
   this.bootstrapped = false;
-
   this._iNextTableSchema = 0;
 
   this._bootstrapDeferred = $Q.defer();
+
+  this._connect();
 }
 HStore.prototype = {
   _connect: function() {
@@ -258,16 +316,100 @@ HStore.prototype = {
     return this._bootstrapDeferred.promise;
   },
 
-  getMostRecentKnownPushes: function(treeId, count, highPushId) {
-    if (count == null)
-      count = 1;
+  _scheduleOp: function(op) {
+    op.deferred = $Q.defer();
+    // only read ops can be reused so only they should be mapped
+    if (op instanceof DBReadOp)
+      this._dbOpsMap[op.hash] = op;
+    this._dbOpsList.push(op);
+    if (this._dbOpsList.length === 1)
+      this._processNextOp();
+  },
+
+  _processNextOp: function() {
+    if (!this._dbOpsList.length)
+      return;
+    var op = this._dbOpsList[0];
+    var truePromise;
+    // The opcode names are decoupled from the functions; not ideal but probably
+    //  better than sticking direct function references or always performing
+    //  dynamic lookup.  I'm not wedded to this.
+    switch (op.opcode) {
+      case "recent":
+        truePromise = this._getMostRecentKnownPush(op.treeId);
+        break;
+      case "pushSummary":
+        truePromise = this._getPushInfo(op.treeId, op.pushId);
+        break;
+      case "logDetail":
+        truePromise = this._getPushLogDetail(op.treeId, op.pushId, op.buildId);
+        break;
+
+      case "putPush":
+        truePromise = this._putPushStuff(op.treeId, op.pushId, op.keysAndValues);
+        break;
+    }
+    var self = this;
+    function finished() {
+      // it has been prosecuted, remove.
+      self._dbOpsList.shift();
+      // only read ops are mapped because only they can be reused.
+      if (op instanceof DBReadOp)
+        delete self._dbOpsMap[op.hash];
+      self._processNextOp();
+    }
+    when(truePromise,
+      function(result) {
+        op.deferred.resolve(result);
+        finished();
+      },
+      function(err) {
+        op.deferred.reject(err);
+        finished();
+      }
+    );
+  },
+
+  getMostRecentKnownPush: function(treeId) {
+    var op = new DBReadOp("recent", treeId, 0, "");
+    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
+      return this._dbOpsMap[op.has].deferred.promise;
+    }
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
+  getPushInfo: function(treeId, pushId) {
+    var op = new DBReadOp("pushSummary", treeId, pushId, "");
+    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
+      return this._dbOpsMap[op.has].deferred.promise;
+    }
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
+  _getPushLogDetail: function(treeId, pushId, buildId) {
+    var op = new DBReadOp("logDetail", treeId, pushId, buildId);
+    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
+      return this._dbOpsMap[op.has].deferred.promise;
+    }
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
+  putPushStuff: function(treeId, pushId, keysAndValues) {
+    var op = new DBWriteOp("putPush", treeId, pushId, keysAndValues);
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
+  _getMostRecentKnownPush: function(treeId) {
     //console.log("getMostRecentKnownPush...", treeId);
     var deferred = $Q.defer();
     var self = this;
-    var startRow = highPushId ? transformPushId(parseInt(highPushId)) : ZEROES;
     this.client.scannerOpenWithStop(
       TABLE_PUSH_FOCUSED,
-      treeId + "," + startRow,
+      treeId + "," + ZEROES,
       // we need to specify the stop row to stop from reading into the next
       //  tree's data!
       treeId + "," + NINES,
@@ -280,7 +422,7 @@ HStore.prototype = {
         }
         else {
           self.client.scannerGetList(
-            scannerId, count,
+            scannerId, /* count */ 1,
             function(err, rowResults) {
               self.client.scannerClose(scannerId);
               if (err)
@@ -293,7 +435,7 @@ HStore.prototype = {
     return deferred.promise;
   },
 
-  getPushInfo: function(treeId, pushId) {
+  _getPushInfo: function(treeId, pushId) {
     var deferred = $Q.defer();
     this.client.getRowWithColumns(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
@@ -311,7 +453,7 @@ HStore.prototype = {
     return deferred.promise;
   },
 
-  getPushLogDetail: function(treeId, pushId, buildId) {
+  _getPushLogDetail: function(treeId, pushId, buildId) {
     var deferred = $Q.defer();
     this.client.get(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
@@ -361,7 +503,7 @@ HStore.prototype = {
     return rowStates;
   },
 
-  putPushStuff: function(treeId, pushId, keysAndValues) {
+  _putPushStuff: function(treeId, pushId, keysAndValues) {
     if (pushId == null) {
       console.error("Attempted to write with a gibberish push id", pushId);
       throw new Error("bad push id: " + pushId);
