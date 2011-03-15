@@ -46,6 +46,7 @@ define(
     "q",
     "./hstore",
     "./mozmill-logfrob",
+    "./databus",
     "exports"
   ],
   function(
@@ -53,11 +54,13 @@ define(
     $Q,
     $hstore,
     $mozmillFrobber,
+    $databus,
     exports
   ) {
 var when = $Q.when;
 
 var LOCAL_TREE_ID = "local";
+var LOCAL_TREE_NAME = "Local";
 
 /**
  * Process local test run results into a synthetic push in the database.
@@ -92,7 +95,7 @@ LocalChewer.prototype = {
     var self = this;
     when(this._db.bootstrap(),
       function() {
-        when(self._db.getMostRecentKnownPushes(LOCAL_TREE_ID, 1),
+        when(self._db.getMostRecentKnownPush(LOCAL_TREE_ID),
           function(rowResults) {
             if (rowResults.length) {
               var normalized = self._db.normalizeOneRow(rowResults);
@@ -191,10 +194,22 @@ LocalChewer.prototype = {
       failures: detailedFailures,
     };
 
+    // XXX dev mode port only...
+    var bridge = new $databus.ScraperBridgeSource(8009);
+
     var self = this;
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
       function() {
-        self._chewDeferred.resolve(self._usePushId);
+        when(bridge.send({
+               type: "push",
+               treeName: LOCAL_TREE_NAME,
+               pushId: self._usePushId,
+               keysAndValues: setstate
+             }),
+          function() {
+            self._chewDeferred.resolve(self._usePushId);
+          }
+        );
       });
   },
 };

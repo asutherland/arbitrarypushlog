@@ -143,6 +143,14 @@ ArbApp.prototype = {
   },
 
   ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "test"],
+  /**
+   * Infer current application state from our current URL state and make it so.
+   *  This is the only code path for changing meaningful application state for
+   *  simplicity.
+   *
+   * The current state model is a bit soupy; it would likely be better to move
+   *  to a more straightforward URL model of existence with routing semantics.
+   */
   _popLocation: function() {
     var env = $env.getEnv(this.win);
     var loc = this._loc = {};
@@ -201,6 +209,19 @@ ArbApp.prototype = {
     }
   },
 
+  /**
+   * Navigation request from the UI layer; the widget bound to us has a receive
+   *  handler that gets sent navigation requests by other widgets.
+   *
+   * @args[
+   *   @param[keyDeltas Object]{
+   *     New key/value pairs to clobber our existing navigation state.  Because
+   *     we have an explicit ordering on keys and sanitize our state, you only
+   *     need to null out the most important thing if there is a set of things
+   *     to invalidate.
+   *   }
+   * ]
+   */
   navigate: function(keyDeltas) {
     for (var key in keyDeltas) {
       this._loc[key] = keyDeltas[key];
@@ -209,6 +230,10 @@ ArbApp.prototype = {
     this._setLocation(this._loc);
   },
 
+  /**
+   * Subscribe us to either recent pushes for the current tree or a specific
+   *  push/set of pushes.
+   */
   _getPushes: function(highPushId, pathNodes) {
     this._updateState("connecting");
     var self = this;
@@ -221,11 +246,32 @@ ArbApp.prototype = {
     };
     self._updateState("good");
 
-    self.rstore.subscribeToRecent();
+    self.rstore.subscribeToRecent(6);
   },
 
-  onNewPush: function(push) {
-    this._slice_pushes.mutateSplice(0, 0, push);
+  /**
+   * Notification from the `RemoteStore` about a new `BuildPush`.
+   *
+   * @args[
+   *   @param[push BuildPush]
+   * ]
+   */
+  onNewPush: function(buildPush) {
+    // This goes at either end, so we don't have to get fancy on the index
+    //  finding.  Put it at the front unless it's older than the front push.
+    // (We order most recent to oldest.)
+    var idx = 0;
+    if (this._slice_pushes.data.length &&
+        buildPush.push.id < this._slice_pushes.data[0].push.id)
+      idx = this._slice_pushes.data.length;
+    this._slice_pushes.mutateSplice(0, 0, buildPush);
+  },
+
+  /**
+   * Notification from the `RemoteStore` that an existing `BuildPush` or one
+   *  of its children has been updated.
+   */
+  onModifiedPush: function(buildPush) {
   },
 
   _getLog: function(pushId, buildId, filterToTest, pathNodes) {

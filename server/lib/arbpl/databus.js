@@ -70,14 +70,14 @@ var MAX_PUSH_RANGE = 8;
  *  so that new subscribers can get the somewhat ephemeral data immediately
  *  and without having to scrape it themselves.
  */
-function ScraperBridgeSink(server) {
+function ScraperBridgeSink(httpServer) {
   /**
    * Latched tree meta information.
    */
   this._treeMeta = {};
 
-  this._server = server;
-  this._server.on("request", this.onRequest.bind(this));
+  this._httpServer = httpServer;
+  this._httpServer.on("request", this.onRequest.bind(this));
 
   this._dataServer = null;
 }
@@ -112,10 +112,13 @@ ScraperBridgeSink.prototype = {
   },
 
   onMessage: function(msg) {
-    console.log("sideband message", msg);
     switch (msg.type) {
+      case "push":
+        this._dataServer.sidebandPush(msg);
+        break;
+
       default:
-        this._dataServer.broadcast(msg);
+        console.warn("unexpected sideband message", msg);
         break;
     }
   },

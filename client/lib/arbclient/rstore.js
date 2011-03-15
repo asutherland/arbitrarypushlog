@@ -89,8 +89,29 @@ function RemoteStore(listener) {
 
   this._onPushFunc = null;
 
-  this._pushCache = null;
+  /**
+   * @dictof[
+   *   @key["push id"]
+   *   @value[BuildPush]
+   * ]{
+   *   All currently
+   * }
+   */
+  this._knownPushes = null;
+  this._subMode = null;
+  this._desiredPushes = null;
+
+  /**
+   * Next sequence id to use in messages to the server.
+   */
   this._nextSeqId = 1;
+  /**
+   * If we have a pending request, its sequence id; zero/falsey if there is no
+   *  pending request.
+   */
+  this._pendingSeq = 0;
+
+
 
   this.hookupSocket();
 }
@@ -113,10 +134,24 @@ RemoteStore.prototype = {
   },
 
   onConnect: function() {
+    // XXX this is where we might want to resubmit our current state to the
+    //  server or cause a higher level to re-establish, etc.
     console.log("socket.io connection established");
   },
 
   onMessage: function(msg) {
+    console.log("MESSAGE", msg);
+    if (msg.seqId !== -1) {
+      if (msg.seqId === this._pendingSeq) {
+        this._pendingSeq = 0;
+      }
+      else {
+        console.warn("Unexpected message seq; expected",
+                     this._pendingSeq, "got", msg.seqId,
+                     "message:", msg);
+      }
+    }
+
     switch (msg.type) {
       case "error":
         console.error("error from server:", msg.message, msg);
@@ -141,11 +176,13 @@ RemoteStore.prototype = {
     return b.push.pushDate - a.push.pushDate;
   },
 
-  subscribeToRecent: function(onPushFunc) {
-    this._pushCache = {};
+  subscribeToRecent: function(desiredPushesCount) {
+    this._knownPushes = {};
+    this._subMode = "recent";
+    this._desiredPushes = desiredPushesCount;
 
     this._sock.send({
-      seqId: this._nextSeqId++,
+      seqId: (this._pendingSeq = this._nextSeqId++),
       type: "subtree",
       treeName: this.tinderTree.name,
       pushId: "recent"
@@ -154,6 +191,20 @@ RemoteStore.prototype = {
 
   msgPushInfo: function(msg) {
     console.log("push info", msg);
+
+    // attempt to grow our subscription if required.
+    if (this._subMode === "recent" &&
+        msg.subPushCount < this._desiredPushes) {
+      console.log("trying to grow from", msg.subPushCount,
+                  "to", this._desiredPushes);
+      this._sock.send({
+        seqId: (this._pendingSeq = this._nextSeqId++),
+        type: "subgrow",
+        conditional: true,
+        dir: -1,
+      });
+    }
+
     var push = this._normalizeOnePush(msg.keysAndValues);
     this._listener.onNewPush(push);
   },
