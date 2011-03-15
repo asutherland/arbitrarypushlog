@@ -74,8 +74,14 @@ function HiveMind(treeDefs) {
   this._syncDeferred = null;
   this._curOvermind = null;
   this._timeRanges = null;
+
+  this._config = null;
 }
 HiveMind.prototype = {
+  configure: function(config) {
+    this._config = config;
+  },
+
   syncAll: function syncAll() {
     this._syncDeferred = $Q.defer();
 
@@ -91,7 +97,8 @@ HiveMind.prototype = {
       return;
     }
 
-    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop());
+    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop(),
+                                               this._config);
     var self = this;
     when(self._curOvermind.bootstrap(),
       function() {
@@ -137,7 +144,8 @@ HiveMind.prototype = {
       return;
     }
 
-    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop());
+    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop(),
+                                               this._config);
     var self = this, iRange = 0;
     function procNextRange() {
       if (iRange >= self._timeRanges.length) {

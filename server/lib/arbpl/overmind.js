@@ -61,6 +61,7 @@ define(
   [
     "q", "q-http",
     "./hstore",
+    "./databus",
     "./tinderboxer",
     "./xpcshell-logfrob", "./mozmill-logfrob",
     "./mochitest-logfrob", "./reftest-logfrob",
@@ -71,6 +72,7 @@ define(
   function(
     $Q, $Qhttp,
     $hstore,
+    $databus,
     $tinderboxer,
     $frobXpcshell, $frobMozmill,
     $frobMochitest, $frobReftest,
@@ -103,10 +105,12 @@ function PushlogDateString(d){
    + pad(d.getUTCSeconds()) + 'Z');
 }
 
-function Overmind(tinderTreeDef) {
+function Overmind(tinderTreeDef, config) {
   this.tinderTree = tinderTreeDef;
 
   this.tinderboxer = new $tinderboxer.Tinderboxer(tinderTreeDef.name);
+
+  this.bridge = new $databus.ScraperBridgeSource(config.bridgePort);
 
   this.state = "inactive";
   this._syncDeferred = null;
@@ -149,6 +153,15 @@ function Overmind(tinderTreeDef) {
    * ]
    */
   this._revInfoByRepoAndRev = null;
+
+  /**
+   * @listof[@dict[
+   * ]]{
+   *   List of pushes to process from oldest to newest; used by
+   *    `_processNextPush`, populated by `_processFirstPush`.
+   * }
+   */
+  this._pushQueue = null;
 
   /**
    * Hierarchical map that clusters the builds.  In the case of comm-central,
@@ -428,13 +441,32 @@ Overmind.prototype = {
         }
         else {
           if (self._pendingPushFetches == 0)
-            self._processNextPush();
+            self._processFirstPush();
         }
       },
       function(err) {
         self._pendingPushFetches--;
         console.error("Push fetch error", err, err.stack);
       });
+  },
+
+  /**
+   * Establish an oldest-to-newest processing order for _processNextPush, then
+   *  invoke _processNextPush which starts a chain of doing that.
+   */
+  _processFirstPush: function() {
+    var pushQueue = this._pushQueue = [];
+
+    var repoDef = this.tinderTree.repos[0];
+    for (var changeset in this._revMap) {
+      var aggrKey = repoDef.name + ":" + changeset;
+      if (!this._revInfoByRepoAndRev.hasOwnProperty(aggrKey))
+        throw new Error("Unable to map changeset " + changeset);
+      var csmeta = this._revInfoByRepoAndRev[aggrKey];
+      pushQueue.push({pushId: csmeta.push.id, changeset: changeset});
+    }
+    pushQueue.sort(function(a, b) { return a.pushId - b.pushId; });
+    this._processNextPush();
   },
 
   /**
@@ -450,16 +482,14 @@ Overmind.prototype = {
   _processNextPush: function() {
     this._noteState("db-delta:fetch");
 
-    var repoDef = this.tinderTree.repos[0];
-    var self = this;
-    for (var changeset in this._revMap) {
-      var aggrKey = repoDef.name + ":" + changeset;
-      if (!this._revInfoByRepoAndRev.hasOwnProperty(aggrKey))
-        throw new Error("Unable to map changeset " + changeset);
-      var csmeta = this._revInfoByRepoAndRev[aggrKey];
-      when(DB.getPushInfo(this.tinderTree.id, csmeta.push.id),
+    if (this._pushQueue.length) {
+      var repoDef = this.tinderTree.repos[0];
+      var todo = this._pushQueue.shift();
+
+      var self = this;
+      when(DB.getPushInfo(this.tinderTree.id, todo.pushId),
         function(rowResults) {
-          self._gotDbInfoForPush(changeset, rowResults);
+          self._gotDbInfoForPush(todo.changeset, rowResults);
         },
         function(err) {
           console.error("Failed to find good info on push...");
@@ -467,6 +497,7 @@ Overmind.prototype = {
       // we did something. leave!
       return;
     }
+
     // (we only reach here if there were no more changesets to process)
     this._noteState("logproc");
     this._processNextLog();
@@ -609,8 +640,18 @@ Overmind.prototype = {
     when(DB.putPushStuff(this.tinderTree.id, rootPush.id, setstate),
       function() {
         console.log("db write completed:", self.tinderTree.id, rootPush.id);
-        // - kickoff next processing step.
-        self._processNextPush();
+        // - sideband notification
+        when(self.bridge.send({
+               type: "push",
+               treeName: self.tinderTree.name,
+               pushId: rootPush.id,
+               keysAndValues: setstate,
+             }),
+          function() {
+            // - kickoff next processing step.
+            self._processNextPush();
+          }
+        );
       },
       function(err) {
         console.error("failed to write our many stories! keys were:");
@@ -734,7 +775,17 @@ Overmind.prototype = {
         console.log(" frobber db write completed");
         self._activeLogFrobbers.splice(
           self._activeLogFrobbers.indexOf(frobber), 1);
-        self._processNextLog();
+        // - sideband notification
+        when(self.bridge.send({
+               type: "push",
+               treeName: self.tinderTree.name,
+               pushId: job.pushId,
+               keysAndValues: stateObj,
+             }),
+          function() {
+            self._processNextLog();
+          }
+        );
       });
   },
 

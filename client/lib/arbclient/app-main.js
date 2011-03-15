@@ -62,6 +62,8 @@ define(
   ) {
 var when = $pwomise.when;
 
+var DESIRED_PUSHES = 6;
+
 /**
  * Responsible for tracking the general state of the application and handling
  *  navigation amongst various supported pages including web browser history
@@ -246,7 +248,7 @@ ArbApp.prototype = {
     };
     self._updateState("good");
 
-    self.rstore.subscribeToRecent(6);
+    self.rstore.subscribeToRecent(DESIRED_PUSHES);
   },
 
   /**
@@ -261,10 +263,17 @@ ArbApp.prototype = {
     //  finding.  Put it at the front unless it's older than the front push.
     // (We order most recent to oldest.)
     var idx = 0;
-    if (this._slice_pushes.data.length &&
-        buildPush.push.id < this._slice_pushes.data[0].push.id)
-      idx = this._slice_pushes.data.length;
-    this._slice_pushes.mutateSplice(0, 0, buildPush);
+    var slist = this._slice_pushes._list;
+    if (slist.length &&
+        buildPush.push.id < slist[0].push.id)
+      idx = slist.length;
+    this._slice_pushes.mutateSplice(idx, 0, buildPush);
+
+    // cull if required
+    if (slist.length > DESIRED_PUSHES) {
+      var delIdx = (idx == 0) ? (slist.length - 1) : 0;
+      this._slice_pushes.mutateSplice(delIdx, 1);
+    }
   },
 
   /**

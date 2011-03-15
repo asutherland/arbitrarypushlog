@@ -89,6 +89,11 @@ var OPTS = [
     position: 0,
     help: "one of: sync, web, localchew, backfill",
   },
+  {
+    name: "bridge-port",
+    string: "--bridge-port",
+    default: 8009,
+  },
 ];
 
 // We need to do our own argv slicing to compensate for RequireJS' r.js
@@ -108,6 +113,9 @@ switch (options.command) {
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
+        $hivemind.HIVE_MIND.configure({
+          bridgePort: parseInt(options["bridge-port"]),
+        });
         when($hivemind.HIVE_MIND.syncAll(),
           function() {
             console.log("synchronized everyone! woo!");
@@ -124,6 +132,9 @@ switch (options.command) {
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
+        $hivemind.HIVE_MIND.configure({
+          bridgePort: parseInt(options["bridge-port"]),
+        });
         when($hivemind.HIVE_MIND.backfillAll(5),
           function() {
             console.log("synchronized everyone! woo!");
