@@ -388,7 +388,7 @@ HStore.prototype = {
     return op.deferred.promise;
   },
 
-  _getPushLogDetail: function(treeId, pushId, buildId) {
+  getPushLogDetail: function(treeId, pushId, buildId) {
     var op = new DBReadOp("logDetail", treeId, pushId, buildId);
     if (this._dbOpsMap.hasOwnProperty(op.hash)) {
       return this._dbOpsMap[op.has].deferred.promise;
