@@ -16,14 +16,16 @@
 
 define(
   [
-    "q", "q-http",
+    "q",
     "url",
+    "./utils/reliahttp",
     "./hackjobs",
     "exports"
   ],
   function(
-    $Q, $Qhttp,
+    $Q,
     $url,
+    $reliahttp,
     $hackjobs,
     exports
   ) {
@@ -337,21 +339,36 @@ Tinderboxer.prototype = {
     var deferred = $Q.defer(), self = this;
     var url = this._getScriptURL(timeRange, false, Date.now());
     console.log("fetching tinderbox data from", url);
-    when($Qhttp.read(url),
-      function(dataBuffer) {
-        try {
-          var tinderObj = parseStupidJsonBlob(dataBuffer.toString("utf8"));
-          deferred.resolve(self._parseTinderbox(tinderObj));
-        }
-        catch (ex) {
-          console.error("Exception parsing tinderbox data", ex.stack);
-          deferred.reject(ex);
-        }
-      },
-      function(err) {
-        console.error("Problem fetching tinderbox log!", err);
-        deferred.reject(err);
-      });
+    // Sometimes we will catch the tinderbox halfway through writing out its
+    //  stupid JSON file (or our connection is dying halfway through; something
+    //  dumb.)  In those cases, we need to either retry or give up the fight.
+    var tinderboxRetriesLeft = 3;
+    function tryIt() {
+      if (--tinderboxRetriesLeft <= 0) {
+        console.error("out of retries on fetch of: " + url);
+        deferred.reject("out of retries!");
+        return;
+      }
+      when($reliahttp.reliago({url: url}),
+        function(dataStr) {
+          try {
+            var tinderObj = parseStupidJsonBlob(dataStr);
+            deferred.resolve(self._parseTinderbox(tinderObj));
+          }
+          catch (ex) {
+            console.error("Exception parsing tinderbox data, maybe retrying",
+                          ex.stack);
+            tryIt();
+          }
+        },
+        function(err) {
+          // There is no retry in this case; reliahttp already handled that for
+          //  us.
+          console.error("Problem fetching tinderbox log!", err);
+          deferred.reject(err);
+        });
+    }
+    tryIt();
 
     return deferred.promise;
   },

@@ -59,24 +59,26 @@
 
 define(
   [
-    "q", "q-http",
+    "q",
     "./hstore",
     "./databus",
     "./tinderboxer",
     "./xpcshell-logfrob", "./mozmill-logfrob",
     "./mochitest-logfrob", "./reftest-logfrob",
     "arbcommon/repodefs",
+    "./utils/reliahttp",
     "./hackjobs",
     "exports"
   ],
   function(
-    $Q, $Qhttp,
+    $Q,
     $hstore,
     $databus,
     $tinderboxer,
     $frobXpcshell, $frobMozmill,
     $frobMochitest, $frobReftest,
     $repodefs,
+    $reliahttp,
     $hackjobs,
     exports
   ) {
@@ -216,10 +218,14 @@ Overmind.prototype = {
       this._procTinderboxBuildResults.bind(this),
       function(err) {
         console.error("problem getting tinderbox results.");
-        this._syncDeferred.reject();
+        self._syncDeferred.reject();
       });
 
     return this._syncDeferred.promise;
+  },
+
+  _abort: function(err) {
+    this._syncDeferred.reject(err);
   },
 
   /**
@@ -404,11 +410,10 @@ Overmind.prototype = {
     this._pendingPushFetches++;
 
     console.log("fetching push info for", repoDef.name, "paramstr", paramStr);
-    when($Qhttp.read(url),
-      function(jsonBuffer) {
+    when($reliahttp.reliago({url: url}),
+      function(jsonStr) {
         self._pendingPushFetches--;
 
-        var jsonStr = jsonBuffer.toString("utf8");
         var pushes = JSON.parse(jsonStr);
 
         console.log("repo", repoDef.name, "got JSON");
@@ -447,6 +452,7 @@ Overmind.prototype = {
       function(err) {
         self._pendingPushFetches--;
         console.error("Push fetch error", err, err.stack);
+        self._abort("Push fetch error on: " + url);
       });
   },
 

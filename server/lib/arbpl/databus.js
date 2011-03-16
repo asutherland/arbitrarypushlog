@@ -49,14 +49,16 @@
 define(
   [
     "buffer",
-    "q", "q-http",
+    "q",
     "arbcommon/repodefs",
+    "./utils/reliahttp",
     "exports"
   ],
   function(
     $buffer,
-    $Q, $Qhttp,
+    $Q,
     $repodefs,
+    $reliahttp,
     exports
   ) {
 var when = $Q.when;
@@ -134,38 +136,12 @@ function ScraperBridgeSource(targetPort) {
 }
 ScraperBridgeSource.prototype = {
   send: function(message) {
-    var deferred = $Q.defer();
-    when(
-      $Qhttp.request({
-        method: "POST",
-        host: "localhost",
-        port: this._targetPort,
-        path: "/",
-        body: [JSON.stringify(message)],
-        charset: "utf8",
-      }),
-      function(resp) {
-        if (resp.status !== 200) {
-          deferred.reject("non-200 status: " + resp.status);
-          return;
-        }
-        // this is vaguely ridiculous...
-        when(resp.body,
-          function(body) {
-            var rstr = "";
-            when(body.read(),
-              function(bodyBuf) {
-                deferred.resolve(bodyBuf.toString("utf8"));
-              }, deferred.reject);
-          },
-          function() {
-            deferred.reject("problem reading body");
-          }
-        );
-      },
-      deferred.reject
-    );
-    return deferred.promise;
+    var url = "http://localhost:" + this._targetPort + "/";
+    return $reliahttp.reliago({
+             url: url,
+             method: "POST",
+             body: JSON.stringify(message)
+           });
   }
 };
 exports.ScraperBridgeSource = ScraperBridgeSource;
