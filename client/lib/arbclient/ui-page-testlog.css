@@ -2,14 +2,15 @@
   display: inline-block;
   background-color: #e8e8e8;
   margin-left: -4px;
-  margin-top: 8px;
-  margin-bottom: 2px;
+  margin-top: 1em;
+  margin-bottom: 4px;
   padding-left: 4px;
-  padding-right: @height / 2 - 4;
+  padding-right: @height / 2 - 2;
   height: @height;
   vertical-align: middle;
   border-top-right-radius: @height / 2;
   border-bottom-right-radius: @height / 2;
+  font-weight: bold;
 }
 
 
@@ -92,6 +93,8 @@
   }
   #events {
     margin-left: 4px;
+    padding-bottom: 1em;
+    border-bottom: 6px inset gray;
   }
   #events-item {
     border-bottom: 1px solid #eeeeee;
