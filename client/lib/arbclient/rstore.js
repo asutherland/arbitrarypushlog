@@ -241,8 +241,9 @@ RemoteStore.prototype = {
       });
     }
 
-    var push = this._normalizeOnePush(msg.keysAndValues);
-    this._listener.onNewPush(push);
+    var buildPush = this._normalizeOnePush(msg.keysAndValues);
+    this._knownPushes[buildPush.push.id] = buildPush;
+    this._listener.onNewPush(buildPush);
 
     this._checkSubs(msg);
   },
@@ -260,6 +261,7 @@ RemoteStore.prototype = {
     }
 
     var buildPush = this._knownPushes[msg.pushId];
+    console.log("delta!", buildPush);
     this._normalizeOnePush(msg.keysAndValues, buildPush);
     this._listener.onModifiedPush(buildPush);
 
@@ -412,7 +414,6 @@ RemoteStore.prototype = {
         buildPush.buildSummary =
           $buildAggregator.aggregateBuilds(self.tinderTree, buildPush.builds);
       });
-      this._knownPushes = rootBuildPush;
     }
     return rootBuildPush;
   },

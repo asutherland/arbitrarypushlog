@@ -278,7 +278,7 @@ ArbApp.prototype = {
    *  of its children has been updated.
    */
   onModifiedPush: function(buildPush) {
-    this.bindings.IDSPACE.updateUsingObject("buildpush", buildPush);
+    this.binding.IDSPACE.updateUsingObject("buildpush", buildPush);
   },
 
   /**
