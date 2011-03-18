@@ -94,6 +94,10 @@ var OPTS = [
     string: "--bridge-port",
     default: 8009,
   },
+  {
+    name: "tree",
+    string: "--tree=TREE",
+  },
 ];
 
 // We need to do our own argv slicing to compensate for RequireJS' r.js
@@ -115,6 +119,7 @@ switch (options.command) {
       function($hivemind) {
         $hivemind.HIVE_MIND.configure({
           bridgePort: parseInt(options["bridge-port"]),
+          tree: options.tree,
         });
         when($hivemind.HIVE_MIND.syncAll(),
           function() {
@@ -134,6 +139,7 @@ switch (options.command) {
       function($hivemind) {
         $hivemind.HIVE_MIND.configure({
           bridgePort: parseInt(options["bridge-port"]),
+          tree: options.tree,
         });
         when($hivemind.HIVE_MIND.backfillAll(5),
           function() {

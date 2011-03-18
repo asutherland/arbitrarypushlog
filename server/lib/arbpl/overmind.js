@@ -377,7 +377,7 @@ Overmind.prototype = {
 
     // no date range means no revisions means just go to the next push
     if (earliestTime == null) {
-      this._processNextPush();
+      this._processFirstPush();
       return;
     }
 

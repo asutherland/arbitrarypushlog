@@ -125,7 +125,7 @@ RemoteStore.prototype = {
    *  available to us.
    */
   hookupSocket: function() {
-    console.log("establishing socket");
+    //console.log("establishing socket");
     this._sock = new io.Socket();
     this._sock.on("connect", this.onConnect.bind(this));
     this._sock.on("message", this.onMessage.bind(this));
@@ -136,7 +136,7 @@ RemoteStore.prototype = {
   onConnect: function() {
     // XXX this is where we might want to resubmit our current state to the
     //  server or cause a higher level to re-establish, etc.
-    console.log("socket.io connection established");
+    //console.log("socket.io connection established");
   },
 
   onMessage: function(msg) {
@@ -164,11 +164,15 @@ RemoteStore.prototype = {
       case "pushinfo":
         this.msgPushInfo(msg);
         break;
+
+      case "pushdelta":
+        this.msgPushDelta(msg);
+        break;
     }
   },
 
   onDisconnect: function() {
-    console.log("socket.io connection lost");
+    //console.log("socket.io connection lost");
     this.hookupSocket();
   },
 
@@ -189,14 +193,46 @@ RemoteStore.prototype = {
     });
   },
 
+  unsubscribe: function() {
+    this._knownPushes = {};
+    this._subMode = null;
+    this._desiredPushes = 0;
+
+    this._sock.send({
+      seqId: (this._pendingSeq = this._nextSeqId++),
+      type: "unsub",
+    });
+  },
+
+  /**
+   * Notice if the server un-subscribed us from a push we currently know about.
+   *  If so, generate a removal notification.
+   */
+  _checkSubs: function(msg) {
+    var highSub = parseInt(msg.subHighPushId);
+    var lowSub = highSub - parseInt(msg.subPushCount) + 1;
+
+    for (var pushIdStr in this._knownPushes) {
+      var pushId = parseInt(pushIdStr);
+      if (pushId < lowSub || pushId > highSub) {
+        var buildPush = this._knownPushes[pushIdStr];
+        delete this._knownPushes[pushIdStr];
+        this._listener.onUnsubscribedPush(buildPush);
+      }
+    }
+  },
+
+  /**
+   * Information on a fully formed push.
+   */
   msgPushInfo: function(msg) {
-    console.log("push info", msg);
+    //console.log("push info", msg);
 
     // attempt to grow our subscription if required.
     if (this._subMode === "recent" &&
         msg.subPushCount < this._desiredPushes) {
-      console.log("trying to grow from", msg.subPushCount,
-                  "to", this._desiredPushes);
+      //console.log("trying to grow from", msg.subPushCount,
+      //            "to", this._desiredPushes);
       this._sock.send({
         seqId: (this._pendingSeq = this._nextSeqId++),
         type: "subgrow",
@@ -207,13 +243,46 @@ RemoteStore.prototype = {
 
     var push = this._normalizeOnePush(msg.keysAndValues);
     this._listener.onNewPush(push);
+
+    this._checkSubs(msg);
+  },
+
+  /**
+   * Delta information for a push we are subscribed to and should already know
+   *  aboot.
+   */
+  msgPushDelta: function(msg) {
+    if (!this._knownPushes ||
+        !this._knownPushes.hasOwnProperty(msg.pushId)) {
+      console.warn("server is telling us about a push delta we know nothing " +
+                   "about:", msg);
+      return;
+    }
+
+    var buildPush = this._knownPushes[msg.pushId];
+    this._normalizeOnePush(msg.keysAndValues, buildPush);
+    this._listener.onModifiedPush(buildPush);
+
+    this._checkSubs(msg);
   },
 
   /**
    * Normalize push data (in the form of raw HBase maps) for a single
-   *  push into local object representations.
+   *  push into local object representations.  Supports initial and incremental
+   *  processing.
+   *
+   * @args[
+   *   @param[hbData @dictof["column name" "value"]{
+   *     The HBase map representation to process.
+   *   }
+   *   @param[rootBuildPush #:optional BuildPush]{
+   *     The top-level build push; pass null for a new push, pass the
+   *     `BuildPush` we returned last time if this is an incremental
+   *     processing.
+   *   }
+   * ]
    */
-  _normalizeOnePush: function(hbData) {
+  _normalizeOnePush: function(hbData, rootBuildPush) {
     var key, value, self = this;
 
     function chewChangeset(hbcs, repo) {
@@ -235,7 +304,6 @@ RemoteStore.prototype = {
       return cset;
     }
 
-    var chewedBuildPushes = {};
     /**
      * Process and create or retrieve the already created BuildPush instance
      *  corresponding to the given push key.   We do this because hbData is
@@ -245,10 +313,13 @@ RemoteStore.prototype = {
      *  that our push "parents" are the lexical prefixes of their children.
      */
     function chewPush(pushKey) {
-      if (chewedBuildPushes.hasOwnProperty(pushKey)) {
-        return chewedBuildPushes[pushKey];
+      if (rootBuildPush) {
+        if (pushKey === "s:r")
+          return rootBuildPush;
+        if (rootBuildPush._chewedBuildPushes.hasOwnProperty(pushKey))
+          return rootBuildPush._chewedBuildPushes[pushKey];
       }
-      var buildPush = new $datamodel.BuildPush();
+      var buildPush = new $datamodel.BuildPush(self.tinderTree);
       var truePush = new $datamodel.Push();
       buildPush.push = truePush;
 
@@ -275,13 +346,23 @@ RemoteStore.prototype = {
         parentBuildPush.subPushes.sort(self._pushSorter);
       }
 
-      chewedBuildPushes[pushKey] = buildPush;
+      // if there is no root, this is the root
+      if (!rootBuildPush)
+        buildPush._chewedBuildPushes = {};
+      else
+        rootBuildPush._chewedBuildPushes[pushKey] = buildPush;
       return buildPush;
     }
 
+    var isIncremental = (rootBuildPush != null);
+    if (!rootBuildPush)
+      rootBuildPush = chewPush("s:r");
+
     for (key in hbData) {
       if (key[2] == "r") {
-        chewPush(key);
+        // we already processed the root build push, don't chew it again
+        if (key.length != 3)
+          chewPush(key);
       }
       // s:b:(pushid:)*BUILDID
       else if (key[2] == "b") {
@@ -295,8 +376,17 @@ RemoteStore.prototype = {
         var pushKey = "s:r" + key.substring(3, idxLastColon);
         // get that push...
         var buildPush = chewPush(pushKey);
-        // stash!
-        buildPush.builds.push(build);
+
+        var oldBuild = null;
+        if (buildPush._buildsById.hasOwnProperty(build.id)) {
+          oldBuild = buildPush._buildsById[build.id];
+          buildPush.builds.splice(
+            buildPush.builds.indexOf(oldBuild), 1, build);
+        }
+        else {
+          buildPush.builds.push(build);
+        }
+        buildPush._buildsById[build.id] = build;
 
         // - if we have a processed log, stash that on us
         var logKey = "s:l" + key.substring(3);
@@ -307,17 +397,24 @@ RemoteStore.prototype = {
         else {
           build.processedLog = null;
         }
+
+        // - if this is an incremental processing, stream the aggregation.
+        // (if not incremental, we will do it in a batch at the bottom)
+        if (isIncremental && buildPush.buildSummary)
+          buildPush.buildSummary.chewBuild(build, oldBuild);
       }
     }
 
     // -- perform any summarization that depends on us having seen everything
-    var retBuildPush = chewedBuildPushes["s:r"];
     // - summarize builds
-    retBuildPush.visitLeafBuildPushes(function(buildPush) {
-      buildPush.buildSummary =
-        $buildAggregator.aggregateBuilds(self.tinderTree, buildPush.builds);
-    });
-    return retBuildPush;
+    if (!isIncremental) {
+      rootBuildPush.visitLeafBuildPushes(function(buildPush) {
+        buildPush.buildSummary =
+          $buildAggregator.aggregateBuilds(self.tinderTree, buildPush.builds);
+      });
+      this._knownPushes = rootBuildPush;
+    }
+    return rootBuildPush;
   },
 
   getRecentPushes: function(fromPushId) {

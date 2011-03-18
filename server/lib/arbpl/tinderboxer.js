@@ -128,12 +128,21 @@ var OS_PLATFORMS = [
     },
   },
   {
-    regexes: [/Maemo/i, /n900/],
+    regexes: [/Maemo 5 GTK/i, /n900-gtk/],
     plat: {
       idiom: "mobile",
       platform: "maemo",
       arch: "arm",
-      ver: "5",
+      ver: "gtk",
+    },
+  },
+  {
+    regexes: [/Maemo 5 QT/, /n900-qt/],
+    plat: {
+      idiom: "mobile",
+      platform: "maemo",
+      arch: "arm",
+      ver: "qt",
     },
   },
 ];
@@ -144,14 +153,14 @@ var OS_PLATFORMS = [
  */
 var BUILD_TYPES = [
   {
-    regexes: [/talos (a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4|v8)/],
+    regexes: [/talos (?:remote-)?(a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4|v8|tdhtml|tpan|ts|tsspider|tsvg|twinopen|tp4_nochrome)$/],
     buildType: {
       type: "perf",
       subtype: "talos",
     },
   },
   {
-    regexes: [/mochitest-?(other)/, /mochitests-?(\d+)\//i,],
+    regexes: [/mochitest[s]?-?(other)/, /mochitest[s]?-?(\d+)/i,],
     buildType: {
       type: "test",
       subtype: "mochitest",
@@ -199,14 +208,14 @@ var BUILD_TYPES = [
       subtype: "mozmill",
     },
   },
-  // tracemonkey shenanigans
   {
-    regexes: [/QT/],
+    regexes: [/nightly/i],
     buildType: {
-      type: "build",
-      subtype: "qt",
+      type: "nightly",
+      subtype: "nightly",
     },
   },
+  // tracemonkey shenanigans
   {
     regexes: [/Mobile/],
     buildType: {
@@ -250,8 +259,9 @@ var BUILD_TYPES = [
       subtype: "build",
     },
   },
+  // shark nightly catch-all (competes with stuff it shouldn't)
   {
-    regexes: [/nightly/i, /shark/i],
+    regexes: [/shark/i],
     buildType: {
       type: "nightly",
       subtype: "nightly",
@@ -288,7 +298,7 @@ var RE_XFFE = /\xfffe/g;
 var RE_PRE = /<\/?pre>/g;
 var RE_NBSP = /&nbsp;/g;
 var RE_NOTE_HUNK =
-  /^\n*\[<b><a href=[^>]+>([^<]+)<\/a> - ([^<]+)<\/b>\]\n(.+)\n*$/;
+  /^\[<b><a href=[^>]+>([^<]+)<\/a> - ([^<]+)<\/b>\]$/;
 
 /**
  * The tinderbox JSON format is not actually JSON but rather JSONP without
@@ -450,16 +460,22 @@ Tinderboxer.prototype = {
         nextS = s.substring(idxNext);
         s = s.substring(0, idxNext);
       }
-      var match = RE_NOTE_HUNK.exec(s);
+      var idxOpen = s.indexOf("[");
+      var idxNewline = s.indexOf("\n", idxOpen + 1);
+      var headerBit = s.substring(idxOpen, idxNewline);
+      var bodyBit = s.substring(idxNewline + 1);
+      var match = RE_NOTE_HUNK.exec(headerBit);
       if (match) {
         richNotes.push({
           author: match[1],
           dateStr: match[2],
-          note: match[3],
+          note: bodyBit,
         });
       }
       else {
-        console.warn("tinderbox note match failure on", s, "original:", note);
+        console.warn("tinderbox note match failure on", headerBit,
+                     "JSON:", JSON.stringify({header: headerBit}),
+                     "original:", note);
       }
 
       s = nextS;

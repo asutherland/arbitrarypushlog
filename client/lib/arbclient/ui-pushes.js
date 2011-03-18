@@ -50,11 +50,15 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-pushes", domain: "arbpl",
                                css: $_css});
 
+wy.defineIdSpace("buildpush",
+                 function(buildpush) { return buildpush.unique; });
+
 wy.defineWidget({
   name: "generic-push",
   constraint: {
     type: "push",
   },
+  idspaces: ["buildpush"],
   // don't automatically bind anything, but make sure we create the obj
   //  so we can potentially assign to it in postInit.
   provideContext: {
@@ -68,7 +72,8 @@ wy.defineWidget({
 
     kids: {
       changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
-      buildSummary: wy.widget({type: "aggr-build-summary"}, "buildSummary"),
+      buildSummary: wy.vertList({type: "aggr-build-summary"},
+                                ["buildSummary", "buildMatrices"]),
 
       // build failures
       buildFailGroups: wy.vertList({type: "build-fail-group"},
@@ -313,6 +318,20 @@ wy.defineWidget({
       }
 
       this.domNode.appendChild(rootNode);
+    },
+
+    /**
+     * On update entirely re-create our HTML layout for now; it's a future
+     *  enhancement to be clever about only generating new things.  (d3
+     *  seems like an appropriate mechanism to use in that case; or using
+     *  full widgets intead.)
+     */
+    update: function() {
+      this.__update.apply(this, arguments);
+      var domNode = this.domNode;
+      while (domNode.lastChild)
+        domNode.removeChild(domNode.lastChild);
+      this.postInit();
     },
 
     /**

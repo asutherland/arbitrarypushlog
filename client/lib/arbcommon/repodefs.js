@@ -331,7 +331,20 @@ function TinderTreeDef(def) {
   this.product = def.product;
   this.repos = def.repos;
   this.mount = def.mount;
-  this.typeGroups = def.typeGroups;
+  if (def.hasOwnProperty("typeGroups")) {
+    this.typeGroupBundles = [
+      {
+        name: "all",
+        platforms: {_: true},
+        typeGroups: def.typeGroups
+      }
+    ];
+  }
+  else if (def.hasOwnProperty("typeGroupBundles")) {
+    this.typeGroupBundles = def.typeGroupBundles;
+  }
+  else
+    throw new Error("tinder tree def needs typeGroups or typeGroupBundles");
 }
 TinderTreeDef.prototype = {
   toString: function() {
@@ -346,7 +359,7 @@ var TB_TYPE_GROUPS = [
 ];
 
 var TINDER_TREES = exports.TINDER_TREES = {
-  tb_trunk: new TinderTreeDef({
+  Thunderbird: new TinderTreeDef({
     id: "cc",
     name: "Thunderbird",
     product: "Thunderbird",
@@ -356,7 +369,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     },
     typeGroups: TB_TYPE_GROUPS,
   }),
-  tb_try: new TinderTreeDef({
+  ThunderbirdTry: new TinderTreeDef({
     id: "ctry",
     name: "ThunderbirdTry",
     product: "Thunderbird",
@@ -371,7 +384,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   // releases/comm-1.9.1 => c191
 
   // mozilla-central => mc
-  mc_trunk: new TinderTreeDef({
+  Firefox: new TinderTreeDef({
     id: "mc",
     name: "Firefox",
     product: "Firefox",
@@ -419,60 +432,109 @@ var TINDER_TREES = exports.TINDER_TREES = {
   // try => mtry
 
   // tracemonkey => tm
-  mc_tm: new TinderTreeDef({
+  TraceMonkey: new TinderTreeDef({
     id: "tm",
     name: "TraceMonkey",
     product: "Firefox",
     repos: [REPOS["tracemonkey"]],
     mount: {
     },
-    typeGroups: [
+    typeGroupBundles: [
       {
-        name: "build",
-        subgroups: [
-          {name: "build", subtype: "build"},
-          {name: "QT", subtype: "qt"},
-          {name: "mobile", subtype: "mobile"},
-          {name: "no mjit", subtype: "nomethodjit"},
-          {name: "no trace", subtype: "notracejit"},
-          {name: "dtrace", subtype: "dtrace"},
-          {name: "shark", subtype: "shark"},
+        name: "desktop",
+        platforms: {
+          linux: true,
+          mac: true,
+          win: true,
+        },
+        typeGroups: [
+          {
+            name: "build",
+            subgroups: [
+              {name: "build", subtype: "build"},
+              {name: "QT", subtype: "qt"},
+              {name: "mobile", subtype: "mobile"},
+              {name: "no mjit", subtype: "nomethodjit"},
+              {name: "no trace", subtype: "notracejit"},
+              {name: "dtrace", subtype: "dtrace"},
+              {name: "shark", subtype: "shark"},
+              {name: "nightly", subtype: "nightly"},
+            ],
+          },
+          "xpcshell",
+          {
+            name: "mochitest",
+            subgroups: [
+              {name: "1", subtype: "mochitest", capture: "1"},
+              {name: "2", subtype: "mochitest", capture: "2"},
+              {name: "3", subtype: "mochitest", capture: "3"},
+              {name: "4", subtype: "mochitest", capture: "4"},
+              {name: "5", subtype: "mochitest", capture: "5"},
+              {name: "oth", subtype: "mochitest", capture: "other"},
+            ]
+          },
+          {
+            name: "reftest",
+            subgroups: [
+              {name: "crash", subtype: "reftest", capture: "crashtest"},
+              {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
+              {name: "js", subtype: "reftest", capture: "jsreftest"},
+              {name: "reftest", subtype: "reftest", capture: "reftest"},
+              {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
+            ]
+          },
+          {
+            name: "talos", subgroups: [
+              {name: "a11y", subtype: "talos", capture: "a11y"},
+              {name: "chrome", subtype: "talos", capture: "chrome"},
+              {name: "dirty", subtype: "talos", capture: "dirty"},
+              {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+              {name: "nochrome", subtype: "talos", capture: "nochrome"},
+              {name: "scroll", subtype: "talos", capture: "scroll"},
+              {name: "svg", subtype: "talos", capture: "svg"},
+              {name: "tp4", subtype: "talos", capture: "tp4"},
+              {name: "v8", subtype: "talos", capture: "v8"},
+            ]
+          },
         ],
       },
-      "xpcshell",
       {
-        name: "mochitest",
-        subgroups: [
-          {name: "1", subtype: "mochitest", capture: "1"},
-          {name: "2", subtype: "mochitest", capture: "2"},
-          {name: "3", subtype: "mochitest", capture: "3"},
-          {name: "4", subtype: "mochitest", capture: "4"},
-          {name: "5", subtype: "mochitest", capture: "5"},
-          {name: "oth", subtype: "mochitest", capture: "other"},
-        ]
-      },
-      {
-        name: "reftest",
-        subgroups: [
-          {name: "crash", subtype: "reftest", capture: "crashtest"},
-          {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
-          {name: "js", subtype: "reftest", capture: "jsreftest"},
-          {name: "reftest", subtype: "reftest", capture: "reftest"},
-          {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
-        ]
-      },
-      {
-        name: "talos", subgroups: [
-          {name: "a11y", subtype: "talos", capture: "a11y"},
-          {name: "chrome", subtype: "talos", capture: "chrome"},
-          {name: "dirty", subtype: "talos", capture: "dirty"},
-          {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
-          {name: "nochrome", subtype: "talos", capture: "nochrome"},
-          {name: "scroll", subtype: "talos", capture: "scroll"},
-          {name: "svg", subtype: "talos", capture: "svg"},
-          {name: "tp4", subtype: "talos", capture: "tp4"},
-          {name: "v8", subtype: "talos", capture: "v8"},
-        ]
+        name: "mobile",
+        platforms: {
+          android: true,
+          maemo: true,
+        },
+        typeGroups: [
+          {
+            name: "build",
+            subgroups: [
+              {name: "build", subtype: "build"},
+              {name: "nightly", subtype: "nightly"},
+            ],
+          },
+          {
+            name: "mochitest",
+            subgroups: [
+              {name: "1", subtype: "mochitest", capture: "1"},
+              {name: "2", subtype: "mochitest", capture: "2"},
+              {name: "3", subtype: "mochitest", capture: "3"},
+              {name: "4", subtype: "mochitest", capture: "4"},
+            ]
+          },
+          { name: "crash", subtype: "reftest", capture: "crashtest"},
+          {
+            name: "talos", subgroups: [
+              {name: "tdhtml", subtype: "talos", capture: "tdhtml"},
+              {name: "twinopen", subtype: "talos", capture: "twinopen"},
+              {name: "tp4", subtype: "talos", capture: "tp4"},
+              {name: "ts", subtype: "talos", capture: "ts"},
+              {name: "tsspider", subtype: "talos", capture: "tsspider"},
+              {name: "tp4_nochrome", subtype: "talos", capture: "tp4_nochrome"},
+              {name: "tsvg", subtype: "talos", capture: "tsvg"},
+              {name: "tpan", subtype: "talos", capture: "tpan"},
+            ]
+          },
+        ],
       },
     ],
   }),
@@ -483,7 +545,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   // releases/mozilla-1.9.2 => m192
   // releases/mozilla-1.9.1 => m191
 
-  sea_trunk: new TinderTreeDef({
+  SeaMonkey: new TinderTreeDef({
     id: "st",
     name: "SeaMonkey",
     product: "SeaMonkey",

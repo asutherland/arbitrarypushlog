@@ -178,6 +178,7 @@ ArbApp.prototype = {
     if (!treeDef) {
       this._updateState("picktree");
       this._setLocation({}, true);
+      this.rstore.unsubscribe();
       return;
     }
     this._useTree(treeDef);
@@ -267,13 +268,9 @@ ArbApp.prototype = {
     if (slist.length &&
         buildPush.push.id < slist[0].push.id)
       idx = slist.length;
+    this.binding.ANTICS.prepare("buildpush");
     this._slice_pushes.mutateSplice(idx, 0, buildPush);
-
-    // cull if required
-    if (slist.length > DESIRED_PUSHES) {
-      var delIdx = (idx == 0) ? (slist.length - 1) : 0;
-      this._slice_pushes.mutateSplice(delIdx, 1);
-    }
+    this.binding.ANTICS.go("buildpush");
   },
 
   /**
@@ -281,10 +278,26 @@ ArbApp.prototype = {
    *  of its children has been updated.
    */
   onModifiedPush: function(buildPush) {
+    this.bindings.IDSPACE.updateUsingObject("buildpush", buildPush);
+  },
+
+  /**
+   * Notification from the `RemoteStrore` that a `BuildPush` known to us has
+   *  been unsubscribed.
+   */
+  onUnsubscribedPush: function(buildPush) {
+    var slist = this._slice_pushes._list;
+    this.binding.ANTICS.prepare("buildpush");
+    this._slice_pushes.mutateSplice(slist.indexOf(buildPush), 1);
+    this.binding.ANTICS.go("buildpush");
   },
 
   _getLog: function(pushId, buildId, filterToTest, pathNodes) {
     this._updateState("connecting");
+
+    // XXX actually, we probably still want a sub, just no watched pushes.
+    self.rstore.unsubscribe();
+
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
       function gotPushes(logDetails) {

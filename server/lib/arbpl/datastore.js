@@ -249,6 +249,9 @@ DataServer.prototype = {
       case "subgrow":
         this.reqSubscriptionGrow(client, sub, msg);
         break;
+      case "unsub":
+        this.reqUnsubscribe(client, sub, msg);
+        break;
       // notifies us that they starred something.
       case "starred":
         break;
@@ -413,6 +416,8 @@ DataServer.prototype = {
     this._maybeCachePushDeltaFromScraper(msg.treeName, msg.pushId,
                                          msg.keysAndValues);
 
+    var isFullPush = msg.keysAndValues.hasOwnProperty("s:r");
+
     if (!this._treeSubsMap.hasOwnProperty(msg.treeName))
       return;
     var treeSubs = this._treeSubsMap[msg.treeName];
@@ -428,7 +433,7 @@ DataServer.prototype = {
       var lowPushId = sub.highPushId - sub.pushCount + 1;
 
       // - new?
-      if (msg.pushId > sub.highPushId && sub.newLatched) {
+      if (isFullPush && msg.pushId > sub.highPushId && sub.newLatched) {
         // ex: new pushId: 6, => (6 - 4) + 1 = 2 + 1 = 3
         sub.pushCount = Math.min(msg.pushId - lowPushId + 1, MAX_PUSH_SUBS);
         sub.highPushId = msg.pushId;
@@ -446,7 +451,7 @@ DataServer.prototype = {
       sub.client.send({
         // unexpected by the client, no more known unexpected things coming
         seqId: -1, lastForSeq: true,
-        type: "pushinfo",
+        type: isFullPush ? "pushinfo" : "pushdelta",
         pushId: msg.pushId,
         keysAndValues: msg.keysAndValues,
         // it definitely needs to know that its subscription may have changed!
@@ -470,6 +475,19 @@ DataServer.prototype = {
       type: "error",
       message: message
     });
+  },
+
+  /**
+   * Unsubscribe the client from any subscribed tree.  As a side-effect of
+   *  having received any message at all, this should invalidate pending
+   *  requests by bumping the sequence id (in the sense that we should check
+   *  that value and bail on any callbacks that fire after this point.)
+   */
+  reqUnsubscribe: function(client, sub, msg) {
+    if (sub.treeName) {
+      var treeSubs = this._treeSubsMap[sub.treeName];
+      treeSubs.splice(treeSubs.indexOf(sub), 1);
+    }
   },
 
   /**

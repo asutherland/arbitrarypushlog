@@ -132,7 +132,6 @@ exports.reliago = function reliago(config) {
       "Host": parsed.hostname,
     }
   };
-  console.log("options:", options);
 
   function resultHandler(res) {
     // uh, start with a reasonable size I guess.

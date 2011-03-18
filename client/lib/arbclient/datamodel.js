@@ -99,7 +99,9 @@ exports.MozPerson = MozPerson;
  *  pushes from another repo.  The non-build related data is stored in a `Push`
  *  instance.
  */
-function BuildPush() {
+function BuildPush(tinderTree) {
+  this.tinderTree = tinderTree;
+
   /**
    * The actual `Push` we are talking about.
    */
@@ -121,13 +123,38 @@ function BuildPush() {
   this.builds = [];
 
   /**
+   * @dictof[
+   *   @key["build.id"]
+   *   @value[BuildInfp]
+   * ]{
+   *   Map build ids to builds so we can detect updated builds for incremental
+   *   processing.
+   * }
+   */
+  this._buildsById = {};
+
+  /**
    * The `BuildSummary` that encapsulates what is up with the builds.
    */
   this.buildSummary = null;
-  
+
+  /**
+   * Boolean indicating whether this is a top-level push.
+   */
   this.topLevelPush = null;
+
+  /**
+   * @dictof["hbase column key" BuildPush]{
+   *   Only used for the root build push, maps hbase columns to descendent
+   *   build pushes.  Used for incremental processing.
+   * }
+   */
+  this._chewedBuildPushes = null;
 }
 BuildPush.prototype = {
+  get unique() {
+    return this.tinderTree.id + ":" + this.push.id;
+  },
   visitLeafBuildPushes: function(func, funcThis) {
     if (this.subPushes.length) {
       for (var iPush = 0; iPush < this.subPushes.length; iPush++) {

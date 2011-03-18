@@ -64,6 +64,7 @@ var when = $Q.when;
  * ]
  */
 function HiveMind(treeDefs) {
+  this.treeDefs = treeDefs;
   // convert into a list from a map...
   var trees = this.trees = [];
   for (var ignoredTreeName in treeDefs) {
@@ -82,10 +83,27 @@ HiveMind.prototype = {
     this._config = config;
   },
 
+  /**
+   * Populate the list of trees to process using the whole set unless we were
+   *  explicitly told just one tree to process (likely via a command line
+   *  option.)
+   */
+  _figureTreesToProc: function() {
+    if (this._config.tree) {
+      console.log("Want to process only tree:", this._config.tree);
+      if (this.treeDefs.hasOwnProperty(this._config.tree)) {
+        this._unprocessedTrees = [this.treeDefs[this._config.tree]];
+        return;
+      }
+      console.warn("...but could not find it!");
+    }
+    this._unprocessedTrees = this.trees.concat();
+  },
+
   syncAll: function syncAll() {
     this._syncDeferred = $Q.defer();
 
-    this._unprocessedTrees = this.trees.concat();
+    this._figureTreesToProc();
     this._syncNext();
 
     return this._syncDeferred.promise;
@@ -130,7 +148,7 @@ HiveMind.prototype = {
   backfillAll: function backfillAll(numDays) {
     this._syncDeferred = $Q.defer();
 
-    this._unprocessedTrees = this.trees.concat();
+    this._figureTreesToProc();
     this._timeRanges = this._getBackfillTimeRanges(numDays);
     console.log("TIME RANGES", this._timeRanges);
     this._backfillNext();
