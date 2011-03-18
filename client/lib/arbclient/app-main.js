@@ -268,9 +268,10 @@ ArbApp.prototype = {
     if (slist.length &&
         buildPush.push.id < slist[0].push.id)
       idx = slist.length;
-    this.binding.ANTICS.prepare("buildpush");
+    // no antics for now, it doesn't know what to do for adds anyways.
+    //this.binding.ANTICS.prepare("buildpush");
     this._slice_pushes.mutateSplice(idx, 0, buildPush);
-    this.binding.ANTICS.go("buildpush");
+    //this.binding.ANTICS.go("buildpush");
   },
 
   /**
@@ -287,16 +288,17 @@ ArbApp.prototype = {
    */
   onUnsubscribedPush: function(buildPush) {
     var slist = this._slice_pushes._list;
-    this.binding.ANTICS.prepare("buildpush");
+    // no antics for now, it doesn't know what to do for adds anyways.
+    //this.binding.ANTICS.prepare("buildpush");
     this._slice_pushes.mutateSplice(slist.indexOf(buildPush), 1);
-    this.binding.ANTICS.go("buildpush");
+    //this.binding.ANTICS.go("buildpush");
   },
 
   _getLog: function(pushId, buildId, filterToTest, pathNodes) {
     this._updateState("connecting");
 
     // XXX actually, we probably still want a sub, just no watched pushes.
-    self.rstore.unsubscribe();
+    this.rstore.unsubscribe();
 
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
