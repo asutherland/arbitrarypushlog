@@ -64,23 +64,23 @@ wy.defineWidget({
   provideContext: {
   },
   focus: wy.focus.nestedItem.vertical("changesets", "subPushes"),
-  structure: {
+  structure: wy.block({
     headingBox: {
       pushDate: wy.libWidget({type: "relative-date"}, ["push", "pushDate"]),
       pusher: wy.widget({type: "person"}, ["push", "pusher"]),
     },
 
     kids: {
+      buildSummaries: wy.vertList({type: "aggr-build-summary"},
+                                  ["buildSummary", "buildMatrices"]),
       changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
-      buildSummary: wy.vertList({type: "aggr-build-summary"},
-                                ["buildSummary", "buildMatrices"]),
 
       // build failures
       buildFailGroups: wy.vertList({type: "build-fail-group"},
                                    ["buildSummary", "failGroups"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
-  },
+  }, {leaf: "isLeafPush"}),
   impl: {
     postInitUpdate: function() {
       if (this.obj.topLevelPush) {
@@ -198,6 +198,10 @@ wy.defineWidget({
   impl: {
     postInit: function() {
       var rootCluster = this.obj.platRootCluster;
+      // don't build anything if there are no clusters:
+      if (!rootCluster.kids.length)
+        return;
+
       var doc = this.domNode.ownerDocument;
       var clsTable = this.__cssClassBaseName + "table",
           clsCol = this.__cssClassBaseName + "col",

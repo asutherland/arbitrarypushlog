@@ -155,6 +155,9 @@ BuildPush.prototype = {
   get unique() {
     return this.tinderTree.id + ":" + this.push.id;
   },
+  get isLeafPush() {
+    return this.subPushes.length === 0;
+  },
   visitLeafBuildPushes: function(func, funcThis) {
     if (this.subPushes.length) {
       for (var iPush = 0; iPush < this.subPushes.length; iPush++) {

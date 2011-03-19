@@ -3,7 +3,31 @@
   border-bottom: 1px dotted gray;
 }
 
+@media (min-width: 1700px) {
+  #generic-push {
+    #root[leaf="true"] {
+      #kids {
+        #changesets {
+          margin-right: 50%;
+        }
+        #buildSummaries {
+          float: right;
+          width: 50%;
+        }
+      }
+      #kids::after {
+        content: "";
+        display: block;
+        clear: both;
+      }
+    }
+  }
+}
+
 #generic-push {
+  #root {
+    position: relative;
+  }
   #headingBox {
     border-top: 1px solid #357fa5;
     background-color: #b9e4ff;
