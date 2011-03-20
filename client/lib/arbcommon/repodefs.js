@@ -211,6 +211,7 @@ var MC_MAPPING = {
     components: {
       places: "Places",
       printing: "Printing",
+      satchel: "Form History",
     },
     crashreporter: "Crash Reporter",
     mozapps: {
