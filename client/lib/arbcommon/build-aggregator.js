@@ -176,19 +176,15 @@ FailCluster.prototype = {
       return;
     }
     var similarity = similarPathComponents(this.usingPath, pathParts);
-console.log("similarity of", this.usingPath.concat(), pathParts.concat(),
-            "is", similarity);
     // exact similarity match means just stick it in our list
     if (similarity === this.usingPath.length &&
         similarity === pathParts.length) {
-console.log("  match! groupifying");
       this.groupifyInKids(type, name, signature, build);
       return;
     }
     // split if required
     var subCluster;
     if (this.usingPath.length > similarity) {
-console.log("  split required!");
       var subPath = this.usingPath.slice(similarity);
       var subName = subPath.join("/");
       this.usingPath = this.usingPath.slice(0, similarity);
@@ -201,16 +197,17 @@ console.log("  split required!");
       nuevoKids.push(subCluster);
       this.kids = nuevoKids;
     }
+    else {
+      pathParts = pathParts.slice(similarity);
+    }
     // - see if there is an appropriate sub-cluster (there will only be one)
-    pathParts = pathParts.slice(similarity);
-console.log("  sliced down to", pathParts.concat());
     for (var i = 0; i < this.kids.length; i++) {
       var kid = this.kids[i];
       if (kid.usingPath) {
         similarity = similarPathComponents(kid.usingPath, pathParts);
         if (similarity) {
-          kid.pathBasedPlacement(pathParts.slice(similarity),
-                                 type, name, signature, build);
+          // do not slice; the child will handle that.
+          kid.pathBasedPlacement(pathParts, type, name, signature, build);
           return;
         }
       }
