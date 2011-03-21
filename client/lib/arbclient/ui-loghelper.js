@@ -331,6 +331,84 @@ wy.defineWidget({
   },
 });
 
+
+wy.defineWidget({
+  name: "logdetails-domWindow",
+  constraint: {
+    type: "logdetail",
+    obj: { type: "domWindow" },
+  },
+  structure: {
+    id: ["id: ", wy.bind("name")],
+    title: ["title: ", wy.bind("value")],
+    location: ["location: ", wy.bind("location")],
+    coords: "",
+    dims: "",
+  },
+  impl: {
+    postInit: function() {
+      this.coords_element.textContent =
+        JSON.stringify(this.obj.coords);
+      this.dims_element.textContent =
+        JSON.stringify(this.obj.dims);
+    }
+  },
+});
+
+/**
+ * Take a potentialy stupidly long URL and inject ellipsis as reasonable.
+ */
+function elideUrl(url) {
+  if (url.length < 40)
+    return url;
+  var protoIdx = url.indexOf("://");
+  var lslash = url.lastIndexOf("/");
+  if (lslash != -1)
+    lslash = url.lastIndexOf("/", lslash - 1);
+  if (lslash == -1)
+    return url;
+  return url.substring(0, protoIdx + 3) + "..." + url.substring(lslash);
+}
+
+wy.defineWidget({
+  name: "log-domWindow",
+  constraint: {
+    type: "logstream",
+    obj: { type: "domWindow" },
+  },
+  structure: {
+    label: wy.computed("label"),
+  },
+  popups: {
+    details: {
+      constraint: {
+        type: "logdetail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
+  impl: {
+    label: function() {
+      var obj = this.obj;
+      if (obj.id == "n/a" && obj.title == "no document") {
+        return "DomWindow:" + elideUrl(obj.location);
+      }
+      return "DomWindow: " + obj.id + ": " + obj.title;
+    },
+  },
+  events: {
+    root: {
+      click: function() {
+        this.popup_details(this.obj, this);
+      }
+    }
+  },
+});
+
 wy.defineWidget({
   name: "error-details",
   constraint: {

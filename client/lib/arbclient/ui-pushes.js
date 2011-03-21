@@ -76,8 +76,8 @@ wy.defineWidget({
       changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
 
       // build failures
-      buildFailGroups: wy.vertList({type: "build-fail-group"},
-                                   ["buildSummary", "failGroups"]),
+      buildFailGroups: wy.widget({type: "build-fail-thing"},
+                                 ["buildSummary", "rootFailCluster"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
   }, {leaf: "isLeafPush"}),
@@ -374,20 +374,31 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "build-fail-cluster",
+  doc: "hierarchical clustering whose leaf nodes are build-fail-groups",
+  constraint: {
+    type: "build-fail-thing",
+    obj: {kind: "cluster"},
+  },
+  structure: {
+    name: wy.bind("name"),
+    kids: wy.vertList({type: "build-fail-thing"}, "kids"),
+  },
+});
+
+wy.defineWidget({
   name: "build-fail-group",
   doc: "failure group binds a specific failure breakout with builder list",
   constraint: {
-    type: "build-fail-group",
+    type: "build-fail-thing",
+    obj: {kind: "group"},
   },
   emit: ["navigate"],
-  structure: {
+  structure: wy.flow({
     testDetail: wy.widget({type: "build-fail-summary"}, wy.SELF),
-    builderGroup: wy.flow({
-      buildersLabel: "Builders: ",
-      types: wy.widgetFlow({type: "build-info"}, "inBuilds",
-                           {separator: ", "}),
-    }),
-  },
+    types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+                         {separator: ", "}),
+  }),
   events: {
     types: {
       click: function(buildBinding) {
@@ -428,6 +439,9 @@ wy.defineWidget({
   },
 });
 
+// XXX these are all split out for ease of hyperlinking, but we could also
+//  just have the back-end rep be smarter, or admit we may not implement
+//  hyperlinking :)
 wy.defineWidget({
   name: "mozmill-build-fail-summary",
   doc: "characterize mozmill failures",
@@ -464,6 +478,18 @@ wy.defineWidget({
   },
 });
 
+wy.defineWidget({
+  name: "jsreftest-build-fail-summary",
+  doc: "characterize reftest failures",
+  constraint: {
+    type: "build-fail-summary",
+    obj: { type: "jsreftest" },
+  },
+  structure: {
+    name: wy.bind("name"),
+  },
+});
+
 
 wy.defineWidget({
   name: "build-info",
@@ -485,11 +511,15 @@ wy.defineWidget({
       if (this.obj.builder.isDebug)
         buildStr += " debug";
 
+      // tests will generally imply a specific subtype and capture, so don't
+      //  encode that otherwise redundant information
+      /*
       buildStr += " " + type.subtype;
 
       if (this.obj.builder.hasOwnProperty("capture") &&
           this.obj.builder.capture)
         buildStr += " " + this.obj.builder.capture;
+      */
 
       this.domNode.textContent = buildStr;
 

@@ -111,6 +111,18 @@
   }
 }
 
+#logdetails-domWindow {
+  #root {
+    background-color: white;
+  }
+}
+
+#log-domWindow {
+  #root {
+    .clickable;
+  }
+}
+
 #error-details {
   #root {
     background-color: white;

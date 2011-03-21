@@ -48,9 +48,11 @@
 
 define(
   [
+    "./repodefs",
     "exports"
   ],
   function(
+    $repodefs,
     exports
   ) {
 
@@ -121,6 +123,123 @@ PlatformGroup.prototype = {
 };
 exports.PlatformGroup = PlatformGroup;
 
+function similarPathComponents(a, b) {
+  var i;
+  for (i = 0; i < a.length && i < b.length; i++) {
+    if (a[i] !== b[i])
+      break;
+  }
+  return i;
+}
+
+/**
+ * Hiearchical clustering node; cluster by test type, directory structure.
+ */
+function FailCluster(name) {
+  this.name = name;
+  this.kids = [];
+  // there is no path in effect for this cluster right now.
+  this.usingPath = null;
+}
+FailCluster.prototype = {
+  kind: "cluster",
+  explicitName: "",
+  getOrCreateSubCluster: function(name) {
+    for (var i = 0; i < this.kids.length; i++) {
+      if (this.kids[i].explicitName == name)
+        return this.kids[i];
+    }
+    var kid = new FailCluster(name);
+    kid.explicitName = name;
+    this.kids.push(kid);
+    this.kids.sort(nameSorter);
+    return kid;
+  },
+  /**
+   * Place a build into a FailGroup building a minimal tree hierarchy that
+   *  always has at least two outgoing edges to child FailClusters when it has
+   *  any such edges.  For example, if test "a" and "b" both happen in "foo/bar",
+   *  then our cluster node is just "foo/bar".  However, once a test "c" shows
+   *  up in "foo/baz", we will have the "foo" cluster pointing to child clusters
+   *  "bar" and "baz".
+   *
+   * This is implemented by performing
+   */
+  pathBasedPlacement: function(pathParts, type, name, signature, build) {
+    var failGroup;
+    if (this.usingPath == null) {
+      this.usingPath = pathParts;
+      this.name = this.usingPath.join("/") || this.explicitName;
+      failGroup = new FailGroup(type, name, signature);
+      failGroup.inBuilds.push(build);
+      this.kids.push(failGroup);
+      return;
+    }
+    var similarity = similarPathComponents(this.usingPath, pathParts);
+console.log("similarity of", this.usingPath.concat(), pathParts.concat(),
+            "is", similarity);
+    // exact similarity match means just stick it in our list
+    if (similarity === this.usingPath.length &&
+        similarity === pathParts.length) {
+console.log("  match! groupifying");
+      this.groupifyInKids(type, name, signature, build);
+      return;
+    }
+    // split if required
+    var subCluster;
+    if (this.usingPath.length > similarity) {
+console.log("  split required!");
+      var subPath = this.usingPath.slice(similarity);
+      var subName = subPath.join("/");
+      this.usingPath = this.usingPath.slice(0, similarity);
+      this.name = this.usingPath.join("/") || this.explicitName;
+      subCluster = new FailCluster(subName);
+      subCluster.usingPath = subPath;
+      // save off new array to avoid abandoning it as garbage
+      var nuevoKids = subCluster.kids;
+      subCluster.kids = this.kids;
+      nuevoKids.push(subCluster);
+      this.kids = nuevoKids;
+    }
+    // - see if there is an appropriate sub-cluster (there will only be one)
+    pathParts = pathParts.slice(similarity);
+console.log("  sliced down to", pathParts.concat());
+    for (var i = 0; i < this.kids.length; i++) {
+      var kid = this.kids[i];
+      if (kid.usingPath) {
+        similarity = similarPathComponents(kid.usingPath, pathParts);
+        if (similarity) {
+          kid.pathBasedPlacement(pathParts.slice(similarity),
+                                 type, name, signature, build);
+          return;
+        }
+      }
+    }
+    // - no existing sub-cluster, create.
+    subCluster = new FailCluster();
+    subCluster.pathBasedPlacement(pathParts, type, name, signature, build);
+    this.kids.push(subCluster);
+  },
+  groupifyInKids: function(type, name, signature, build) {
+    var failGroup;
+    for (var i = 0; i < this.kids.length; i++) {
+      failGroup = this.kids[i];
+      if (failGroup.type === type &&
+          failGroup.name === name &&
+          failGroup.signature === signature) {
+        failGroup.inBuilds.push(build);
+        return;
+      }
+    }
+    failGroup = new FailGroup(type, name, signature);
+    failGroup.inBuilds.push(build);
+    this.kids.push(failGroup);
+  }
+};
+
+/**
+ * Groups failures of a specific test together.
+ */
 function FailGroup(type, name, signature) {
   // these field names are explicitly chosen to mimic the failure info!
   this.type = type;
@@ -129,6 +248,7 @@ function FailGroup(type, name, signature) {
   this.inBuilds = [];
 }
 FailGroup.prototype = {
+  kind: "group",
 };
 exports.FailGroup = FailGroup;
 
@@ -196,6 +316,8 @@ BuildMatrix.prototype = {
   },
 };
 
+var RE_JSREF = /jsreftest.html\?test=(.+)$/;
+
 /**
  * @args[
  *   @param[bbtree BundleBucketTree]
@@ -206,8 +328,9 @@ function AggrBuildSummary(bbtree) {
   this.bbtree = bbtree;
   this.allBuilds = [];
 
-  this.failGroups = [];
-  this._failGroupMap = {};
+  // XXX we should really not be hardcoding a presentation string here, but it
+  //  simplifies the UI logic a bit...
+  this.rootFailCluster = new FailCluster("Test failures:", false);
 
   this.buildMatrices = [];
   this._matrixByName = {};
@@ -256,34 +379,37 @@ AggrBuildSummary.prototype = {
       var buildFailures = build.processedLog.failures;
       for (var iFail = 0; iFail < buildFailures.length; iFail++) {
         var bfail = buildFailures[iFail];
-        var failGroupKey, testName, signature;
+        var pathParts, testName, signature;
+
         if (testType === "mozmill") {
-          failGroupKey = testType + ":" + bfail.fileName + ":" + bfail.testName;
+          pathParts = bfail.fileName.split("/");
           testName = bfail.testName;
           signature = "";
         }
         else if (testType === "xpcshell") {
-          failGroupKey = testType + ":" + bfail.test + ":" + bfail.hash;
-          testName = bfail.test;
+          pathParts = bfail.test.split("/");
+          testName = pathParts.pop();
           signature = bfail.hash;
         }
         else {
-          failGroupKey = testType + ":" + bfail.test;
-          testName = bfail.test;
-          signature = "";
+          var jsrefmatch = RE_JSREF.exec(bfail.test);
+          if (jsrefmatch) {
+            testType = "jsreftest";
+            pathParts = jsrefmatch[1].split("/");
+            testName = pathParts.pop();
+            signature = "";
+          }
+          else {
+            pathParts = bfail.test.split("/");
+            testName = pathParts.pop();
+            signature = "";
+          }
         }
 
-        var failGroup;
-        if (this._failGroupMap.hasOwnProperty(failGroupKey)) {
-          failGroup = this._failGroupMap[failGroupKey];
-        }
-        else {
-          failGroup = this._failGroupMap[failGroupKey] =
-            new FailGroup(testType, testName, signature);
-          this.failGroups.push(failGroup);
-        }
-
-        failGroup.inBuilds.push(build);
+        // XXX we need to stop mutating testType inside the loop and hoist.
+        var typeCluster = this.rootFailCluster.getOrCreateSubCluster(testType);
+        typeCluster.pathBasedPlacement(pathParts, testType, testName, signature,
+                                       build);
       }
     }
   },

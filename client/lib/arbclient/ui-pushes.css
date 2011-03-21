@@ -187,15 +187,22 @@
   }
 }
 
+#build-fail-cluster {
+  #name {
+    font-weight: 600;
+    color: #444;
+  }
+  #kids {
+    margin-left: 1em;
+  }
+}
+
 #build-fail-group {
   #root {
   }
-  #builderGroup {
-    display: block;
-    margin-left: 1em;
-  }
-  #buildersLabel {
-    color: #888;
+  #testDetail {
+    display: inline-block;
+    margin-right: 1em;
   }
 }
 
