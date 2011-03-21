@@ -373,7 +373,7 @@ HStore.prototype = {
   getMostRecentKnownPush: function(treeId) {
     var op = new DBReadOp("recent", treeId, 0, "");
     if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.has].deferred.promise;
+      return this._dbOpsMap[op.hash].deferred.promise;
     }
     this._scheduleOp(op);
     return op.deferred.promise;
