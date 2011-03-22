@@ -356,6 +356,12 @@ RemoteStore.prototype = {
       var truePush = new $datamodel.Push();
       buildPush.push = truePush;
 
+      if (!hbData.hasOwnProperty(pushKey)) {
+        console.warn("coherency issue with pushKey:", pushKey,
+                     "we know about a build but not the associated revision");
+        return buildPush;
+      }
+
       var value = hbData[pushKey];
       var keyBits = pushKey.split(":");
 
