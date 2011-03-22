@@ -221,7 +221,6 @@ Overmind.prototype = {
     this._syncDeferred = $Q.defer();
 
     this._logProcJobs = [];
-    this._pendingSidebandState = {};
 
     this._noteState("tinderbox:fetching");
     this._usingRange = timeRange;
@@ -742,8 +741,6 @@ Overmind.prototype = {
 
     if (this._activeLogFrobbers.length === 0 &&
         this._logProcJobs.length === 0) {
-      console.log("Active log frobbers:", this._activeLogFrobbers);
-      console.log("Log proc jobs:", this._logProcJobs);
       this._sendSidebandData();
     }
   },
@@ -807,17 +804,7 @@ Overmind.prototype = {
         console.log(" frobber db write completed");
         self._activeLogFrobbers.splice(
           self._activeLogFrobbers.indexOf(frobber), 1);
-        // - sideband notification
-        when(self.bridge.send({
-               type: "push",
-               treeName: self.tinderTree.name,
-               pushId: job.pushId,
-               keysAndValues: stateObj,
-             }),
-          function() {
-            self._processNextLog();
-          }
-        );
+        self._processNextLog();
       });
   },
 
@@ -867,20 +854,37 @@ Overmind.prototype = {
 
   _sendSidebandData: function() {
     this._noteState("sideband");
-    var self = this;
-    when(this.bridge.send({
-           type: "push",
-           treeName: this.tinderTree.name,
-           pushId: this._pendingPushId,
-           keysAndValues: this._pendingSidebandState,
-         }),
-      function() {
-        console.log("sideband push completed");
-        self._processNextPush();
-      }
-    );
+    if (this._pendingSidebandState == null)
+      console.warn("Trying to send sideband data with no data!");
+
+    var anythingToSend = false;
+    for (var key in this._pendingSidebandState) {
+      anythingToSend = true;
+      break;
+    }
+
+    var stateToSend = this._pendingSidebandState;
+    var pushId = this._pendingPushId;
     this._pendingSidebandState = null;
     this._pendingPushId = null;
+
+    if (anythingToSend) {
+      var self = this;
+      when(this.bridge.send({
+             type: "push",
+             treeName: this.tinderTree.name,
+             pushId: pushId,
+             keysAndValues: stateToSend,
+           }),
+        function() {
+          console.log("sideband push completed");
+          self._processNextPush();
+        }
+      );
+    }
+    else {
+      this._processNextPush();
+    }
   },
 
   _allDone: function() {

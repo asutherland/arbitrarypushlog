@@ -348,7 +348,6 @@ Tinderboxer.prototype = {
   fetchRange: function(timeRange) {
     var deferred = $Q.defer(), self = this;
     var url = this._getScriptURL(timeRange, false, Date.now());
-    console.log("fetching tinderbox data from", url);
     // Sometimes we will catch the tinderbox halfway through writing out its
     //  stupid JSON file (or our connection is dying halfway through; something
     //  dumb.)  In those cases, we need to either retry or give up the fight.
@@ -359,6 +358,7 @@ Tinderboxer.prototype = {
         deferred.reject("out of retries!");
         return;
       }
+      console.log("fetching tinderbox data from", url);
       when($reliahttp.reliago({url: url}),
         function(dataStr) {
           try {
