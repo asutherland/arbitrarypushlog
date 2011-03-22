@@ -320,6 +320,13 @@ var REPOS = exports.REPOS = {
     path_mapping: CC_MAPPING,
     family: "comm",
   }),
+  "mozilla-1.9.2": new CodeRepoDef({
+    name: "mozilla-1.9.2",
+    url: "http://hg.mozilla.org/releases/mozilla-1.9.2/",
+    kind: "release",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
 };
 
 /**
