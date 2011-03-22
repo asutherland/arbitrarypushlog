@@ -176,6 +176,16 @@ function Overmind(tinderTreeDef, config) {
    *  a "builds" list in it.
    */
   this._revMap = null;
+
+  /**
+   * The accumulated DB delta state that we will send via the sideband
+   *  mechanism in one go when completed.  We accumulate this because failure
+   *  clustering needs to hear about the failures at the same time it hears
+   *  about the log summaries.  Also, otherwise we can end up sending a lot
+   *  of traffic that would really benefit from clustering.
+   */
+  this._pendingSidebandState = null;
+  this._pendingPushId = null;
 }
 Overmind.prototype = {
   _noteState: function(newState, extra) {
@@ -211,6 +221,7 @@ Overmind.prototype = {
     this._syncDeferred = $Q.defer();
 
     this._logProcJobs = [];
+    this._pendingSidebandState = {};
 
     this._noteState("tinderbox:fetching");
 
@@ -492,6 +503,9 @@ Overmind.prototype = {
       var repoDef = this.tinderTree.repos[0];
       var todo = this._pushQueue.shift();
 
+      this._pendingSidebandState = {};
+      this._pendingPushId = todo.pushId;
+
       var self = this;
       when(DB.getPushInfo(this.tinderTree.id, todo.pushId),
         function(rowResults) {
@@ -505,8 +519,7 @@ Overmind.prototype = {
     }
 
     // (we only reach here if there were no more changesets to process)
-    this._noteState("logproc");
-    this._processNextLog();
+    this._allDone();
   },
 
   /**
@@ -533,6 +546,7 @@ Overmind.prototype = {
     // -- handle root "s:r" records.
     if (!dbstate.hasOwnProperty("s:r")) {
       setstate["s:r"] = rootPush;
+      this._pendingSidebandState["s:r"] = rootPush;
     }
 
     /**
@@ -573,8 +587,10 @@ Overmind.prototype = {
         var bKey = "s:b" + keyExtra + ":" + build.id;
         var jsonStr = JSON.stringify(build);
         if (!dbstate.hasOwnProperty(bKey) ||
-            dbstate[bKey] != jsonStr)
+            dbstate[bKey] != jsonStr) {
           setstate[bKey] = jsonStr;
+          self._pendingSidebandState[bKey] = jsonStr;
+        }
 
         if (isBuildLoggable(build)) {
           var lKey = "s:l" + keyExtra + ":" + build.id;
@@ -630,6 +646,7 @@ Overmind.prototype = {
           var rKey = "s:r" + kidAccumKey;
           if (!dbstate.hasOwnProperty(rKey)) {
             setstate[rKey] = curPush;
+            self._pendingSidebandState[rKey] = curPush;
           }
 
           walkRevMap(kidAccumKey,
@@ -646,18 +663,8 @@ Overmind.prototype = {
     when(DB.putPushStuff(this.tinderTree.id, rootPush.id, setstate),
       function() {
         console.log("db write completed:", self.tinderTree.id, rootPush.id);
-        // - sideband notification
-        when(self.bridge.send({
-               type: "push",
-               treeName: self.tinderTree.name,
-               pushId: rootPush.id,
-               keysAndValues: setstate,
-             }),
-          function() {
-            // - kickoff next processing step.
-            self._processNextPush();
-          }
-        );
+        self._noteState("logproc");
+        self._processNextLog();
       },
       function(err) {
         console.error("failed to write our many stories! keys were:");
@@ -719,7 +726,7 @@ Overmind.prototype = {
         this._logProcJobs.length === 0) {
       console.log("Active log frobbers:", this._activeLogFrobbers);
       console.log("Log proc jobs:", this._logProcJobs);
-      this._allDone();
+      this._sendSidebandData();
     }
   },
 
@@ -769,6 +776,7 @@ Overmind.prototype = {
       failures: detailedFailures,
     };
     stateObj[job.summaryKey] = summaryObj;
+    this._pendingSidebandState[job.summaryKey] = summaryObj;
     stateObj[job.detailKey] = detailObj;
     // Although we could potentially overlap the next request with this
     //  request, this is the easiest way to make sure that _allDone does not
@@ -837,6 +845,24 @@ Overmind.prototype = {
       self._frobberDone(frobber, job, failures);
     });
     return frobber;
+  },
+
+  _sendSidebandData: function() {
+    this._noteState("sideband");
+    var self = this;
+    when(this.bridge.send({
+           type: "push",
+           treeName: this.tinderTree.name,
+           pushId: this._pendingPushId,
+           keysAndValues: this._pendingSidebandState,
+         }),
+      function() {
+        console.log("sideband push completed");
+        self._processNextPush();
+      }
+    );
+    this._pendingSidebandState = null;
+    this._pendingPushId = null;
   },
 
   _allDone: function() {

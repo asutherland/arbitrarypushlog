@@ -231,6 +231,12 @@
   }
 }
 
+#jsreftest-build-fail-summary {
+  #name {
+    font-weight: 600;
+  }
+}
+
 #build-info {
   #root {
     .clickable;

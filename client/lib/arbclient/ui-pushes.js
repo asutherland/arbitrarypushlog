@@ -374,6 +374,17 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "build-fail-empty",
+  doc: "null build-fail-thing",
+  constraint: {
+    type: "build-fail-thing",
+    obj: wy.WILD,
+  },
+  structure: {
+  },
+});
+
+wy.defineWidget({
   name: "build-fail-cluster",
   doc: "hierarchical clustering whose leaf nodes are build-fail-groups",
   constraint: {

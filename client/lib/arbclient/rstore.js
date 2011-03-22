@@ -140,7 +140,7 @@ RemoteStore.prototype = {
   },
 
   onMessage: function(msg) {
-    console.log("MESSAGE", msg);
+    //console.log("MESSAGE", msg);
     if (msg.seqId !== -1) {
       if (msg.seqId === this._pendingSeq) {
         this._pendingSeq = 0;
