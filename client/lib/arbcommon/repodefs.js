@@ -357,6 +357,7 @@ var TB_TYPE_GROUPS = [
   "build",
   "xpcshell",
   "mozmill",
+  "nightly",
 ];
 
 var TINDER_TREES = exports.TINDER_TREES = {

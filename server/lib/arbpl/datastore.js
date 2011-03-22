@@ -641,7 +641,6 @@ DataServer.prototype = {
         sub.pushCount = targPushCount;
         sub.pendingRetrievalPushId = null;
         var treeCache = self._getOrCreateTreeCache(treeDef.name);
-
         client.send({
           seqId: sub.seqId, lastForSeq: true,
           type: "pushinfo",
@@ -712,7 +711,7 @@ DataServer.prototype = {
     if (cached) {
       sub.highPushId = targHighPushId;
       sub.pushCount = targPushCount;
-      var treeCache = this._getOrCreateTreeCache(msg.treeName);
+      var treeCache = this._getOrCreateTreeCache(sub.treeName);
       client.send({
         seqId: sub.seqId, lastForSeq: true,
         type: "pushinfo",
