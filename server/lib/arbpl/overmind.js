@@ -419,6 +419,7 @@ Overmind.prototype = {
     // XXX promises feel like they would be cleaner, but the Q abstractions are
     //  concerning still right now.
     this._pendingPushFetches++;
+    var isCanonicalRepo = repoDef === this.tinderTree.repos[0];
 
     console.log("fetching push info for", repoDef.name, "paramstr", paramStr);
     when($reliahttp.reliago({url: url}),
@@ -446,6 +447,17 @@ Overmind.prototype = {
             console.log("  resolving rev", shortRev, revs.indexOf(shortRev));
             if (revs.indexOf(shortRev) != -1)
               revs.splice(revs.indexOf(shortRev), 1);
+
+            // if this is telling us about a revision the tinderbox did not
+            //  know about, inject it.
+            // XXX Our implementation originally intentionally inverted things
+            //  so we only cared what the tinderbox actually built and the
+            //  timeline that defined.  Since our goals have changed slightly,
+            //  this is now arguably a bit of a mistake and we should probably
+            //  be also fetching time-wise or delta-wise from the pushlog.
+            if (isCanonicalRepo && !self._revMap.hasOwnProperty(shortRev)) {
+              self._revMap[shortRev] = {builds: []};
+            }
           }
         }
 
