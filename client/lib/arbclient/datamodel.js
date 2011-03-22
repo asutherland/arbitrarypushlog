@@ -101,6 +101,8 @@ exports.MozPerson = MozPerson;
  */
 function BuildPush(tinderTree) {
   this.tinderTree = tinderTree;
+  // will be filled in by _normalizeOnePush
+  this.repo = null;
 
   /**
    * The actual `Push` we are talking about.
@@ -154,6 +156,9 @@ function BuildPush(tinderTree) {
 BuildPush.prototype = {
   get unique() {
     return this.tinderTree.id + ":" + this.push.id;
+  },
+  get insaneChangesets() {
+    return this.push.changesets.length > 8;
   },
   get isLeafPush() {
     return this.subPushes.length === 0;

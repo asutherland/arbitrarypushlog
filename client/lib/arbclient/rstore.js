@@ -261,7 +261,7 @@ RemoteStore.prototype = {
     }
 
     var buildPush = this._knownPushes[msg.pushId];
-    console.log("delta!", buildPush);
+    //console.log("delta!", buildPush);
     this._normalizeOnePush(msg.keysAndValues, buildPush);
     this._listener.onModifiedPush(buildPush);
 
@@ -329,13 +329,15 @@ RemoteStore.prototype = {
       var keyBits = pushKey.split(":");
 
       buildPush.topLevelPush = (keyBits.length == 2);
+      buildPush.repo = buildPush.tinderTree.repos[keyBits.length - 2];
 
       // - set push state...
       truePush.id = parseInt(value.id);
       truePush.pushDate = new Date(value.date * 1000);
       truePush.pusher = LocalDB.getPersonForPusher(value.user);
 
-      for (var iCS = 0; iCS < value.changesets.length; iCS++) {
+      // process in reverse order
+      for (var iCS = value.changesets.length - 1; iCS >= 0; iCS--) {
         truePush.changesets.push(
           chewChangeset(value.changesets[iCS],
                         self.tinderTree.repos[keyBits.length - 2]));

@@ -73,7 +73,7 @@ wy.defineWidget({
     kids: {
       buildSummaries: wy.vertList({type: "aggr-build-summary"},
                                   ["buildSummary", "buildMatrices"]),
-      changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
+      changesets: wy.widget({type: "push-changeset-list"}, wy.SELF),
 
       // build failures
       buildFailGroups: wy.widget({type: "build-fail-thing"},
@@ -93,6 +93,52 @@ wy.defineWidget({
     },
   },
 });
+
+wy.defineWidget({
+  name: "push-changeset-list-all",
+  doc: "A changeset list that shows all (sane number of) changesets.",
+  constraint: {
+    type: "push-changeset-list",
+    obj: {insaneChangesets: false},
+  },
+  focus: wy.focus.container.vertical("changesets"),
+  structure: {
+    changesets: wy.vertList({type: "changeset"}, ["push", "changesets"]),
+  }
+});
+
+wy.defineWidget({
+  name: "push-changeset-list-insane",
+  doc: "A changeset list that shows all (sane number of) changesets.",
+  constraint: {
+    type: "push-changeset-list",
+    obj: {insaneChangesets: true},
+  },
+  focus: wy.focus.container.vertical("changesets"),
+  structure: {
+    changesets: wy.vertList({type: "changeset"}, wy.NONE),
+    elidedDesc: [
+      wy.computed("elidedCount"), " changesets elided; ",
+      wy.hyperlink(wy.localizableString("see the pushlog"),
+                   {href: wy.computed("pushlogURL")}),
+    ],
+  },
+  impl: {
+    NUM_TO_SHOW: 3,
+    update: function() {
+      this.__update();
+      this.changesets_set(this.obj.push.changesets.slice(0, this.NUM_TO_SHOW));
+    },
+    elidedCount: function() {
+      return (this.obj.push.changesets.length - this.NUM_TO_SHOW) + "";
+    },
+    pushlogURL: function() {
+      return this.obj.repo.url +
+        "pushloghtml?changeset=" + this.obj.push.changesets[0].shortRev;
+    },
+  },
+});
+
 
 wy.defineWidget({
   name: "changeset",
