@@ -83,9 +83,13 @@ wy.defineWidget({
       this.obj.binding = this;
     }
   },
+  emit: ["subModeChanged"],
   receive: {
     navigate: function(keyDeltas) {
       this.obj.navigate(keyDeltas);
+    },
+    subDelta: function(delta) {
+      this.obj.subDelta(delta);
     },
   },
 });

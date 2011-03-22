@@ -430,7 +430,7 @@ Overmind.prototype = {
         console.log("repo", repoDef.name, "got JSON");
         for (var pushId in pushes) {
           var pinfo = pushes[pushId];
-          pinfo.id = pushId;
+          pinfo.id = parseInt(pushId);
 
           for (var iChange = 0; iChange < pinfo.changesets.length; iChange++) {
             var csinfo = pinfo.changesets[iChange];

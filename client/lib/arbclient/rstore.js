@@ -140,7 +140,7 @@ RemoteStore.prototype = {
   },
 
   onMessage: function(msg) {
-    //console.log("MESSAGE", msg);
+    console.log("MESSAGE", msg);
     if (msg.seqId !== -1) {
       if (msg.seqId === this._pendingSeq) {
         this._pendingSeq = 0;
@@ -193,6 +193,20 @@ RemoteStore.prototype = {
     });
   },
 
+  subscribeToPushId: function(highPushId, desiredPushesCount) {
+    this._knownPushes = {};
+    this._subMode = "range";
+    this._desiredPushes = desiredPushesCount;
+
+    this._sock.send({
+      seqId: (this._pendingSeq = this._nextSeqId++),
+      type: "subtree",
+      treeName: this.tinderTree.name,
+      pushId: highPushId,
+    });
+  },
+
+
   unsubscribe: function() {
     this._knownPushes = {};
     this._subMode = null;
@@ -201,6 +215,15 @@ RemoteStore.prototype = {
     this._sock.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "unsub",
+    });
+  },
+
+  subGrowOrShift: function(dir) {
+    this._sock.send({
+      seqId: (this._pendingSeq = this._nextSeqId++),
+      type: "subgrow",
+      conditional: false,
+      dir: dir,
     });
   },
 
@@ -220,6 +243,12 @@ RemoteStore.prototype = {
         this._listener.onUnsubscribedPush(buildPush);
       }
     }
+
+    var believedRecent = (this._subMode === "recent");
+    if (believedRecent != msg.subRecent) {
+      this._subMode = msg.subRecent ? "recent" : "range";
+      this._listener.onSubModeChange(this._subMode);
+    }
   },
 
   /**
@@ -227,6 +256,10 @@ RemoteStore.prototype = {
    */
   msgPushInfo: function(msg) {
     //console.log("push info", msg);
+
+    // check subscriptions prior to doing the auto-grow thing because it
+    //  may affect the mode we are in
+    this._checkSubs(msg);
 
     // attempt to grow our subscription if required.
     if (this._subMode === "recent" &&
@@ -244,8 +277,6 @@ RemoteStore.prototype = {
     var buildPush = this._normalizeOnePush(msg.keysAndValues);
     this._knownPushes[buildPush.push.id] = buildPush;
     this._listener.onNewPush(buildPush);
-
-    this._checkSubs(msg);
   },
 
   /**

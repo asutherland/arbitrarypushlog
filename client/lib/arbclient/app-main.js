@@ -246,10 +246,15 @@ ArbApp.prototype = {
       page: "pushes",
       pathNodes: pathNodes,
       pushes: self._slice_pushes,
+      // XXX we should just be told this by rstore.
+      mode: highPushId ? "range" : "recent",
     };
     self._updateState("good");
 
-    self.rstore.subscribeToRecent(DESIRED_PUSHES);
+    if (!highPushId)
+      self.rstore.subscribeToRecent(DESIRED_PUSHES);
+    else
+      self.rstore.subscribeToPush(highPushId, DESIRED_PUSHES);
   },
 
   /**
@@ -292,6 +297,15 @@ ArbApp.prototype = {
     //this.binding.ANTICS.prepare("buildpush");
     this._slice_pushes.mutateSplice(slist.indexOf(buildPush), 1);
     //this.binding.ANTICS.go("buildpush");
+  },
+
+  subDelta: function(delta) {
+    this.rstore.subGrowOrShift(delta);
+  },
+
+  onSubModeChange: function(mode) {
+    this.page.mode = mode;
+    this.binding.emit_subModeChanged();
   },
 
   _getLog: function(pushId, buildId, filterToTest, pathNodes) {

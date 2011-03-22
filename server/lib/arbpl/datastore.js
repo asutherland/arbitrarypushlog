@@ -310,7 +310,7 @@ DataServer.prototype = {
     var treeCache = this._getOrCreateTreeCache(treeDef.name);
 
     if (isRecent && !treeCache.highPushId) {
-      treeCache.highPushId = pushId;
+      treeCache.highPushId = parseInt(pushId);
     }
     if (isRecent && treeCache.pushSummaries.hasOwnProperty(pushId)) {
       console.log("ignoring cache request for already cached push:", pushId,
@@ -351,7 +351,7 @@ DataServer.prototype = {
 
     // - new!
     if (pushId > treeCache.highPushId) {
-      treeCache.highPushId = pushId;
+      treeCache.highPushId = parseInt(pushId);
       this._evictOldEntriesFromCache(treeCache);
       treeCache.pushSummaries[pushId] = deltaKeyValues;
       return;
@@ -420,6 +420,7 @@ DataServer.prototype = {
 
     if (!this._treeSubsMap.hasOwnProperty(msg.treeName))
       return;
+    var treeCache = this._getOrCreateTreeCache(msg.treeName);
     var treeSubs = this._treeSubsMap[msg.treeName];
     for (var iSub = 0; iSub < treeSubs.length; iSub++) {
       var sub = treeSubs[iSub];
@@ -435,8 +436,9 @@ DataServer.prototype = {
       // - new?
       if (isFullPush && msg.pushId > sub.highPushId && sub.newLatched) {
         // ex: new pushId: 6, => (6 - 4) + 1 = 2 + 1 = 3
-        sub.pushCount = Math.min(msg.pushId - lowPushId + 1, MAX_PUSH_SUBS);
-        sub.highPushId = msg.pushId;
+        sub.pushCount = Math.min(parseInt(msg.pushId) - lowPushId + 1,
+                                 MAX_PUSH_SUBS);
+        sub.highPushId = parseInt(msg.pushId);
         // (keep going, do send)
       }
       // - old?
@@ -455,6 +457,7 @@ DataServer.prototype = {
         pushId: msg.pushId,
         keysAndValues: msg.keysAndValues,
         // it definitely needs to know that its subscription may have changed!
+        subRecent: sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });
@@ -521,6 +524,8 @@ DataServer.prototype = {
     // - update
     if (msg.pushId === "recent")
       sub.newLatched = true;
+    else
+      msg.pushId = parseInt(msg.pushId);
     sub.highPushId = sub.pendingRetrievalPushId = msg.pushId;
     sub.pushCount = 0;
 
@@ -552,7 +557,7 @@ DataServer.prototype = {
       promise = this._db.getMostRecentKnownPush(treeDef.id);
     }
     else {
-      promise = this._db.getPushInfo(treeDef.id, requestedPushId);
+      promise = this._db.getPushInfo(treeDef.id, sub.pendingRetrievalPushId);
     }
 
     // -- if the cache knows, use that
@@ -560,12 +565,14 @@ DataServer.prototype = {
                                           sub.pendingRetrievalPushId);
     if (cached) {
       sub.pushCount = 1;
-      sub.highPushId = cached["s:r"].id;
+      sub.highPushId = parseInt(cached["s:r"].id);
+      var treeCache = this._getOrCreateTreeCache(treeDef.name);
       client.send({
         seqId: sub.seqId, lastForSeq: true,
         type: "pushinfo",
         keysAndValues: cached,
         // make sure it knows what its subscription is, may remove this.
+        subRecent: sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });
@@ -588,6 +595,8 @@ DataServer.prototype = {
             client.send({
               seqId: sub.seqId, lastForSeq: true,
               type: "moot",
+              why: "fetch lacks revision",
+              pushId: sub.pendingRetrievalPushId,
               inResponseTo: "subgrow",
             });
           }
@@ -603,7 +612,7 @@ DataServer.prototype = {
           return;
         }
 
-        var pushId = colsAndValues["s:r"].id;
+        var pushId = parseInt(colsAndValues["s:r"].id);
         // We may have raced the scraper telling us about this, and if that's
         //  the case, we may have also missed other deltas, so check the
         //  cache and use that if possible.  (If the db query took a long
@@ -621,7 +630,7 @@ DataServer.prototype = {
         else {
           colsAndValues = cachedData;
           // because we may have used "recent" above, re-grab the pushId.
-          pushId = cachedData["s:r"].id;
+          pushId = parseInt(cachedData["s:r"].id);
         }
 
         // this request is mooted if the sequence id is still not this one.
@@ -631,6 +640,7 @@ DataServer.prototype = {
         sub.highPushId = (targHighPushId === null) ? pushId : targHighPushId;
         sub.pushCount = targPushCount;
         sub.pendingRetrievalPushId = null;
+        var treeCache = self._getOrCreateTreeCache(treeDef.name);
 
         client.send({
           seqId: sub.seqId, lastForSeq: true,
@@ -638,6 +648,7 @@ DataServer.prototype = {
           pushId: pushId,
           keysAndValues: colsAndValues,
           // make sure it knows what its subscription is, may remove this.
+          subRecent: sub.highPushId == treeCache.highPushId,
           subHighPushId: sub.highPushId,
           subPushCount: sub.pushCount,
         });
@@ -674,11 +685,12 @@ DataServer.prototype = {
         client.send({
           seqId: sub.seqId, lastForSeq: true,
           type: "moot",
+          why: "conditional",
           inResponseTo: "subgrow",
         });
         return;
       }
-      targHighPushId = sub.highPushId + (msg.dir < 0) ? -1 : 1;
+      targHighPushId = sub.highPushId + ((msg.dir < 0) ? -1 : 1);
       targPushCount = sub.pushCount;
     }
     // - grow range in dir
@@ -700,11 +712,13 @@ DataServer.prototype = {
     if (cached) {
       sub.highPushId = targHighPushId;
       sub.pushCount = targPushCount;
+      var treeCache = this._getOrCreateTreeCache(msg.treeName);
       client.send({
         seqId: sub.seqId, lastForSeq: true,
         type: "pushinfo",
         pushId: pushId,
         keysAndValues: cached,
+        subRecent: sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });

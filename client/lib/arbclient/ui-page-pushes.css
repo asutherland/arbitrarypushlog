@@ -1,0 +1,31 @@
+#page-pushes {
+}
+
+.clicky {
+  background-color: #eee;
+  border-radius: 8px;
+  padding: 4px;
+  cursor: pointer;
+
+  :hover {
+    background-color: #eec;
+  }
+}
+
+#subscription-newer {
+  #root {
+    text-align: center;
+    margin-bottom: 4px;
+    [mode="range"] {
+      .clicky;
+    }
+  }
+}
+
+#subscription-older {
+  #root {
+    margin-top: 4px;
+    text-align: center;
+    .clicky;
+  }
+}

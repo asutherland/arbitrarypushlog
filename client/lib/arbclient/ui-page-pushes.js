@@ -38,12 +38,15 @@
 define(
   [
     "wmsy/wmsy",
+    "text!./ui-page-pushes.css"
   ],
   function(
-    $wmsy
+    $wmsy,
+    $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-page-pushes", domain: "arbpl"});
+var wy = new $wmsy.WmsyDomain({id: "ui-page-pushes", domain: "arbpl",
+                               css: $_css});
 
 wy.defineWidget({
   name: "page-pushes",
@@ -53,9 +56,64 @@ wy.defineWidget({
   },
   focus: wy.focus.domain.vertical("pushes"),
   structure: {
+    newer: wy.widget({type: "subscription", subtype: "newer"}, wy.SELF),
     pushes: wy.vertList({type: "push"}, "pushes"),
+    older: wy.widget({type: "subscription", subtype: "older"}, wy.SELF),
   }
 });
 
+wy.defineWidget({
+  name: "subscription-newer",
+  constraint: {
+    type: "subscription",
+    subtype: "newer",
+  },
+  structure: wy.block({
+    label: wy.computed("appropriateLabel"),
+  }, {mode: "mode"}),
+  emit: ["subDelta"],
+  receive: {
+    subModeChanged: function() {
+      this.update();
+    },
+  },
+  impl: {
+    // XXX should be localizable...
+    appropriateLabel: function() {
+      if (this.obj.mode === "recent")
+        return "You are subscribed to recent pushes; the page will " +
+               "automatically update.";
+      else
+        return "Newer";
+    },
+  },
+  events: {
+    root: {
+      click: function() {
+        if (this.obj.mode !== "recent")
+          this.emit_subDelta(1);
+      },
+    },
+  }
+});
+
+wy.defineWidget({
+  name: "subscription-older",
+  constraint: {
+    type: "subscription",
+    subtype: "older",
+  },
+  structure: {
+    label: "Older",
+  },
+  emit: ["subDelta"],
+  events: {
+    root: {
+      click: function() {
+        this.emit_subDelta(-1);
+      },
+    },
+  }
+});
 
 }); // end define
