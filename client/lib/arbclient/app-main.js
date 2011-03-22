@@ -44,7 +44,7 @@ define(
     "arbcommon/repodefs",
     "./chew-loghelper",
     "./ui-main",
-    "socket.io/socket.io.js",
+    "socket.io/socket.io",
     "require",
     "exports"
   ],

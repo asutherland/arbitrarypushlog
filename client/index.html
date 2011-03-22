@@ -29,12 +29,13 @@
   <script>
     require({
       baseUrl: "./",
+      paths: {
+        text: "deps/requirejs/text",
+      },
       packages: [
         { name: "arbclient", location: ".", lib: "lib/arbclient" },
         { name: "arbcommon", location: ".", lib: "lib/arbcommon" },
 
-        { name: "require", location: "deps/requirejs",
-            lib: "require" },
         // jstut family
         { name: "jstut", location: "deps/jtstut",
             lib: "lib/jstut" },
