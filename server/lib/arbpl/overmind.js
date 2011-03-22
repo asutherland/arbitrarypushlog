@@ -224,6 +224,7 @@ Overmind.prototype = {
     this._pendingSidebandState = {};
 
     this._noteState("tinderbox:fetching");
+    this._usingRange = timeRange;
 
     when(this.tinderboxer.fetchRange(timeRange),
       this._procTinderboxBuildResults.bind(this),
@@ -269,9 +270,16 @@ Overmind.prototype = {
     }
 
     var revMap = this._revMap = {};
+    // pre-initialize the repoAndRevs map for at least the canonical repo
     var repoAndRevs = {};
+    repoAndRevs[this.tinderTree.repos[0].name] = {
+      repo: this.tinderTree.repos[0],
+      revs: [],
+    };
     var i, revision, repoDef;
-    var earliest = null, latest = null;
+    // Start out using the same time range as we asked the tinderbox for.
+    var earliest = (this._usingRange.endTime - this._usingRange.duration),
+        latest = this._usingRange.endTime;
     var expectedRevCount = this.tinderTree.repos.length;
 
     buildLoop:
@@ -411,13 +419,15 @@ Overmind.prototype = {
                                   "&startdate=" + earliestTimeStr +
                                   "&enddate=" + latestTimeStr);
     }
+    if (this._pendingPusheFetches == 0) {
+      console.warn("INVARIANT VIOLATION: NOTHING TO FETCH");
+      this._processFirstPush();
+    }
   },
 
   _fetchSpecificPushInfo: function(repoDef, revs, paramStr) {
     var self = this;
     var url = repoDef.url + "json-pushes?full=1" + paramStr;
-    // XXX promises feel like they would be cleaner, but the Q abstractions are
-    //  concerning still right now.
     this._pendingPushFetches++;
     var isCanonicalRepo = repoDef === this.tinderTree.repos[0];
 
@@ -448,13 +458,9 @@ Overmind.prototype = {
             if (revs.indexOf(shortRev) != -1)
               revs.splice(revs.indexOf(shortRev), 1);
 
-            // if this is telling us about a revision the tinderbox did not
-            //  know about, inject it.
-            // XXX Our implementation originally intentionally inverted things
-            //  so we only cared what the tinderbox actually built and the
-            //  timeline that defined.  Since our goals have changed slightly,
-            //  this is now arguably a bit of a mistake and we should probably
-            //  be also fetching time-wise or delta-wise from the pushlog.
+            // If this is telling us about a revision the tinderbox did not
+            //  know about, inject it.  (The builders do not build all
+            //  revisions.)
             if (isCanonicalRepo && !self._revMap.hasOwnProperty(shortRev)) {
               self._revMap[shortRev] = {builds: []};
             }
