@@ -89,6 +89,8 @@ var DB = new $hstore.HStore();
 
 var HOURS_IN_MS = 60 * 60 * 1000;
 
+var RE_BACKSLASH = /\\/g;
+
 /**
  * The pushlog has ugly internal date parsing plus a fallback to the python
  *  "parsedatetime" module.  We opt to fail the custom date parsing regex and
@@ -814,6 +816,16 @@ Overmind.prototype = {
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
     var frobber = new $frobMozmill.MozmillFrobber(stream, function(failures) {
+      // XXX temporary hack to normalize windows paths until the driver side
+      //  is fixed to normalize for us and this glitch gets aged out.
+      for (var i = 0; i < failures.length; i++) {
+        var entry = failures[i], pathParts;
+        if (entry.fileName.indexOf("\\") != -1) {
+          entry.fileName = entry.fileName.replace(RE_BACKSLASH, "/");
+          pathParts = entry.fileName.split("/");
+          entry.fileName = pathParts.slice(-2).join("/");
+        }
+      }
       self._frobberDone(frobber, job, failures);
     });
     return frobber;
