@@ -382,7 +382,7 @@ HStore.prototype = {
   getPushInfo: function(treeId, pushId) {
     var op = new DBReadOp("pushSummary", treeId, pushId, "");
     if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.has].deferred.promise;
+      return this._dbOpsMap[op.hash].deferred.promise;
     }
     this._scheduleOp(op);
     return op.deferred.promise;
@@ -391,7 +391,7 @@ HStore.prototype = {
   getPushLogDetail: function(treeId, pushId, buildId) {
     var op = new DBReadOp("logDetail", treeId, pushId, buildId);
     if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.has].deferred.promise;
+      return this._dbOpsMap[op.hash].deferred.promise;
     }
     this._scheduleOp(op);
     return op.deferred.promise;
