@@ -304,6 +304,14 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+  "try": new CodeRepoDef({
+    name: "try",
+    url: "http://hg.mozilla.org/try/",
+    kind: "try",
+    relto: "mozilla-central",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
   "tracemonkey": new CodeRepoDef({
     name: "tracemonkey",
     url: "http://hg.mozilla.org/tracemonkey/",
@@ -364,6 +372,7 @@ var REPOS = exports.REPOS = {
 function TinderTreeDef(def) {
   this.id = def.id;
   this.name = def.name;
+  this.desc = def.desc;
   this.product = def.product;
   this.repos = def.repos;
   this.mount = def.mount;
@@ -395,12 +404,62 @@ var TB_TYPE_GROUPS = [
   "nightly",
 ];
 
+var FF_TYPE_GROUPS = [
+  "build",
+  "xpcshell",
+  {
+    name: "mochitest",
+    subgroups: [
+      {name: "1", subtype: "mochitest", capture: "1"},
+      {name: "2", subtype: "mochitest", capture: "2"},
+      {name: "3", subtype: "mochitest", capture: "3"},
+      {name: "4", subtype: "mochitest", capture: "4"},
+      {name: "5", subtype: "mochitest", capture: "5"},
+      {name: "oth", subtype: "mochitest", capture: "other"},
+    ]
+  },
+  {
+    name: "reftest",
+    subgroups: [
+      {name: "crash", subtype: "reftest", capture: "crashtest"},
+      {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
+      {name: "js", subtype: "reftest", capture: "jsreftest"},
+      {name: "reftest", subtype: "reftest", capture: "reftest"},
+      {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
+    ]
+  },
+  {
+    name: "talos", subgroups: [
+      {name: "a11y", subtype: "talos", capture: "a11y"},
+      {name: "chrome", subtype: "talos", capture: "chrome"},
+      {name: "dirty", subtype: "talos", capture: "dirty"},
+      {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+      {name: "nochrome", subtype: "talos", capture: "nochrome"},
+      {name: "scroll", subtype: "talos", capture: "scroll"},
+      {name: "svg", subtype: "talos", capture: "svg"},
+      {name: "tp4", subtype: "talos", capture: "tp4"},
+    ]
+  },
+];
+
 var TINDER_TREES = exports.TINDER_TREES = {
-  Thunderbird: new TinderTreeDef({
+  ThunderbirdTrunk: new TinderTreeDef({
     id: "cc",
-    name: "Thunderbird",
+    name: "ThunderbirdTrunk",
+    desc: "comm-central built using mozilla-central; eventually TB 3.4",
     product: "Thunderbird",
     repos: [REPOS["comm-central"], REPOS["mozilla-central"]],
+    mount: {
+      mozilla: REPOS["mozilla-central"],
+    },
+    typeGroups: TB_TYPE_GROUPS,
+  }),
+  Miramar: new TinderTreeDef({
+    id: "c20",
+    name: "Miramar",
+    desc: "comm-central built using mozilla-2.0; next TB release, TB 3.3",
+    product: "Thunderbird",
+    repos: [REPOS["comm-central"], REPOS["mozilla-2.0"]],
     mount: {
       mozilla: REPOS["mozilla-central"],
     },
@@ -409,6 +468,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   ThunderbirdTry: new TinderTreeDef({
     id: "ctry",
     name: "ThunderbirdTry",
+    desc: "comm-central try server",
     product: "Thunderbird",
     repos: [REPOS["try-comm-central"], REPOS["mozilla-central"]],
     mount: {
@@ -424,54 +484,30 @@ var TINDER_TREES = exports.TINDER_TREES = {
   Firefox: new TinderTreeDef({
     id: "mc",
     name: "Firefox",
+    desc: "Firefox trunk",
     product: "Firefox",
     repos: [REPOS["mozilla-central"]],
     mount: {
     },
-    typeGroups: [
-      "build",
-      "xpcshell",
-      {
-        name: "mochitest",
-        subgroups: [
-          {name: "1", subtype: "mochitest", capture: "1"},
-          {name: "2", subtype: "mochitest", capture: "2"},
-          {name: "3", subtype: "mochitest", capture: "3"},
-          {name: "4", subtype: "mochitest", capture: "4"},
-          {name: "5", subtype: "mochitest", capture: "5"},
-          {name: "oth", subtype: "mochitest", capture: "other"},
-        ]
-      },
-      {
-        name: "reftest",
-        subgroups: [
-          {name: "crash", subtype: "reftest", capture: "crashtest"},
-          {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
-          {name: "js", subtype: "reftest", capture: "jsreftest"},
-          {name: "reftest", subtype: "reftest", capture: "reftest"},
-          {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
-        ]
-      },
-      {
-        name: "talos", subgroups: [
-          {name: "a11y", subtype: "talos", capture: "a11y"},
-          {name: "chrome", subtype: "talos", capture: "chrome"},
-          {name: "dirty", subtype: "talos", capture: "dirty"},
-          {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
-          {name: "nochrome", subtype: "talos", capture: "nochrome"},
-          {name: "scroll", subtype: "talos", capture: "scroll"},
-          {name: "svg", subtype: "talos", capture: "svg"},
-          {name: "tp4", subtype: "talos", capture: "tp4"},
-        ]
-      },
-    ],
+    typeGroups: FF_TYPE_GROUPS,
   }),
   // try => mtry
+  MozillaTry: new TinderTreeDef({
+    id: "mtry",
+    name: "MozillaTry",
+    desc: "Firefox / mozilla-central try server",
+    product: "Firefox",
+    repos: [REPOS["try"]],
+    mount: {
+    },
+    typeGroups: FF_TYPE_GROUPS,
+  }),
 
   // tracemonkey => tm
   TraceMonkey: new TinderTreeDef({
     id: "tm",
     name: "TraceMonkey",
+    desc: "JavaScript team's mozilla-central branch",
     product: "Firefox",
     repos: [REPOS["tracemonkey"]],
     mount: {
@@ -585,6 +621,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
   SeaMonkey: new TinderTreeDef({
     id: "st",
     name: "SeaMonkey",
+    desc: "SeaMonkey suite (browser/mailnews client/composer/more)",
     product: "SeaMonkey",
     repos: [REPOS["comm-central"], REPOS["mozilla-central"]],
     mount: {
@@ -622,6 +659,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
 var DUMMY_LOCAL_TREE = new TinderTreeDef({
   id: "local",
   name: "Local",
+  desc: "Local logs you imported...",
   product: "Local",
   repos: [REPOS["comm-central"]],
   mount: {},

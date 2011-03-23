@@ -28,6 +28,12 @@
     background-color: #F8ECC9;
     font-size: 200%;
   }
+  #desc {
+    display: block;
+    text-align: center;
+    background-color: #f6f0e3;
+    padding: 4px;
+  }
   #url {
     display: block;
     color: white;

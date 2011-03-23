@@ -128,6 +128,7 @@ wy.defineWidget({
   focus: wy.focus.item,
   structure: {
     name: wy.bind("name"),
+    desc: wy.bind("desc"),
     url: wy.bind(["repos", 0, "url"]),
   },
 });

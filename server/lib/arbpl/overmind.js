@@ -227,6 +227,7 @@ Overmind.prototype = {
     this._noteState("tinderbox:fetching");
     this._usingRange = timeRange;
 
+    var self = this;
     when(this.tinderboxer.fetchRange(timeRange),
       this._procTinderboxBuildResults.bind(this),
       function(err) {

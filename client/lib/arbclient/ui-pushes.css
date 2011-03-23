@@ -3,7 +3,7 @@
   border-bottom: 1px dotted gray;
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1350px) {
   #generic-push {
     #root[leaf="true"] {
       #kids {
@@ -24,7 +24,7 @@
   }
 }
 
-@media screen and (min-width: 1400px) and (max-width: 1600px) {
+@media screen and (min-width: 1350px) and (max-width: 1600px) {
   #aggr-build-summary {
     #root {
       [overload="true"] {
