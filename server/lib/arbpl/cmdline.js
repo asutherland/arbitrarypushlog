@@ -71,10 +71,10 @@ process.on("uncaughtException",
   });
 
 /**
- * Although our cron jobs happen every 5 minutes right now, let's time-out
+ * Although our cron jobs happen every 3 minutes right now, let's time-out
  *  after 10 minutes since we aren't a proper inactivity/watchdog timeout.
  */
-var WATCHDOG_TIMEOUT = 10 * 60 * 1000;
+var WATCHDOG_TIMEOUT = 6 * 60 * 1000;
 function deathClock() {
   DEATH_PRONE = true;
   setTimeout(function() {
