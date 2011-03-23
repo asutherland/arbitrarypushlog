@@ -466,9 +466,11 @@ wy.defineWidget({
         if (buildBinding.obj.builder.type.subtype != "mozmill")
           return;
         console.log("context", this.__context, "obj", this.obj);
+        var log = (this.__context.subPushId ?
+                     (this.__context.subPushId + ":") : "") +
+                  buildBinding.obj.id;
         this.emit_navigate({pushid: this.__context.pushId,
-                            log: this.__context.subPushId + ":" +
-                                buildBinding.obj.id});
+                            log: log});
       },
     },
   },

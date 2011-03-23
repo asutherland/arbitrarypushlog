@@ -459,11 +459,11 @@ HStore.prototype = {
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       "d:l:" + buildId,
       function(err, cells) {
-        if (err) {
+        if (err || !cells.length) {
           console.error("Unhappiness getting cell: " +
                         treeId + "," + transformPushId(pushId) +
                         " row: " + "d:l:" + buildId,
-                        err);
+                        err, "cell count:", cells.length);
           deferred.reject(err);
         }
         else {
