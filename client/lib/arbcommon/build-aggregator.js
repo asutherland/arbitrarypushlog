@@ -307,7 +307,7 @@ BuildMatrix.prototype = {
     var bucketIdx = this._bucketMap[bucketKey];
     if (oldBuild)
       platGroup.buckets[bucketIdx].splice(
-        platGroup.buckets.indexOf(oldBuild), 1, oldBuild);
+        platGroup.buckets.indexOf(oldBuild), 1, build);
     else
       platGroup.buckets[bucketIdx].push(build);
   },
