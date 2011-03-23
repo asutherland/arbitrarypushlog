@@ -281,6 +281,9 @@ wy.defineWidget({
 
       var protoBuckets = this.obj.protoTypeGroups;
       rowNode = doc.createElement("tr");
+      // mark us for overload styling if we have a crazy number of buckets
+      if (protoBuckets.length > 16)
+        this.domNode.setAttribute("overload", "true");
 
       var ignoredNode = doc.createElement("td");
       ignoredNode.setAttribute("colspan", 4);

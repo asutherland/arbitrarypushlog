@@ -3,7 +3,7 @@
   border-bottom: 1px dotted gray;
 }
 
-@media (min-width: 1600px) {
+@media (min-width: 1400px) {
   #generic-push {
     #root[leaf="true"] {
       #kids {
@@ -23,6 +23,27 @@
     }
   }
 }
+
+@media screen and (min-width: 1400px) and (max-width: 1600px) {
+  #aggr-build-summary {
+    #root {
+      [overload="true"] {
+        font-size: 60%;
+      }
+    }
+  }
+}
+
+@media screen and (min-width: 1600px) and (max-width: 1800px) {
+  #aggr-build-summary {
+    #root {
+      [overload="true"] {
+        font-size: 80%;
+      }
+    }
+  }
+}
+
 
 #generic-push {
   #root {
