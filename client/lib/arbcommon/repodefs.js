@@ -312,6 +312,7 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+  // focused project branches
   "tracemonkey": new CodeRepoDef({
     name: "tracemonkey",
     url: "http://hg.mozilla.org/tracemonkey/",
@@ -320,6 +321,44 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+  "jaegermonkey": new CodeRepoDef({
+    name: "birch",
+    url: "http://hg.mozilla.org/projects/jaegermonkey/",
+    kind: "team",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+  "electrolysis": new CodeRepoDef({
+    name: "birch",
+    url: "http://hg.mozilla.org/projects/electrolysis/",
+    kind: "team",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+
+  // reusable project branches
+  "birch": new CodeRepoDef({
+    name: "birch",
+    url: "http://hg.mozilla.org/projects/birch/",
+    kind: "team",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+  "cedar": new CodeRepoDef({
+    name: "cedar",
+    url: "http://hg.mozilla.org/projects/cedar/",
+    kind: "team",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+  "maple": new CodeRepoDef({
+    name: "maple",
+    url: "http://hg.mozilla.org/projects/maple/",
+    kind: "team",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+
 
   "comm-1.9.2": new CodeRepoDef({
     name: "comm-1.9.2",
@@ -498,6 +537,37 @@ var TINDER_TREES = exports.TINDER_TREES = {
     desc: "Firefox / mozilla-central try server",
     product: "Firefox",
     repos: [REPOS["try"]],
+    mount: {
+    },
+    typeGroups: FF_TYPE_GROUPS,
+  }),
+
+  Birch: new TinderTreeDef({
+    id: "birch",
+    name: "Birch",
+    desc: "Firefox reservable project branch",
+    product: "Firefox",
+    repos: [REPOS["birch"]],
+    mount: {
+    },
+    typeGroups: FF_TYPE_GROUPS,
+  }),
+  Cedar: new TinderTreeDef({
+    id: "cedar",
+    name: "Cedar",
+    desc: "Firefox reservable project branch",
+    product: "Firefox",
+    repos: [REPOS["cedar"]],
+    mount: {
+    },
+    typeGroups: FF_TYPE_GROUPS,
+  }),
+  Maple: new TinderTreeDef({
+    id: "maple",
+    name: "Maple",
+    desc: "Firefox reservable project branch",
+    product: "Firefox",
+    repos: [REPOS["maple"]],
     mount: {
     },
     typeGroups: FF_TYPE_GROUPS,

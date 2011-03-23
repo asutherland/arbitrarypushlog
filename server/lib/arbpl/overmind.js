@@ -249,14 +249,15 @@ Overmind.prototype = {
   _procTinderboxBuildResults: function(results) {
     this._noteState("tinderbox:processing");
 
-    var RE_RELEASES = /^releases\//;
+    var RE_SUBDIR_NORM = /^releases|projects\//;
     /**
      * Given a repo-name from the tinderbox (basically the repo path), try
      *  and find the `CodeRepoDef` for that repository.
      */
     function findRepoDef(repoName) {
-      if (RE_RELEASES.test(repoName)) {
-        repoName = repoName.substring(9);
+      var match = RE_SUBDIR_NORM.exec(repoName);
+      if (match) {
+        repoName = repoName.substring(match[0].length);
       }
 
       if ($repodefs.REPOS.hasOwnProperty(repoName)) {
