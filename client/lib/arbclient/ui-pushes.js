@@ -68,6 +68,8 @@ wy.defineWidget({
     headingBox: {
       pushDate: wy.libWidget({type: "relative-date"}, ["push", "pushDate"]),
       pusher: wy.widget({type: "person"}, ["push", "pusher"]),
+      pushCountLabel: wy.bind(["push", "changesets", "length"],
+                              "* changeset/ changesets"),
     },
 
     kids: {

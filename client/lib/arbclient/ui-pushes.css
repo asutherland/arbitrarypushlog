@@ -59,6 +59,10 @@
     display: inline-block;
     margin-right: 1em
   }
+  #pushCountLabel {
+    display: inline-block;
+    margin-left: 1em;
+  }
   #kids {
     padding-left: 2em;
     margin-bottom: 0.5em;
