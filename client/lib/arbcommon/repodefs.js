@@ -562,6 +562,10 @@ var TINDER_TREES = exports.TINDER_TREES = {
     },
     typeGroups: FF_TYPE_GROUPS,
   }),
+  // There are serious problems with the maple tree; even TBPL gets upset.
+  // (It does not kill us, but we do abort processing the tree, and no point in
+  //  cluttering up our logs with known aborts.)
+  /*
   Maple: new TinderTreeDef({
     id: "maple",
     name: "Maple",
@@ -572,6 +576,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     },
     typeGroups: FF_TYPE_GROUPS,
   }),
+  */
 
   // tracemonkey => tm
   TraceMonkey: new TinderTreeDef({

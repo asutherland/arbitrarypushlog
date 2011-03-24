@@ -188,6 +188,14 @@ function Overmind(tinderTreeDef, config) {
    */
   this._pendingSidebandState = null;
   this._pendingPushId = null;
+
+  /**
+   * For use by _fetchSpecificPushInfo to detect when a repo simply does not
+   *  know about a given revision.  This can occur in cases where a repo has
+   *  been cleared out but tinderbox still knows about builds from before the
+   *  repo has been cleared out.
+   */
+  this._oneOffRevisionFetch = null;
 }
 Overmind.prototype = {
   _noteState: function(newState, extra) {
@@ -473,7 +481,18 @@ Overmind.prototype = {
         // Issue one-off requests for any missing changesets; chained, so only
         //  trigger for one right now.
         if (revs.length) {
+          if (self._oneOffRevisionFetch === revs[0]) {
+            // fail-fast since this is a very bad situation
+            console.warn("failed to fetch revision info for", revs[0],
+                         "aborting entire overmind job.");
+            self._syncDeferred.reject("unable to resolve " + revs[0]);
+            // and wedge this FSM so we don't bother to do any more
+            //  processing.
+            self._pendingPushFetches++;
+            return;
+          }
           console.log("... still have pending revs", revs);
+          self._oneOffRevisionFetch = revs[0];
           self._fetchSpecificPushInfo(repoDef, revs, "&changeset=" + revs[0]);
         }
         else {

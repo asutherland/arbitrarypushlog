@@ -115,8 +115,8 @@ HiveMind.prototype = {
       return;
     }
 
-    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop(),
-                                               this._config);
+    var treeDef = this._unprocessedTrees.pop();
+    this._curOvermind = new $overmind.Overmind(treeDef, this._config);
     var self = this;
     when(self._curOvermind.bootstrap(),
       function() {
@@ -124,7 +124,17 @@ HiveMind.prototype = {
           function() {
             self._curOvermind = null;
             self._syncNext();
+          },
+          function() {
+            console.warn("ABORTED PROCESSING:", treeDef.name);
+            self._curOvermind = null;
+            self._syncNext();
           });
+      },
+      function() {
+        console.warn("FAILED TO BOOTSTRAP OVERMIND:", treeDef.name);
+        self._curOvermind = null;
+        self._syncNext();
       });
   },
 
