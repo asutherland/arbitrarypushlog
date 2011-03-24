@@ -188,6 +188,7 @@ LocalChewer.prototype = {
       type: "mozmill",
       failures: overviewFailures,
     };
+
     // put the detailed results in...
     setstate["d:l:" + this._path] = {
       type: "mozmill",
@@ -196,6 +197,10 @@ LocalChewer.prototype = {
 
     // XXX dev mode port only...
     var bridge = new $databus.ScraperBridgeSource(8009);
+    var sideband = {};
+    sideband["s:r"] = setstate["s:r"];
+    sideband["s:b:" + this._path] = setstate["s:b:" + this._path];
+    sideband["s:l:" + this._path] = setstate["s:l:" + this._path];
 
     var self = this;
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
@@ -204,7 +209,7 @@ LocalChewer.prototype = {
                type: "push",
                treeName: LOCAL_TREE_NAME,
                pushId: self._usePushId,
-               keysAndValues: setstate
+               keysAndValues: sideband
              }),
           function() {
             self._chewDeferred.resolve(self._usePushId);
