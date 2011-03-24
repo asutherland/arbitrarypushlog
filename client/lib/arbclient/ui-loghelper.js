@@ -278,6 +278,19 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "log-tabmail-tab",
+  constraint: {
+    type: "logstream",
+    obj: { type: "tabmail-tab" },
+  },
+  structure: [
+    wy.bind("typeName"), ":", wy.bind("modeName"), " ",
+    wy.bind("title"),
+  ],
+});
+
+
+wy.defineWidget({
   name: "logdetails-domNode",
   constraint: {
     type: "logdetail",

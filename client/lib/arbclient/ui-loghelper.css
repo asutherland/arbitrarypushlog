@@ -99,6 +99,12 @@
   }
 }
 
+#log-tabmail-tab {
+  #root {
+    background-color: #eee;
+  }
+}
+
 #logdetails-domNode {
   #root {
     background-color: white;
