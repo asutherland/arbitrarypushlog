@@ -175,16 +175,11 @@ wy.defineWidget({
     },
   },
   events: {
-    events: {
+    body: {
       click: function(binding) {
         this.maybeShowLogDetailForBinding(binding);
       }
     },
-    preEvents: {
-      click: function(binding) {
-        this.maybeShowLogDetailForBinding(binding);
-      },
-    }
   },
 });
 
