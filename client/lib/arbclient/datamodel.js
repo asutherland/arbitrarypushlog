@@ -208,7 +208,9 @@ exports.Push = Push;
 /**
  * Information about a changeset, nothing about builds.
  */
-function Changeset() {
+function Changeset(repoDef) {
+  this.repoDef = repoDef;
+
   /**
    * The 12-character short revision name for this changeset.
    */
@@ -289,6 +291,9 @@ function Changeset() {
   this.backoutOf = null;
 }
 Changeset.prototype = {
+  get hgURL() {
+    return this.repoDef.url + "rev/" + this.shortRev;
+  },
 };
 exports.Changeset = Changeset;
 

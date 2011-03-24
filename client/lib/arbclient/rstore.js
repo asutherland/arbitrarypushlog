@@ -319,7 +319,7 @@ RemoteStore.prototype = {
     var key, value, self = this;
 
     function chewChangeset(hbcs, repo) {
-      var cset = new $datamodel.Changeset();
+      var cset = new $datamodel.Changeset(repo);
       cset.shortRev = hbcs.shortRev;
       cset.fullRev = hbcs.node;
 

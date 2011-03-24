@@ -85,16 +85,22 @@
     background-color: #eeeeee;
     padding: 2px;
     margin-bottom: 0.5em;
+    width: 100%;
+    display: table;
   }
-  #header {
-    display: table-row;
+  #whoWhat {
+    display: table-cell;
+    width: 13em;
   }
   #author {
+  }
+  #shortRev {
+    display: block;
+  }
+  #summary {
     display: table-cell;
-    width: 12em;
   }
   #desc {
-    display: table-cell;
     font-weight: bolder;
     white-space: pre-wrap;
   }
