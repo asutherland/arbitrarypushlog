@@ -164,6 +164,7 @@
   }
   #screenshotContainer {
     position: relative;
+    cursor: pointer;
   }
   #screenshot {
     width: 480px;
