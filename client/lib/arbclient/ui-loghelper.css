@@ -87,7 +87,7 @@
   }
 }
 
-#logdetails-msgHdr {
+#logdetails-wild {
   #root {
     background-color: white;
   }
@@ -101,25 +101,13 @@
 
 #log-tabmail-tab {
   #root {
-    background-color: #eee;
-  }
-}
-
-#logdetails-domNode {
-  #root {
-    background-color: white;
+    .clickable;
   }
 }
 
 #log-domNode {
   #root {
     .clickable;
-  }
-}
-
-#logdetails-domWindow {
-  #root {
-    background-color: white;
   }
 }
 

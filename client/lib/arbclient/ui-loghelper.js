@@ -46,10 +46,12 @@
 define(
   [
     "wmsy/wmsy",
+    "wmsy/wlib/objdict",
     "text!./ui-loghelper.css"
   ],
   function(
     $wmsy,
+    $_wlib_objdict, // unused, just a dependency.
     $_css
   ) {
 
@@ -186,6 +188,21 @@ wy.defineWidget({
 // Log Entry Contents (logstream)
 
 wy.defineWidget({
+  name: "logdetails-wild",
+  constraint: {
+    type: "logdetail",
+    obj: { type: wy.WILD },
+  },
+  structure: {
+    table: wy.libWidget({
+        type: "objdict",
+        valueConstraint: {type: "logdetail"},
+      }, wy.SELF),
+  },
+});
+
+
+wy.defineWidget({
   name: "log-generic",
   constraint: {
     type: "logstream",
@@ -224,30 +241,6 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "logdetails-msgHdr",
-  constraint: {
-    type: "logdetail",
-    obj: { type: "msgHdr" },
-  },
-  structure: {
-    uri: wy.bind("name"),
-    subject: ["subject: ", wy.bind("subject")],
-    from: ["from: ", wy.bind("from")],
-    to: ["to: ", wy.bind("to")],
-    messageId: ["message-id: ", wy.bind("messageId")],
-    flags: ["flags: ", wy.bind("flags")],
-    // XXX do a proper display thing instead of a JSON copout
-    properties: ""
-  },
-  impl: {
-    postInit: function() {
-      this.properties_element.textContent =
-        JSON.stringify(this.obj.interestingProperties);
-    }
-  },
-});
-
-wy.defineWidget({
   name: "log-msgHdr",
   constraint: {
     type: "logstream",
@@ -256,24 +249,8 @@ wy.defineWidget({
   structure: {
     uri: wy.bind("name"),
   },
-  popups: {
-    details: {
-      constraint: {
-        type: "logdetail"
-      },
-      clickAway: true,
-      popupWidget: wy.libWidget({type: "popup"}),
-      position: {
-        above: "root",
-      }
-    }
-  },
-  events: {
-    root: {
-      click: function() {
-        this.popup_details(this.obj, this);
-      }
-    }
+  impl: {
+    SHOW_LOG_DETAIL: true,
   },
 });
 
@@ -287,29 +264,8 @@ wy.defineWidget({
     wy.bind("typeName"), ":", wy.bind("modeName"), " ",
     wy.bind("title"),
   ],
-});
-
-
-wy.defineWidget({
-  name: "logdetails-domNode",
-  constraint: {
-    type: "logdetail",
-    obj: { type: "domNode" },
-  },
-  structure: {
-    name: ["name: ", wy.bind("name")],
-    value: ["value: ", wy.bind("value")],
-    boundingRect: "",
-    namespace: ["namespace: ", wy.bind("namespace")],
-    attributes: "",
-  },
   impl: {
-    postInit: function() {
-      this.boundingRect_element.textContent =
-        JSON.stringify(this.obj.boundingClientRect);
-      this.attributes_element.textContent =
-        JSON.stringify(this.obj.attrs);
-    }
+    SHOW_LOG_DETAIL: true,
   },
 });
 
@@ -323,50 +279,11 @@ wy.defineWidget({
   structure: {
     name: wy.bind("name"),
   },
-  popups: {
-    details: {
-      constraint: {
-        type: "logdetail"
-      },
-      clickAway: true,
-      popupWidget: wy.libWidget({type: "popup"}),
-      position: {
-        above: "root",
-      }
-    }
-  },
-  events: {
-    root: {
-      click: function() {
-        this.popup_details(this.obj, this);
-      }
-    }
-  },
-});
-
-
-wy.defineWidget({
-  name: "logdetails-domWindow",
-  constraint: {
-    type: "logdetail",
-    obj: { type: "domWindow" },
-  },
-  structure: {
-    id: ["id: ", wy.bind("name")],
-    title: ["title: ", wy.bind("value")],
-    location: ["location: ", wy.bind("location")],
-    coords: "",
-    dims: "",
-  },
   impl: {
-    postInit: function() {
-      this.coords_element.textContent =
-        JSON.stringify(this.obj.coords);
-      this.dims_element.textContent =
-        JSON.stringify(this.obj.dims);
-    }
+    SHOW_LOG_DETAIL: true,
   },
 });
+
 
 /**
  * Take a potentialy stupidly long URL and inject ellipsis as reasonable.
@@ -392,19 +309,8 @@ wy.defineWidget({
   structure: {
     label: wy.computed("label"),
   },
-  popups: {
-    details: {
-      constraint: {
-        type: "logdetail"
-      },
-      clickAway: true,
-      popupWidget: wy.libWidget({type: "popup"}),
-      position: {
-        above: "root",
-      }
-    }
-  },
   impl: {
+    SHOW_LOG_DETAIL: true,
     label: function() {
       var obj = this.obj;
       if (obj.id == "n/a" && obj.title == "no document") {
@@ -412,13 +318,6 @@ wy.defineWidget({
       }
       return "DomWindow: " + obj.id + ": " + obj.title;
     },
-  },
-  events: {
-    root: {
-      click: function() {
-        this.popup_details(this.obj, this);
-      }
-    }
   },
 });
 
@@ -447,24 +346,8 @@ wy.defineWidget({
   structure: {
     message: wy.bind("message"),
   },
-  popups: {
-    details: {
-      constraint: {
-        type: "logdetail"
-      },
-      clickAway: true,
-      popupWidget: wy.libWidget({type: "popup"}),
-      position: {
-        above: "root",
-      }
-    }
-  },
-  events: {
-    root: {
-      click: function() {
-        this.popup_details(this.obj, this);
-      },
-    },
+  impl: {
+    SHOW_LOG_DETAIL: true,
   },
 });
 

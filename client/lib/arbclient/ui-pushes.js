@@ -291,6 +291,7 @@ wy.defineWidget({
       ignoredNode.setAttribute("colspan", 4);
       rowNode.appendChild(ignoredNode);
 
+      // XXX we might do well to populate a fragment for the buckets...
       for (var iProto = 0; iProto < protoBuckets.length; iProto++) {
         var colNode = doc.createElement("col");
         colNode.setAttribute("class", clsCol);

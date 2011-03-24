@@ -123,6 +123,18 @@ wy.defineWidget({
     type: "build-test-failure",
   },
   focus: wy.focus.domain.vertical("windows", "preEvents", "events"),
+  popups: {
+    details: {
+      constraint: {
+        type: "logdetail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
   structure: {
     testHeader: {
       testName: wy.bind("testName"),
@@ -148,6 +160,31 @@ wy.defineWidget({
                                {type: "log4moz-record"}),
                              ["failureContext", "preEvents"]),
     },
+  },
+  impl: {
+    /**
+     * Rather than have every log atom be able to trigger a popup or require
+     *  them to emit something on click, we just provide our own click handler
+     *  that checks if the bindings want to have their data shown in a pop-up
+     *  (which is generically parameterized anyways).
+     */
+    maybeShowLogDetailForBinding: function(binding) {
+      if ("SHOW_LOG_DETAIL" in binding && binding.SHOW_LOG_DETAIL) {
+        this.popup_details(binding.obj, binding);
+      }
+    },
+  },
+  events: {
+    events: {
+      click: function(binding) {
+        this.maybeShowLogDetailForBinding(binding);
+      }
+    },
+    preEvents: {
+      click: function(binding) {
+        this.maybeShowLogDetailForBinding(binding);
+      },
+    }
   },
 });
 
