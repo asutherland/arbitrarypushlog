@@ -286,7 +286,7 @@ wy.defineWidget({
     },
   },
   events: {
-    screenshot: {
+    screenshotContainer: {
       click: function() {
         this.popup_screenshot(this.obj, this);
       },
