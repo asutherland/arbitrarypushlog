@@ -223,6 +223,17 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "screenshot",
+  constraint: {
+    type: "screenshot",
+  },
+  structure: {
+    screenshot: wy.bindImage("screenshotDataUrl"),
+  },
+});
+
+
+wy.defineWidget({
   name: "window",
   constraint: {
     type: "window",
@@ -239,6 +250,22 @@ wy.defineWidget({
     focusedElem: ["Focused: ", wy.widget({type: "logstream"}, "focusedElem")],
     openPopups: ["Open Popups: ", wy.stream({type: "logstream"}, "openPopups")],
   }, {active: "isActive"}),
+  popups: {
+    screenshot: {
+      constraint: {
+        type: "screenshot"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        centerOn: "screenshot",
+      },
+      size: {
+        maxWidth: 0.95,
+        maxHeight: 0.95,
+      }
+    }
+  },
   impl: {
     postInitUpdate: function() {
       if (!this.obj.focusedElem)
@@ -256,6 +283,13 @@ wy.defineWidget({
         "left: " + Math.floor(scale * focusBounds.left - 1) + "px; " +
         "height: " + Math.floor(scale * focusBounds.height) + "px; " +
         "width: " + Math.floor(scale * focusBounds.width) + "px;");
+    },
+  },
+  events: {
+    screenshot: {
+      click: function() {
+        this.popup_screenshot(this.obj, this);
+      },
     },
   },
 });
