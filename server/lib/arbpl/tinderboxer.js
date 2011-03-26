@@ -293,6 +293,7 @@ var BUILD_TYPES = [
 
 var RE_SINGLE_QUOTE = /'/g;
 var RE_DOUBLE_QUOTE = /"/g;
+var RE_TAB = /\t/g;
 var RE_XFFE = /\xfffe/g;
 
 var RE_PRE = /<\/?pre>/g;
@@ -315,6 +316,10 @@ function parseStupidJsonBlob(stupidBlob) {
   // flip the bloody quotes. Khaaaaaaaaaaaaaaaaaaaaaan.
   stupidBlob = stupidBlob.replace(RE_SINGLE_QUOTE, "\xfffe");
   stupidBlob = stupidBlob.replace(RE_DOUBLE_QUOTE, "'");
+  // just turn tabs into spaces; we could escape them, but we semantically
+  //  don't care about maintaining tabs and should tabs happen outside of a
+  //  string context, transforming to \t could break things.
+  stupidBlob = stupidBlob.replace(RE_TAB, " ");
   var lessStupidBlob = stupidBlob.replace(RE_XFFE, '"');
 
   return JSON.parse(lessStupidBlob);
