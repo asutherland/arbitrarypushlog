@@ -439,20 +439,15 @@ RemoteStore.prototype = {
           build.processedLog = null;
         }
 
-        // - if this is an incremental processing, stream the aggregation.
-        // (if not incremental, we will do it in a batch at the bottom)
-        if (isIncremental && buildPush.buildSummary)
-          buildPush.buildSummary.chewBuild(build, oldBuild);
+        // - summarize
+        // (We now always do this in a streaming fashion; we previously tried
+        //  to batch in the name of locality, but let's go with fewer code
+        //  paths for now.)
+        if (!buildPush.buildSummary)
+          buildPush.buildSummary = $buildAggregator.aggregateBuilds(
+                                     self.tinderTree, []);
+        buildPush.buildSummary.chewBuild(build, oldBuild);
       }
-    }
-
-    // -- perform any summarization that depends on us having seen everything
-    // - summarize builds
-    if (!isIncremental) {
-      rootBuildPush.visitLeafBuildPushes(function(buildPush) {
-        buildPush.buildSummary =
-          $buildAggregator.aggregateBuilds(self.tinderTree, buildPush.builds);
-      });
     }
     return rootBuildPush;
   },
