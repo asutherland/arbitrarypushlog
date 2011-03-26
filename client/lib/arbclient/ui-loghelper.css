@@ -62,6 +62,7 @@
     color: #006f71;
   }
   #what {
+    .action-bubble(#555, 0em);
     [who="msgEvent"]{
       .action-bubble(#006f71, 1em);
     }

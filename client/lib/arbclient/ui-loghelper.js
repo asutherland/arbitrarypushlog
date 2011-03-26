@@ -58,18 +58,57 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-loghelper", domain: "arbpl",
                                css: $_css});
 
+/**
+ * Generic log4moz record handler which has to be smart to deal with a number
+ *  of possible permutations:
+ *
+ * - We may have a context object supplied as the first argument; if so, we
+ *   want to ignore it because we are not currently using context stuff.
+ *
+ * - The messageObjects may not have an action record associated.  Because
+ *   action records redundantly encode a lot of information, their widgets
+ *   provide the exciting action bubble stuff.  We still want bubbles for
+ *   generic logging, so in the event we don't see an action, we can
+ *   transform the record to another widget type or deal with it here.
+ *   We currently choose to reformulate it which allows us to avoid using
+ *   a 'stream' child construct (which would otherwise be somewhat overkill.)
+ */
 wy.defineWidget({
   name: "log4moz-record",
   constraint: {
     type: "log4moz-record",
   },
   structure: {
-    // we need to slice off/ignore the first entry
-    entries: wy.stream({type: "log-entry"}, wy.NONE),
+    // we need to slice off/ignore the first entry if it's a context
+    entry: wy.widget({type: "log-entry"}, wy.NONE),
   },
   impl: {
     postInit: function() {
-      this.entries_set(this.obj.messageObjects.slice(1));
+      if (!this.obj.messageObjects.length)
+        return;
+      var useMessages;
+      if (this.obj.messageObjects[0].hasOwnProperty("_isContext"))
+        useMessages = this.obj.messageObjects.slice(1);
+      else
+        useMessages = this.obj.messageObjects;
+      var action;
+      if (useMessages.length && useMessages[0] &&
+          typeof(useMessages[0]) === "object" &&
+          useMessages[0].type === "action") {
+        // control flow capture
+        action = useMessages[0];
+      }
+      // normalize into a fake action...
+      else {
+        var wasUse = useMessages;
+        action = {
+          type: "action",
+          who: this.obj.loggerName,
+          what: this.obj.loggerName,
+          args: wasUse,
+        };
+      }
+      this.entry_set(action);
     },
   },
 });
