@@ -38,33 +38,53 @@
 define(
   [
     "wmsy/wmsy",
-    "wmsy/examples/md5",
-    "text!./ui-peeps.css"
+    "text!./ui-stream.css",
   ],
   function(
     $wmsy,
-    $md5,
     $_css
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-peeps", domain: "arbpl", css: $_css});
+var wy = new $wmsy.WmsyDomain({id: "ui-stream", domain: "arbpl",
+                               css: $_css});
 
 wy.defineWidget({
-  name: "mozperson",
+  name: "bug-ref",
   constraint: {
-    type: "person",
+    type: "stream",
+    obj: { kind: "bug-ref" },
   },
-  structure: wy.block({
-    pic: wy.bindImage(wy.computed("gravatarUrl")),
-    displayName: wy.bind("displayName"),
-  }, {title: ["emails", 0]}),
+  structure: wy.hyperlink(wy.bind("text"),
+                          { href: wy.computed("showLink") }),
   impl: {
-    gravatarUrl: function() {
-      return "http://www.gravatar.com/avatar/" +
-               $md5.hex_md5(this.obj.emails[0]) +
-               "?s=16&d=retro";
-    },
+    showLink: function() {
+      return this.obj.bugTracker.showUrlForBugId(this.obj.bugId);
+    }
   },
+});
+
+wy.defineWidget({
+  name: "changeset-ref",
+  constraint: {
+    type: "stream",
+    obj: { kind: "changeset-ref" },
+  },
+  structure: wy.hyperlink(wy.bind("shortRev"),
+                          { href: wy.computed("showLink") }),
+  impl: {
+    showLink: function() {
+      return this.obj.repo.revDetailUrlForShortRev(this.obj.shortRev);
+    }
+  },
+});
+
+wy.defineWidget({
+  name: "acronym",
+  constraint: {
+    type: "stream",
+    obj: { kind: "acronym" },
+  },
+  structure: wy.bind("acronym", { title: "explanation" }),
 });
 
 

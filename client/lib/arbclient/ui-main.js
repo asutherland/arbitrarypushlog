@@ -48,6 +48,7 @@ define(
     "./ui-pushes",
     "./ui-peeps",
     "./ui-page-testlog",
+    "./ui-stream",
     "./ui-loghelper",
     "text!./ui-main.css",
     "exports"
@@ -58,6 +59,7 @@ define(
     $ui_pushes,
     $ui_peeps,
     $ui_page_testlog,
+    $ui_stream,
     $ui_loghelper,
     $_css,
     exports

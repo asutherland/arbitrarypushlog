@@ -235,6 +235,21 @@ var MC_MAPPING = {
   xulrunner: "XULRunner",
 };
 
+/**
+ * There is but one bug-tracker, and all code repositories orbit around it.
+ */
+function BugTracker() {
+  this.name = "BMO";
+  this.desc = "bugzilla.mozilla.org";
+  this.url = "https://hg.mozilla.org";
+  this._showBugUrl = "https://hg.mozilla.org/show_bug.cgi?id=";
+}
+BugTracker.prototype = {
+  showUrlForBugId: function(bugId) {
+    return this._showBugUrl + bugId;
+  }
+};
+var MOZBUGZILLA = new BugTracker();
 
 /**
  * @typedef[CodeRepoKind @oneof[
@@ -273,10 +288,14 @@ function CodeRepoDef(def) {
   this.relto = ("relto" in def) ? def.relto : null;
   this.path_mapping = def.path_mapping;
   this.family = def.family;
+  this.bugTracker = MOZBUGZILLA;
 }
 CodeRepoDef.prototype = {
   toString: function() {
     return ["repo: " + this.name];
+  },
+  revDetailUrlForShortRev: function(shortRev) {
+    return this.url + "rev/" + shortRev;
   },
 };
 

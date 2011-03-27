@@ -162,7 +162,7 @@ wy.defineWidget({
       shortRev: wy.hyperlink(wy.bind("shortRev"), {href: "hgURL"}),
     },
     summary: {
-      desc: wy.bind("rawDesc"),
+      descStream: wy.stream({type: "stream"}, "descStream"),
       summaryGroups: wy.vertList({type: "change-summary-group"},
                                  ["changeSummary", "changeGroups"]),
     },

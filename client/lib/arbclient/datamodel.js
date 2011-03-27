@@ -44,10 +44,12 @@
 define(
   [
     "narscribblus/utils/pwomise",
+    "arbcommon/connotent",
     "exports",
   ],
   function(
     $pwomise,
+    $connotent,
     exports
   ) {
 var when = $pwomise.when;
@@ -245,10 +247,10 @@ function Changeset(repoDef) {
   this.rawDesc = "";
   /**
    * The commit message parsed up so that we have renderable objects for things
-   *  that need hyperlinks / augmentation, etc.
-   * XXX notyet
+   *  that need hyperlinks / augmentation, etc; created on demand using the
+   *  `descStream` accessor.
    */
-  this.descStream = [];
+  this._descStream = null;
 
   /**
    * @listof[String]{
@@ -292,7 +294,14 @@ function Changeset(repoDef) {
 }
 Changeset.prototype = {
   get hgURL() {
-    return this.repoDef.url + "rev/" + this.shortRev;
+    return this.repoDef.revDetailUrlForShortRev(this.shortRev);
+  },
+
+  get descStream() {
+    if (!this._descStream)
+      this._descStream = $connotent.transformCommitText(this.rawDesc,
+                                                        {repo: this.repoDef});
+    return this._descStream;
   },
 };
 exports.Changeset = Changeset;

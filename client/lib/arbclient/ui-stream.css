@@ -1,0 +1,12 @@
+#bug-ref {
+}
+
+#changeset-ref {
+}
+
+#acronym {
+  #root {
+    display: inline-block;
+    border-bottom: 1px dotted black;
+  }
+}
