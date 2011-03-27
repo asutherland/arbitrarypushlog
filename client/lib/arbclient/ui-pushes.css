@@ -119,6 +119,18 @@
   #root:hover {
     background-color: #dddddd;
   }
+  #twisty {
+    display: inline-block;
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAACBJREFUGNNjYEADLi4u/9HFmBiIANRTxIjNDQTBIHA4AGoSBW8bLg5PAAAAAElFTkSuQmCC");
+    width: 9px;
+    height: 9px;
+    margin-right: 4px;
+
+    [collapsed="false"] {
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAABRJREFUGNNjYBh8gNHFxeU/wxAEAEg0Ac1XyUc8AAAAAElFTkSuQmCC");
+    }
+  }
+
   #fileList {
     margin-left: 1em;
   }

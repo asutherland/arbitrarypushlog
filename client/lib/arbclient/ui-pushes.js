@@ -172,6 +172,7 @@ wy.defineWidget({
   },
   structure: {
     summaryRow: wy.flow({
+      twisty: {},
       name: wy.bind("name"),
       colonStr: ": ",
       fileTypes: "",
@@ -183,6 +184,8 @@ wy.defineWidget({
   impl: {
     postInitUpdate: function() {
       this.collapsed = true;
+      // set it on the twisty because of webkit's selector deficiencies
+      this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.fileTypes_element.textContent = this.obj.fileTypes.join(", ");
     },
   },
@@ -194,6 +197,7 @@ wy.defineWidget({
           this.fileList_set(null);
         else
           this.fileList_set(this.obj.files);
+        this.twisty_element.setAttribute("collapsed", this.collapsed);
         this.FOCUS.bindingResized(this);
       },
     },
