@@ -171,6 +171,7 @@ wy.defineWidget({
       state: "good",
     },
   },
+  focus: wy.focus.container.vertical("page"),
   emit: ["navigate"],
   structure: {
     header: {
