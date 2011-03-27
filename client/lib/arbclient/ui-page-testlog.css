@@ -105,22 +105,22 @@
 #SpiderStackFrame {
   #root {
     vertical-align: top;
+    display: table-row;
   }
   #scriptName {
-    display: inline-block;
-    width: 20em;
+    display: table-cell;
     padding: 0 0.5em;
     color: #607080;
   }
   #scriptLine {
-    display: inline-block;
-    width: 4em;
+    display: table-cell;
+    width: 5em;
     padding: 0 0.5em;
     text-align: right;
     color: #508040;
   }
   #functionName {
-    display: inline-block;
+    display: table-cell;
     padding: 0 0.5em;
     color: #b08020;
   }
@@ -129,6 +129,12 @@
 #SpiderStack {
   #frames {
     margin-left: 1em;
+  }
+}
+
+#screenshot {
+  #root {
+    cursor: pointer;
   }
 }
 

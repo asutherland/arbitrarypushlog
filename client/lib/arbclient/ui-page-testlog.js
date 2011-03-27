@@ -225,6 +225,14 @@ wy.defineWidget({
   structure: {
     screenshot: wy.bindImage("screenshotDataUrl"),
   },
+  events: {
+    root: {
+      click: function() {
+        // trigger the closure of the popup when clicked
+        this.done();
+      }
+    }
+  },
 });
 
 
