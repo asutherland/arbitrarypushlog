@@ -728,8 +728,8 @@ wy.defineWidget({
 
     failBlock: {
       failHeaderLabel: "Failures:",
-      failures: wy.vertList({type: "build-fail-summary"},
-                            wy.computed("failSummaries")),
+      failures: wy.vertList({type: "build-fail-thing"},
+                            wy.computed("failClusters")),
     },
   },
   impl: {
@@ -746,13 +746,13 @@ wy.defineWidget({
      *  since it would be dumb to show a list of builders and just show us
      *  again...
      */
-    failSummaries: function() {
+    failClusters: function() {
       if (this._failAggr)
-        return this._failAggr;
+        return this._failAggr.rootFailCluster.kids;
 
       this._failAggr = $buildAggr.aggregateBuilds(this.__context.tinderTree,
                                                   [this.obj]);
-      return this._failAggr.failGroups;
+      return this._failAggr.rootFailCluster.kids;
     },
     stateExplanation: function() {
       return BUILDSTATUS_STRINGS.lookup(this.obj.extendedState);
