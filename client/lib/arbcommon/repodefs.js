@@ -498,6 +498,7 @@ var FF_TYPE_GROUPS = [
       {name: "tp4", subtype: "talos", capture: "tp4"},
     ]
   },
+  "nightly",
 ];
 
 var TINDER_TREES = exports.TINDER_TREES = {
