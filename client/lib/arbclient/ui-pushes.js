@@ -66,7 +66,9 @@ wy.defineWidget({
   focus: wy.focus.nestedItem.vertical("changesets", "subPushes"),
   structure: wy.block({
     headingBox: {
-      pushDate: wy.libWidget({type: "relative-date"}, ["push", "pushDate"]),
+      pushDate: wy.hyperlink(wy.libWidget({type: "relative-date"},
+                                          ["push", "pushDate"]),
+                             { href: wy.computed("permalink") }),
       pusher: wy.widget({type: "person"}, ["push", "pusher"]),
       pushCountLabel: wy.bind(["push", "changesets", "length"],
                               "* changeset/ changesets"),
@@ -84,7 +86,8 @@ wy.defineWidget({
     }
   }, {leaf: "isLeafPush"}),
   impl: {
-    postInitUpdate: function() {
+    postInit: function() {
+      // setup our context prior to any updaters getting called
       if (this.obj.topLevelPush) {
         this.__context.pushId = this.obj.push.id;
         this.__context.subPushId = "";
@@ -93,6 +96,9 @@ wy.defineWidget({
         this.__context.subPushId = this.obj.push.id;
       }
     },
+    permalink: function() {
+      return this.__context.urlMaker({ pushid: this.__context.pushId });
+    }
   },
 });
 
@@ -121,8 +127,7 @@ wy.defineWidget({
     changesets: wy.vertList({type: "changeset"}, wy.NONE),
     elidedDesc: [
       wy.computed("elidedCount"), " changesets elided; ",
-      wy.hyperlink(wy.localizableString("see the pushlog"),
-                   {href: wy.computed("pushlogURL")}),
+      wy.hyperlink("see the pushlog", {href: wy.computed("pushlogURL")}),
     ],
   },
   impl: {
@@ -152,10 +157,9 @@ wy.defineWidget({
     // The revision does not seem tremendously useful until you want more
     //  information about the push or want to cite it to someone else, so
     //  let's forget about it for now.
-    //shortRev: wy.bind("shortRev"),
     whoWhat: {
       author: wy.widget({type: "person"}, "author"),
-      shortRev: wy.hyperlink("shortRev", {href: "hgURL"}),
+      shortRev: wy.hyperlink(wy.bind("shortRev"), {href: "hgURL"}),
     },
     summary: {
       desc: wy.bind("rawDesc"),
@@ -497,7 +501,7 @@ wy.defineWidget({
   structure: wy.flow({
     name: wy.bind("name"),
     delimContextLinks: " (",
-    topfailsLink: wy.hyperlink(wy.localizableString("topfails"), {
+    topfailsLink: wy.hyperlink("topfails", {
                                  href: wy.computed("topfailsLink"),
                                }),
     endDelimContextLinks: ")",
@@ -711,14 +715,14 @@ wy.defineWidget({
     logBlock: {
       logHeaderLabel: "Logs:",
       logLinks: {
-        briefLogLink: wy.hyperlink(wy.localizableString("brief log"), {
+        briefLogLink: wy.hyperlink("brief log", {
                                      href: wy.computed("briefLogLink"),
                                    }),
-        fullLogLink: wy.hyperlink(wy.localizableString("full log"), {
-                                     href: wy.computed("fullLogLink"),
+        fullLogLink: wy.hyperlink("full log", {
+                                   href: wy.computed("fullLogLink"),
                                   }),
-        rawLogLink: wy.hyperlink(wy.localizableString("raw log"), {
-                                     href: "logURL",
+        rawLogLink: wy.hyperlink("raw log", {
+                                   href: "logURL",
                                   }),
 
       }

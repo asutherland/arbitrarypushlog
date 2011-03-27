@@ -57,7 +57,11 @@
   }
   #pushDate {
     display: inline-block;
-    margin-right: 1em
+    margin-right: 1em;
+    color: black;
+    :hover {
+      text-decoration: underline;
+    }
   }
   #pushCountLabel {
     display: inline-block;

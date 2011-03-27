@@ -172,6 +172,9 @@ wy.defineWidget({
     },
   },
   focus: wy.focus.container.vertical("page"),
+  provideContext: {
+    urlMaker: "boundUrlMaker",
+  },
   emit: ["navigate"],
   structure: {
     header: {

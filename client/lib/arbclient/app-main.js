@@ -129,6 +129,17 @@ function ArbApp(win) {
   this._loc = null;
 
   this._popLocation();
+
+  var self = this;
+  this.boundUrlMaker = function(keyDeltas) {
+    var key, cloney = {}, loc = self._loc;
+    for (key in loc)
+      cloney[key] = loc[key];
+    for (key in keyDeltas) {
+      cloney[key] = keyDeltas[key];
+    }
+    return self._urlMaker(cloney);
+  }
 }
 ArbApp.prototype = {
   _useTree: function(tinderTree) {
@@ -193,8 +204,7 @@ ArbApp.prototype = {
     this._getLog(loc.pushid, loc.log, loc.test, pathNodes);
   },
 
-  _setLocation: function(loc, alreadyInEffect) {
-    this._loc = loc;
+  _urlMaker: function(loc) {
     var qbits = [];
     for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
       var key = this.ORDERED_LOCATION_KEYS[iKey];
@@ -205,6 +215,12 @@ ArbApp.prototype = {
     }
 
     var navUrl = "?" + qbits.join("&");
+    return navUrl;
+  },
+
+  _setLocation: function(loc, alreadyInEffect) {
+    this._loc = loc;
+    var navUrl = this._urlMaker(loc);
     this.history.pushState(null, "", navUrl);
 
     if (!alreadyInEffect) {
