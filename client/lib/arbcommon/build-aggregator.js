@@ -61,11 +61,16 @@ function nameSorter(a, b) {
 }
 
 var BUILD_STATE_PRIORITY_MAP = {
-  success: 0,
-  building: 1,
-  exception: 2,
-  testfailed: 3,
-  busted: 4,
+  "success": 0,
+  "success*": 5, // a starred success is suspcious; more important than success
+  "building": 10,
+  "building*": 15, // starred building is interesting; more important than none
+  "exception*": 20,
+  "exception": 25,
+  "testfailed*": 30,
+  "testfailed": 35,
+  "busted*": 40,
+  "busted": 45,
 };
 
 function PlatformCluster(name) {
@@ -110,7 +115,7 @@ function PlatformGroup(name, buckets) {
   this.name = name;
   this.types = [];
   this.typeMap = {};
-  this.state = "success";
+  this.extendedState = "success";
   this.buckets = buckets;
 }
 PlatformGroup.prototype = {
@@ -118,7 +123,7 @@ PlatformGroup.prototype = {
     return 1;
   },
   aggrState: function() {
-    return this.state;
+    return this.extendedState;
   },
 };
 exports.PlatformGroup = PlatformGroup;
@@ -292,9 +297,9 @@ BuildMatrix.prototype = {
     var platGroup = this._gimmePlatGroup(builder);
 
     // set the state to the highest priority
-    if (BUILD_STATE_PRIORITY_MAP[build.state] >
-        BUILD_STATE_PRIORITY_MAP[platGroup.state])
-      platGroup.state = build.state;
+    if (BUILD_STATE_PRIORITY_MAP[build.extendedState] >
+        BUILD_STATE_PRIORITY_MAP[platGroup.extendedState])
+      platGroup.extendedState = build.extendedState;
 
     // - categorize by build type within the group
     var bucketKey = builder.type.subtype + "-" +

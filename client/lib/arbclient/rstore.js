@@ -439,6 +439,13 @@ RemoteStore.prototype = {
           build.processedLog = null;
         }
 
+        // - set starred/extended state based on starred status.
+        build.starred = build.richNotes.length > 0;
+        if (build.starred)
+          build.extendedState = build.state + "*";
+        else
+          build.extendedState = build.state;
+
         // - summarize
         // (We now always do this in a streaming fashion; we previously tried
         //  to batch in the name of locality, but let's go with fewer code

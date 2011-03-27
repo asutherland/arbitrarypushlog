@@ -140,7 +140,25 @@
   }
 }
 
-.stateBgMixin {
+@buildingColor: #999;
+@successColor: #390;
+@exceptionColor: #708;
+@testfailedColor: #f60;
+@bustedColor: #d00;
+@subtleStarredColor: gray;
+
+.starredBuild (@color) {
+  background: -moz-linear-gradient(right top, @color, @color 30%, @subtleStarredColor 30%, @subtleStarredColor 100%);
+  background: -webkit-gradient(linear, 100% 0%, 0% 100%, from(@color), color-stop(0.3, @color), color-stop(0.3, @subtleStarredColor), to(@subtleStarredColor));
+}
+
+.starredAggr (@color) {
+  background: -moz-linear-gradient(right, @color, @color 2px, @subtleStarredColor 2px, @subtleStarredColor 100%);
+  background: -webkit-gradient(linear, 100% 50%, 0% 50%, from(@color), color-stop(0.05, @color), color-stop(0.05, @subtleStarredColor), to(@subtleStarredColor));
+}
+
+/* the matrix and builds share non-starred styling, but differ when starred. */
+.commonStateBgMixin {
   color: white;
   /* base tinderbox build states */
   [state="building"] {
@@ -157,14 +175,6 @@
   }
   [state="busted"] {
     background-color: #d00;
-  }
-  /* our extended states! */
-  [state="testfailed-someunknown"] {
-    background-color: #f60;
-  }
-  [state="testfailed-allknown"] {
-    color: gray;
-    background-color: #ffcba8;
   }
 }
 
@@ -211,17 +221,33 @@
     }
   }
   #platCell {
-    .stateBgMixin;
+    .commonStateBgMixin;
     border-bottom: 1px solid white;
     padding-left: 3px;
     padding-right: 3px;
+
+    [state="building*"] {
+      .starredAggr(@buildingColor);
+    }
+    [state="success*"] {
+      .starredAggr(@successColor);
+    }
+    [state="exception*"] {
+      .starredAggr(@exceptionColor);
+    }
+    [state="testfailed*"] {
+      .starredAggr(@testfailedColor);
+    }
+    [state="busted*"] {
+      .starredAggr(@bustedColor);
+    }
   }
   #resultCell {
     min-width: 1em;
     text-align: center;
   }
   #buildNode {
-    .stateBgMixin;
+    .commonStateBgMixin;
     display: inline-block;
     width: 1em;
     height: 1em;
@@ -230,6 +256,21 @@
     margin: 1px;
     margin-top: 2px;
 
+    [state="building*"] {
+      .starredBuild(@buildingColor);
+    }
+    [state="success*"] {
+      .starredBuild(@successColor);
+    }
+    [state="exception*"] {
+      .starredBuild(@exceptionColor);
+    }
+    [state="testfailed*"] {
+      .starredBuild(@testfailedColor);
+    }
+    [state="busted*"] {
+      .starredBuild(@bustedColor);
+    }
     [popped="true"] {
       border: 2px dashed black;
       margin: 0px;

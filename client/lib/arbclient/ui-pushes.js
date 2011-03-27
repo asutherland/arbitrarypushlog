@@ -366,10 +366,8 @@ wy.defineWidget({
                   var build = bucket[iBuild];
                   var buildNode = doc.createElement("div");
                   buildNode.setAttribute("class", clsBuildNode);
-                  buildNode.setAttribute("state", build.state);
+                  buildNode.setAttribute("state", build.extendedState);
                   buildNode.setAttribute("build-id", build.id);
-                  if (build.richNotes.length)
-                    buildNode.textContent = "*";
                   bucketNode.appendChild(buildNode);
                 }
                 rowNode.appendChild(bucketNode);
@@ -757,9 +755,7 @@ wy.defineWidget({
       return this._failAggr.failGroups;
     },
     stateExplanation: function() {
-      var richState = this.obj.state +
-                        (this.obj.richNotes.length ? "*" : "");
-      return BUILDSTATUS_STRINGS.lookup(richState);
+      return BUILDSTATUS_STRINGS.lookup(this.obj.extendedState);
     },
     briefLogLink: function briefLogLink() {
       // logURL looks like http://tinderbox.mozilla.org/Tree/BuildId.gz,
