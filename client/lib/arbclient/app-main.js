@@ -185,7 +185,7 @@ ArbApp.prototype = {
 
     // no log, show pushes (either most recent or from a specific push)
     if (!loc.log) {
-      this._getPushes(loc.pushid, pathNodes);
+      this._getPushes(parseInt(loc.pushid), pathNodes);
       return;
     }
 
@@ -254,7 +254,7 @@ ArbApp.prototype = {
     if (!highPushId)
       self.rstore.subscribeToRecent(DESIRED_PUSHES);
     else
-      self.rstore.subscribeToPush(highPushId, DESIRED_PUSHES);
+      self.rstore.subscribeToPushId(highPushId, DESIRED_PUSHES);
   },
 
   /**
