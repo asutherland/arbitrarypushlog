@@ -457,7 +457,7 @@ DataServer.prototype = {
         pushId: msg.pushId,
         keysAndValues: msg.keysAndValues,
         // it definitely needs to know that its subscription may have changed!
-        subRecent: sub.highPushId == treeCache.highPushId,
+        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });
@@ -572,7 +572,7 @@ DataServer.prototype = {
         type: "pushinfo",
         keysAndValues: cached,
         // make sure it knows what its subscription is, may remove this.
-        subRecent: sub.highPushId == treeCache.highPushId,
+        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });
@@ -647,7 +647,7 @@ DataServer.prototype = {
           pushId: pushId,
           keysAndValues: colsAndValues,
           // make sure it knows what its subscription is, may remove this.
-          subRecent: sub.highPushId == treeCache.highPushId,
+          subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
           subHighPushId: sub.highPushId,
           subPushCount: sub.pushCount,
         });
@@ -717,7 +717,7 @@ DataServer.prototype = {
         type: "pushinfo",
         pushId: pushId,
         keysAndValues: cached,
-        subRecent: sub.highPushId == treeCache.highPushId,
+        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
         subHighPushId: sub.highPushId,
         subPushCount: sub.pushCount,
       });
