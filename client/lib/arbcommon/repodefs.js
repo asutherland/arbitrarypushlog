@@ -241,8 +241,8 @@ var MC_MAPPING = {
 function BugTracker() {
   this.name = "BMO";
   this.desc = "bugzilla.mozilla.org";
-  this.url = "https://hg.mozilla.org";
-  this._showBugUrl = "https://hg.mozilla.org/show_bug.cgi?id=";
+  this.url = "https://bugzilla.mozilla.org";
+  this._showBugUrl = "https://bugzilla.mozilla.org/show_bug.cgi?id=";
 }
 BugTracker.prototype = {
   showUrlForBugId: function(bugId) {
