@@ -200,7 +200,7 @@ function Overmind(tinderTreeDef, config) {
 Overmind.prototype = {
   _noteState: function(newState, extra) {
     this.state = newState;
-    console.log("Overmind state is now:", this.state, extra ? extra : "");
+    //console.log("Overmind state is now:", this.state, extra ? extra : "");
   },
 
   bootstrap: function() {
