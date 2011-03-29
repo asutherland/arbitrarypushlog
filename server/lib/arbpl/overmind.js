@@ -493,7 +493,10 @@ Overmind.prototype = {
         // Issue one-off requests for any missing changesets; chained, so only
         //  trigger for one right now.
         if (revs.length) {
-          if (self._oneOffRevisionFetch === revs[0]) {
+          if (self._oneOffRevisionFetch === revs[0] &&
+              // it's possible we had a date range for a single query range,
+              //  which can indeed fail!
+              paramStr.substring(0, 4) === "&cha") {
             // fail-fast since this is a very bad situation
             console.warn("failed to fetch revision info for", revs[0],
                          "aborting entire overmind job.");
