@@ -462,42 +462,63 @@ var TB_TYPE_GROUPS = [
   "nightly",
 ];
 
+var TMPL_MOCHITEST_TYPE_GROUP = {
+  name: "mochitest",
+  subgroups: [
+    {name: "1", subtype: "mochitest", capture: "1"},
+    {name: "2", subtype: "mochitest", capture: "2"},
+    {name: "3", subtype: "mochitest", capture: "3"},
+    {name: "4", subtype: "mochitest", capture: "4"},
+    {name: "5", subtype: "mochitest", capture: "5"},
+    {name: "oth", subtype: "mochitest", capture: "other"},
+  ]
+};
+var TMPL_REFTEST_TYPE_GROUP = {
+  name: "reftest",
+  subgroups: [
+    {name: "crash", subtype: "reftest", capture: "crashtest"},
+    {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
+    {name: "js", subtype: "reftest", capture: "jsreftest"},
+    {name: "reftest", subtype: "reftest", capture: "reftest"},
+    {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
+  ]
+};
+var TMPL_DESKTOP_TALOS_TYPE_GROUP = {
+  name: "talos",
+  subgroups: [
+    {name: "a11y", subtype: "talos", capture: "a11y"},
+    {name: "chrome", subtype: "talos", capture: "chrome"},
+    {name: "dirty", subtype: "talos", capture: "dirty"},
+    {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+    {name: "nochrome", subtype: "talos", capture: "nochrome"},
+    {name: "scroll", subtype: "talos", capture: "scroll"},
+    {name: "svg", subtype: "talos", capture: "svg"},
+    {name: "tp4", subtype: "talos", capture: "tp4"},
+  ]
+};
+
+
 var FF_TYPE_GROUPS = [
   "build",
   "xpcshell",
+  TMPL_MOCHITEST_TYPE_GROUP,
+  TMPL_REFTEST_TYPE_GROUP,
+  TMPL_DESKTOP_TALOS_TYPE_GROUP,
+  "nightly",
+];
+
+var RESERVABLE_TYPE_GROUPS = [
   {
-    name: "mochitest",
+    name: "build",
     subgroups: [
-      {name: "1", subtype: "mochitest", capture: "1"},
-      {name: "2", subtype: "mochitest", capture: "2"},
-      {name: "3", subtype: "mochitest", capture: "3"},
-      {name: "4", subtype: "mochitest", capture: "4"},
-      {name: "5", subtype: "mochitest", capture: "5"},
-      {name: "oth", subtype: "mochitest", capture: "other"},
+      {name: "build", subtype: "build"},
+      {name: "mobile", subtype: "mobile"},
     ]
   },
-  {
-    name: "reftest",
-    subgroups: [
-      {name: "crash", subtype: "reftest", capture: "crashtest"},
-      {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
-      {name: "js", subtype: "reftest", capture: "jsreftest"},
-      {name: "reftest", subtype: "reftest", capture: "reftest"},
-      {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
-    ]
-  },
-  {
-    name: "talos", subgroups: [
-      {name: "a11y", subtype: "talos", capture: "a11y"},
-      {name: "chrome", subtype: "talos", capture: "chrome"},
-      {name: "dirty", subtype: "talos", capture: "dirty"},
-      {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
-      {name: "nochrome", subtype: "talos", capture: "nochrome"},
-      {name: "scroll", subtype: "talos", capture: "scroll"},
-      {name: "svg", subtype: "talos", capture: "svg"},
-      {name: "tp4", subtype: "talos", capture: "tp4"},
-    ]
-  },
+  "xpcshell",
+  TMPL_MOCHITEST_TYPE_GROUP,
+  TMPL_REFTEST_TYPE_GROUP,
+  TMPL_DESKTOP_TALOS_TYPE_GROUP,
   "nightly",
 ];
 
@@ -570,7 +591,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     repos: [REPOS["birch"]],
     mount: {
     },
-    typeGroups: FF_TYPE_GROUPS,
+    typeGroups: RESERVABLE_TYPE_GROUPS,
   }),
   Cedar: new TinderTreeDef({
     id: "cedar",
@@ -580,7 +601,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
     repos: [REPOS["cedar"]],
     mount: {
     },
-    typeGroups: FF_TYPE_GROUPS,
+    typeGroups: RESERVABLE_TYPE_GROUPS,
   }),
   // There are serious problems with the maple tree; even TBPL gets upset.
   // (It does not kill us, but we do abort processing the tree, and no point in
@@ -630,40 +651,9 @@ var TINDER_TREES = exports.TINDER_TREES = {
             ],
           },
           "xpcshell",
-          {
-            name: "mochitest",
-            subgroups: [
-              {name: "1", subtype: "mochitest", capture: "1"},
-              {name: "2", subtype: "mochitest", capture: "2"},
-              {name: "3", subtype: "mochitest", capture: "3"},
-              {name: "4", subtype: "mochitest", capture: "4"},
-              {name: "5", subtype: "mochitest", capture: "5"},
-              {name: "oth", subtype: "mochitest", capture: "other"},
-            ]
-          },
-          {
-            name: "reftest",
-            subgroups: [
-              {name: "crash", subtype: "reftest", capture: "crashtest"},
-              {name: "crash-ipc", subtype: "reftest", capture: "crashtest-ipc"},
-              {name: "js", subtype: "reftest", capture: "jsreftest"},
-              {name: "reftest", subtype: "reftest", capture: "reftest"},
-              {name: "reftest-ipc", subtype: "reftest", capture: "reftest-ipc"},
-            ]
-          },
-          {
-            name: "talos", subgroups: [
-              {name: "a11y", subtype: "talos", capture: "a11y"},
-              {name: "chrome", subtype: "talos", capture: "chrome"},
-              {name: "dirty", subtype: "talos", capture: "dirty"},
-              {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
-              {name: "nochrome", subtype: "talos", capture: "nochrome"},
-              {name: "scroll", subtype: "talos", capture: "scroll"},
-              {name: "svg", subtype: "talos", capture: "svg"},
-              {name: "tp4", subtype: "talos", capture: "tp4"},
-              {name: "v8", subtype: "talos", capture: "v8"},
-            ]
-          },
+          TMPL_MOCHITEST_TYPE_GROUP,
+          TMPL_REFTEST_TYPE_GROUP,
+          TMPL_DESKTOP_TALOS_TYPE_GROUP,
         ],
       },
       {
