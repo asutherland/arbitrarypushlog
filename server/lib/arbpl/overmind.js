@@ -471,7 +471,10 @@ Overmind.prototype = {
             //  know about, inject it.  (The builders do not build all
             //  revisions.)
             if (isCanonicalRepo && !self._revMap.hasOwnProperty(shortRev)) {
-              self._revMap[shortRev] = {builds: []};
+              if (repoDef.dependent)
+                self._revMap[shortRev] = {};
+              else
+                self._revMap[shortRev] = {builds: []};
             }
           }
         }
@@ -675,7 +678,8 @@ Overmind.prototype = {
           var minfo = self._revInfoByRepoAndRev[repoDef.name + ":" + csKey];
           if (!minfo) {
             console.warn("No rev info for '" +
-                         repoDef.name + ":" + csKey + "', skipping");
+                         repoDef.name + ":" + csKey + "', skipping:",
+                         revMap[csKey]);
             continue;
           }
           var curPush = minfo.push;

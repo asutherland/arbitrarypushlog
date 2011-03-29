@@ -287,6 +287,7 @@ function CodeRepoDef(def) {
   this.kind = def.kind;
   this.relto = ("relto" in def) ? def.relto : null;
   this.path_mapping = def.path_mapping;
+  this.dependent = def.dependent || false;
   this.family = def.family;
   this.bugTracker = MOZBUGZILLA;
 }
@@ -306,6 +307,7 @@ var REPOS = exports.REPOS = {
     kind: "trunk",
     path_mapping: CC_MAPPING,
     family: "comm",
+    dependent: true,
   }),
   "try-comm-central": new CodeRepoDef({
     name: "try-comm-central",
@@ -314,6 +316,7 @@ var REPOS = exports.REPOS = {
     relto: "comm-central",
     path_mapping: CC_MAPPING,
     family: "comm",
+    dependent: true,
   }),
 
   "mozilla-central": new CodeRepoDef({
@@ -385,6 +388,7 @@ var REPOS = exports.REPOS = {
     kind: "release",
     path_mapping: CC_MAPPING,
     family: "comm",
+    dependent: true,
   }),
   "comm-1.9.1": new CodeRepoDef({
     name: "comm-1.9.1",
@@ -392,6 +396,7 @@ var REPOS = exports.REPOS = {
     kind: "release",
     path_mapping: CC_MAPPING,
     family: "comm",
+    dependent: true,
   }),
   "mozilla-2.1": new CodeRepoDef({
     name: "mozilla-2.1",
