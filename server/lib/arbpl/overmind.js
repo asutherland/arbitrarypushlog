@@ -894,7 +894,11 @@ Overmind.prototype = {
              keysAndValues: stateToSend,
            }),
         function() {
-          console.log("sideband push completed");
+          //console.log("sideband push completed");
+          self._processNextPush();
+        },
+        function() {
+          console.warn("problem with sideband push!");
           self._processNextPush();
         }
       );
