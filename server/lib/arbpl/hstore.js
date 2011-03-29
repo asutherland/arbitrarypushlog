@@ -519,19 +519,26 @@ HStore.prototype = {
       }));
     }
 
-    this.client.mutateRow(
-      TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
-      mutations,
-      function(err) {
-        if (err) {
-          console.error("Problem saving row: " +
-                        treeId + "," + transformPushId(pushId));
-          deferred.reject(err);
-        }
-        else {
-          deferred.resolve();
-        }
-      });
+    // if there are no mutations, do not bother issuing a write.
+    if (mutations.length) {
+      this.client.mutateRow(
+        TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
+        mutations,
+        function(err) {
+          if (err) {
+            console.error("Problem saving row: " +
+                          treeId + "," + transformPushId(pushId));
+            console.error(err);
+            deferred.reject(err);
+          }
+          else {
+            deferred.resolve();
+          }
+        });
+    }
+    else {
+      deferred.resolve();
+    }
     return deferred.promise;
   },
 };

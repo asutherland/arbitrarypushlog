@@ -110,6 +110,12 @@ var RE_BACKSLASH = /\\/g;
 var RE_IS_MOCHITEST = /^chrome:/;
 
 /**
+ * The maximum number of lines to put in the raw log.  People can go see the
+ *  full log for themselves if they are so inclined.
+ */
+var MAX_LOG_LENGTH_IN_LINES = 16384;
+
+/**
  * Process a tinderbox xpcshell run for failures.  When we see xpcshell
  *  calling out a failure and dumping a log, we process the log for all xpcshell
  *  lines.  We use this to generate a hopefully deterministic trace once the
@@ -146,6 +152,8 @@ function XpcshellFrobber(stream, summaryKey, detailKeyPrefix, callback) {
 
   this.curFailure = null;
   this.curDetails = null;
+  this.rawLog = null;
+  this.ignoredLineCount = 0;
 }
 XpcshellFrobber.prototype = {
   onLine: function(line) {
@@ -180,9 +188,11 @@ XpcshellFrobber.prototype = {
             hash: null,
             details: [],
           };
+          this.rawLog = [];
           this.curDetails = {
             type: "xpcshell",
-            rawLog: [],
+            rawLog: this.rawLog,
+            ignoredLineCount: 0,
             deterministicLog: [],
           };
           this.writeCells[this.detailKeyPrefix + ":" + testPath] =
@@ -196,12 +206,23 @@ XpcshellFrobber.prototype = {
       case FST_IN_TEST_LOG: {
         if (line === LOG_START_MARKER)
           break;
-        this.curDetails.rawLog.push(line);
+
+        if (this.rawLog.length === MAX_LOG_LENGTH_IN_LINES)
+          this.rawLog.push("TOO MANY LINES! I GIVE UP!");
+        else if (this.rawLog.length < MAX_LOG_LENGTH_IN_LINES)
+          this.rawLog.push(line);
+        else
+          this.ignoredLineCount++;
         match = RE_TEST_DETERMINISTIC_LINE.exec(line);
         if (match) {
           // use indexOf "|" to skip over the path name, "|" and whitespace
           var goodBit = line.substring(line.indexOf("|", match[0].length) + 2);
-          this.curDetails.deterministicLog.push(goodBit);
+
+          var deterministicLog = this.curDetails.deterministicLog;
+          if (deterministicLog.length === MAX_LOG_LENGTH_IN_LINES)
+            deterministicLog.push("TOO MANY LINES! I GIVE UP!");
+          else if (deterministicLog.length < MAX_LOG_LENGTH_IN_LINES)
+            deterministicLog.push(goodBit);
           this.hasher.update(goodBit);
 
           // If it's the (first) failure, we have enough to formalize the
@@ -222,14 +243,25 @@ XpcshellFrobber.prototype = {
 
       case FST_DONE_WITH_LOG: {
         if (line === LOG_END_MARKER) {
+          if (this.ignoredLineCount) {
+            this.rawLog.push("ignored: " + this.ignoredLineCount + " lines");
+            this.curDetails.ignoredLineCount = this.ignoredLineCount;
+            this.ignoredLineCount = 0;
+          }
           this.hasher = null;
           this.curFailure = null;
           this.curDetails = null;
+          this.rawLog = null;
 
           this.state = FST_LOOKING_FOR_FAILED_TEST;
         }
         else {
-          this.curDetails.rawLog.push(line);
+         if (this.rawLog.length === MAX_LOG_LENGTH_IN_LINES)
+           this.rawLog.push("TOO MANY LINES! I GIVE UP!");
+         else if (this.rawLog.length < MAX_LOG_LENGTH_IN_LINES)
+           this.rawLog.push(line);
+         else
+           this.ignoredLineCount++;
         }
       }
       break;

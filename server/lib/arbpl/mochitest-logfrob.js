@@ -63,7 +63,14 @@ var FST_LOOKING_FOR_TEST_START = 0;
 var FST_IN_TEST = 1;
 
 var RE_TEST_START = /TEST-START \| (.+)$/;
+/**
+ * Normal test-end; we can also encounter a crash situation where we see
+ *  TEST-UNEXPECTED-FAIL, followed by some "INFO |" lines followed by a
+ *  PROCESS-CRASH, some crash data, and attempt to process the leak log,
+ *  followed by "INFO | runtests.py | Running tests: end.".
+ */
 var RE_TEST_END = /TEST-END \| (.+) | finished in (\d+)ms$/;
+var RE_HARD_TEST_END = /^INFO \| runtests.py \| Running tests: end\.$/;
 
 /**
  * Error string; does not have to be at the start of the line for mochitests.
@@ -76,6 +83,12 @@ var LEN_SCREENSHOT = ("SCREENSHOT: ").length;
 var RE_GOBBLE_PREFIX = /^chrome:/;
 var RE_IGNORE_PREFIX = /^(?:automation|plugin|\(SimpleTest)/;
 var GOBBLE_URL_LEN = ("chrome://mochitests/content/").length;
+
+/**
+ * The maximum number of lines to put in the raw log.  People can go see the
+ *  full log for themselves if they are so inclined...
+ */
+var MAX_LOG_LENGTH_IN_LINES = 8192;
 
 /**
  * Process a mochitest log for failures.  Mochitests have the following
@@ -111,6 +124,8 @@ function MochiFrobber(stream, summaryKey, detailKeyPrefix, callback) {
   this.curFailure = null;
   this.curDetails = null;
   this.state = FST_LOOKING_FOR_TEST_START;
+
+  this.ignoredLineCount = 0;
 }
 MochiFrobber.prototype = {
   onLine: function(line) {
@@ -133,7 +148,12 @@ MochiFrobber.prototype = {
           break;
         }
         // log all lines up to and including the TEST-END
-        this.rawLog.push(line);
+        if (this.rawLog.length === MAX_LOG_LENGTH_IN_LINES)
+          this.rawLog.push("TOO MANY LINES! I GIVE UP!");
+        else if (this.rawLog.length < MAX_LOG_LENGTH_IN_LINES)
+          this.rawLog.push(line);
+        else
+          this.ignoredLineCount++;
         if ((match = RE_FAILED_TEST_STARTS.exec(line))) {
           var fullPath = match[1];
           // this could be an automationutils gibberish thing, which is simply
@@ -160,6 +180,7 @@ MochiFrobber.prototype = {
             this.curDetails = {
               type: "mochitest",
               rawLog: this.rawLog,
+              ignoredLineCount: 0,
               screenshotDataUrl: null,
             };
             this.overview.failures.push(this.curFailure);
@@ -167,10 +188,19 @@ MochiFrobber.prototype = {
               this.curDetails;
           }
         }
-        else if ((match = RE_TEST_END.exec(line))) {
+        else if ((match = RE_TEST_END.exec(line)) ||
+                 RE_HARD_TEST_END.test(line)) {
+          if (this.ignoredLineCount) {
+            if (this.curDetails) {
+              this.rawLog.push("ignored: " + this.ignoredLineCount + " lines");
+              this.curDetails.ignoredLineCount = this.ignoredLineCount;
+            }
+            this.ignoredLineCount = 0;
+          }
           this.state = FST_LOOKING_FOR_TEST_START;
           this.curFailure = null;
           this.curDetails = null;
+          this.rawLog = null;
         }
 
         break;

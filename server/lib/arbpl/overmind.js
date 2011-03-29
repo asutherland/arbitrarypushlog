@@ -700,7 +700,6 @@ Overmind.prototype = {
 
     when(DB.putPushStuff(this.tinderTree.id, rootPush.id, setstate),
       function() {
-        console.log("db write completed:", self.tinderTree.id, rootPush.id);
         self._noteState("logproc");
         self._processNextLog();
       },
