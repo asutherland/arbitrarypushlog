@@ -274,8 +274,15 @@ Overmind.prototype = {
 
     /** Map repo families to revision map depth... */
     var familyPrioMap = {};
+    /**
+     * For dictionary key purposes in our maps we use the tree's canonical repo
+     *  for a given family; establish this map.
+     */
+    var familyCanonRepoMap = {};
     for (var iRepo = 0; iRepo < this.tinderTree.repos.length; iRepo++) {
       familyPrioMap[this.tinderTree.repos[iRepo].family] = iRepo;
+      familyCanonRepoMap[this.tinderTree.repos[iRepo].family] =
+        this.tinderTree.repos[iRepo];
     }
 
     var revMap = this._revMap = {};
@@ -283,6 +290,7 @@ Overmind.prototype = {
     var repoAndRevs = {};
     repoAndRevs[this.tinderTree.repos[0].name] = {
       repo: this.tinderTree.repos[0],
+      canonRepo: this.tinderTree.repos[0],
       revs: [],
     };
     var i, revision, repoDef;
@@ -326,7 +334,9 @@ Overmind.prototype = {
 
         // update our pushlog fetch info
         if (!repoAndRevs.hasOwnProperty(revRepo))
-          repoAndRevs[revRepo] = {repo: repoDef, revs: []};
+          repoAndRevs[revRepo] = {repo: repoDef,
+                                  canonRepo: familyCanonRepoMap[repoDef.family],
+                                  revs: []};
         if (repoAndRevs[revRepo].revs.indexOf(revision) == -1)
           repoAndRevs[revRepo].revs.push(revision);
       }
@@ -424,7 +434,8 @@ Overmind.prototype = {
       var repoAndRev = repoAndRevs[repoName];
 
       console.log("Repo", repoName, "wants", repoAndRev.revs);
-      this._fetchSpecificPushInfo(repoAndRev.repo, repoAndRev.revs,
+      this._fetchSpecificPushInfo(repoAndRev.repo, repoAndRev.canonRepo,
+                                  repoAndRev.revs,
                                   "&startdate=" + earliestTimeStr +
                                   "&enddate=" + latestTimeStr);
     }
@@ -434,7 +445,7 @@ Overmind.prototype = {
     }
   },
 
-  _fetchSpecificPushInfo: function(repoDef, revs, paramStr) {
+  _fetchSpecificPushInfo: function(repoDef, canonRepoDef, revs, paramStr) {
     var self = this;
     var url = repoDef.url + "json-pushes?full=1" + paramStr;
     this._pendingPushFetches++;
@@ -458,12 +469,12 @@ Overmind.prototype = {
             var shortRev = csinfo.node.substring(0, 12);
             csinfo.shortRev = shortRev;
 
-            var aggrKey = repoDef.name + ":" + shortRev;
+            var aggrKey = canonRepoDef.name + ":" + shortRev;
             self._revInfoByRepoAndRev[aggrKey] = {
               push: pinfo,
               changeset: csinfo,
             };
-            console.log("  resolving rev", shortRev, revs.indexOf(shortRev));
+            //console.log("  resolving rev", shortRev, revs.indexOf(shortRev));
             if (revs.indexOf(shortRev) != -1)
               revs.splice(revs.indexOf(shortRev), 1);
 
@@ -494,7 +505,8 @@ Overmind.prototype = {
           }
           console.log("... still have pending revs", revs);
           self._oneOffRevisionFetch = revs[0];
-          self._fetchSpecificPushInfo(repoDef, revs, "&changeset=" + revs[0]);
+          self._fetchSpecificPushInfo(repoDef, canonRepoDef, revs,
+                                      "&changeset=" + revs[0]);
         }
         else {
           if (self._pendingPushFetches == 0)
@@ -679,7 +691,8 @@ Overmind.prototype = {
           if (!minfo) {
             console.warn("No rev info for '" +
                          repoDef.name + ":" + csKey + "', skipping:",
-                         revMap[csKey]);
+                         revMap[csKey].hasOwnProperty("builds") ?
+                           revMap[csKey].builds : revMap[csKey]);
             continue;
           }
           var curPush = minfo.push;
