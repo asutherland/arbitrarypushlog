@@ -50,12 +50,31 @@ define(
   ) {
 
 /**
+ * We are not in a test, but are looking for TEST-START.  We transition to
+ *  `FST_IN_TEST_SPECULATIVE_LOGGING` when we see one.
+ */
+var FST_LOOKING_FOR_TEST_START = 0;
+/**
+ * We are in a test (after TEST-START, before TEST-END) and may or may not
+ *  have seen a failure.  When we see a failure we se `curFailure` and friends
+ *  and use that to detect an edge transition.  We transition back to
+ *  FST_LOOKING_FOR_TEST_START when we see TEST-END.
+ */
+var FST_IN_TEST = 1;
+
+var RE_TEST_START = /TEST-START \| (.+)$/;
+var RE_TEST_END = /TEST-END \| (.+) | finished in (\d+)ms$/;
+
+/**
  * Error string; does not have to be at the start of the line for mochitests.
  */
 var RE_FAILED_TEST_STARTS = /TEST-UNEXPECTED-FAIL \| (.+) \| /;
 
+var RE_SCREENSHOT_LINE = /^SCREENSHOT: data:image/;
+var LEN_SCREENSHOT = ("SCREENSHOT: ").length;
+
 var RE_GOBBLE_PREFIX = /^chrome:/;
-var RE_IGNORE_PREFIX = /^automation|plugin|\(SimpleTest/;
+var RE_IGNORE_PREFIX = /^(?:automation|plugin|\(SimpleTest)/;
 var GOBBLE_URL_LEN = ("chrome://mochitests/content/").length;
 
 /**
@@ -76,56 +95,99 @@ var GOBBLE_URL_LEN = ("chrome://mochitests/content/").length;
  * We do not bother to do any deterministic trace stuff like we do for xpcshell
  *  because we don't know where to find such trace data.
  */
-function MochiFrobber(stream, callback) {
+function MochiFrobber(stream, summaryKey, detailKeyPrefix, callback) {
+  this.detailKeyPrefix = detailKeyPrefix;
   this.callback = callback;
 
   this.carrier = $carrier.carry(stream);
   this.carrier.on("line", this.onLine.bind(this));
   stream.on("end", this.onEnd.bind(this));
 
-  this.failures = [];
+  this.overview = {type: "mochitest", failures: []};
+  this.writeCells = {};
+  this.writeCells[summaryKey] = this.overview;
+
+  this.rawLog = null;
   this.curFailure = null;
+  this.curDetails = null;
+  this.state = FST_LOOKING_FOR_TEST_START;
 }
 MochiFrobber.prototype = {
   onLine: function(line) {
-    var match = RE_FAILED_TEST_STARTS.exec(line);
-    if (match) {
-      var fullPath = match[1];
-      // this could be an automationutils gibberish thing, which is simply
-      //  fallout of the previous test.  ignore.
-      if (RE_IGNORE_PREFIX.test(fullPath))
-        return;
-      var relPath;
-      if (RE_GOBBLE_PREFIX.test(fullPath))
-        relPath = fullPath.substring(GOBBLE_URL_LEN);
-      else
-        relPath = fullPath;
-      if (relPath[0] == "/")
-        relPath = relPath.substring(1);
-      var goodBit = line.substring(match.index + match[0].length);
-      if (this.curFailure && this.curFailure.test == relPath) {
-        this.curFailure.details.push(goodBit);
-        return;
-      }
+    var match;
+    switch (this.state) {
+      case FST_LOOKING_FOR_TEST_START:
+        match = RE_TEST_START.exec(line);
+        if (match) {
+          // log the start line for book-ending
+          this.rawLog = [line];
+          this.state = FST_IN_TEST;
+        }
+        break;
 
-      this.curFailure = {
-        test: relPath,
-        details: [goodBit],
-      };
-      this.failures.push(this.curFailure);
+      case FST_IN_TEST:
+        // do not put the screenshot in raw logs; special-case...
+        if (RE_SCREENSHOT_LINE.test(line)) {
+          if (this.curDetails)
+            this.curDetails.screenshotDataUrl = line.substring(LEN_SCREENSHOT);
+          break;
+        }
+        // log all lines up to and including the TEST-END
+        this.rawLog.push(line);
+        if ((match = RE_FAILED_TEST_STARTS.exec(line))) {
+          var fullPath = match[1];
+          // this could be an automationutils gibberish thing, which is simply
+          //  fallout of the previous test.  ignore.
+          if (RE_IGNORE_PREFIX.test(fullPath))
+            return;
+          var relPath;
+          if (RE_GOBBLE_PREFIX.test(fullPath))
+            relPath = fullPath.substring(GOBBLE_URL_LEN);
+          else
+            relPath = fullPath;
+          if (relPath[0] == "/")
+            relPath = relPath.substring(1);
+          var goodBit = line.substring(match.index + match[0].length);
+          if (this.curFailure) {
+            this.curFailure.details.push(goodBit);
+          }
+          else {
+            this.curFailure = {
+              test: relPath,
+              uniqueName: relPath,
+              details: [goodBit],
+            };
+            this.curDetails = {
+              type: "mochitest",
+              rawLog: this.rawLog,
+              screenshotDataUrl: null,
+            };
+            this.overview.failures.push(this.curFailure);
+            this.writeCells[this.detailKeyPrefix + ":" + relPath] =
+              this.curDetails;
+          }
+        }
+        else if ((match = RE_TEST_END.exec(line))) {
+          this.state = FST_LOOKING_FOR_TEST_START;
+          this.curFailure = null;
+          this.curDetails = null;
+        }
+
+        break;
     }
   },
   onEnd: function() {
-    this.callback(this.failures);
+    this.callback(this.writeCells);
   }
 };
 exports.MochiFrobber = MochiFrobber;
 
 exports.dummyTestRun = function(stream) {
-  var frobber = new MochiFrobber(stream, function(failures) {
-    for (var i = 0; i < failures.length; i++) {
-      console.log(failures[i]);
-    }
+  var frobber = new MochiFrobber(stream, "s", "d", function(writeCells) {
+    console.log("SUMMARY");
+    console.log(writeCells.s);
+    console.log("WRITE CELLS:");
+    console.log(writeCells);
   });
 };
 

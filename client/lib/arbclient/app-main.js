@@ -332,8 +332,8 @@ ArbApp.prototype = {
 
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
-      function gotPushes(logDetails) {
-        var chewedDetails = $chew_loghelper.chewMozmillFailures(logDetails);
+      function gotLogDetail(logDetail) {
+        var chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
         self.page = {
           page: "testlog",
           pathNodes: pathNodes,

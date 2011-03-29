@@ -87,7 +87,8 @@ wy.defineWidget({
       if (!this.obj.messageObjects.length)
         return;
       var useMessages;
-      if (this.obj.messageObjects[0].hasOwnProperty("_isContext"))
+      if (this.obj.messageObjects[0] == null ||
+          this.obj.messageObjects[0].hasOwnProperty("_isContext"))
         useMessages = this.obj.messageObjects.slice(1);
       else
         useMessages = this.obj.messageObjects;

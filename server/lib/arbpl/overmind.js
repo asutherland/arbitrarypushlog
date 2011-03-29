@@ -89,8 +89,6 @@ var DB = new $hstore.HStore();
 
 var HOURS_IN_MS = 60 * 60 * 1000;
 
-var RE_BACKSLASH = /\\/g;
-
 /**
  * The pushlog has ugly internal date parsing plus a fallback to the python
  *  "parsedatetime" module.  We opt to fail the custom date parsing regex and
@@ -639,7 +637,7 @@ Overmind.prototype = {
             self._logProcJobs.push({
               pushId: rootPush.id,
               summaryKey: lKey,
-              detailKey: dKey,
+              detailKeyPrefix: dKey,
               build: build,
             });
           }
@@ -783,46 +781,22 @@ Overmind.prototype = {
    *     The job the frobber was working; this provides us with the information
    *     required so we know where to write to.
    *   }
-   *   @param[logResultObj]{
-   *     The state object to persist to the datastore.  This will be JSON
-   *     serialized at a lower level, so barring a great reason, there is no
-   *     need to pre-serialize things.
+   *   @param[writeCells]{
+   *     Dictionary of cells to write to the database; it is assumed that a
+   *     summary object is present with the expected summary key.
    *   }
    * ]
    */
-  _frobberDone: function(frobber, job, failures) {
+  _frobberDone: function(frobber, job, writeCells) {
     var self = this;
-    var stateObj = {};
 
-    var overviewFailures = [], detailedFailures = failures;
-    for (var i = 0; i < failures.length; i++) {
-      var failure = failures[i];
-      var overviewFail = {};
-      for (var key in failure) {
-        if (key != "failureContext")
-          overviewFail[key] = failure[key];
-      }
-      overviewFailures.push(overviewFail);
-    }
+    this._pendingSidebandState[job.summaryKey] = writeCells[job.summaryKey];
 
-    var summaryObj = {
-      type: job.build.builder.type.subtype,
-      failures: overviewFailures,
-    };
-    var detailObj = {
-      type: job.build.builder.type.subtype,
-      failures: detailedFailures,
-    };
-    stateObj[job.summaryKey] = summaryObj;
-    this._pendingSidebandState[job.summaryKey] = summaryObj;
-    stateObj[job.detailKey] = detailObj;
     // Although we could potentially overlap the next request with this
     //  request, this is the easiest way to make sure that _allDone does not
     //  kill the VM prematurely.  XXX The datastore should probably be able to
     //  handle out a promise for when it has quiesced.
-    console.log("frobber db write to", job.pushId, job.summaryKey, job.detailKey);
-    //console.log("    ", stateObj);
-    when(DB.putPushStuff(this.tinderTree.id, job.pushId, stateObj),
+    when(DB.putPushStuff(this.tinderTree.id, job.pushId, writeCells),
       function() {
         console.log(" frobber db write completed");
         self._activeLogFrobbers.splice(
@@ -836,18 +810,9 @@ Overmind.prototype = {
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
-    var frobber = new $frobMozmill.MozmillFrobber(stream, function(failures) {
-      // XXX temporary hack to normalize windows paths until the driver side
-      //  is fixed to normalize for us and this glitch gets aged out.
-      for (var i = 0; i < failures.length; i++) {
-        var entry = failures[i], pathParts;
-        if (entry.fileName.indexOf("\\") != -1) {
-          entry.fileName = entry.fileName.replace(RE_BACKSLASH, "/");
-          pathParts = entry.fileName.split("/");
-          entry.fileName = pathParts.slice(-2).join("/");
-        }
-      }
-      self._frobberDone(frobber, job, failures);
+    var frobber = new $frobMozmill.MozmillFrobber(
+      stream, job.summaryKey, job.detailKeyPrefix, function(writeCells) {
+      self._frobberDone(frobber, job, writeCells);
     });
     return frobber;
   },
@@ -857,9 +822,10 @@ Overmind.prototype = {
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
-    var frobber = new $frobXpcshell.XpcshellFrobber(stream, function(failures) {
-      self._frobberDone(frobber, job, failures);
-    });
+    var frobber = new $frobXpcshell.XpcshellFrobber(
+      stream, job.summaryKey, job.detailKeyPrefix, function(writeCells) {
+        self._frobberDone(frobber, job, writeCells);
+      });
     return frobber;
   },
 
@@ -868,9 +834,10 @@ Overmind.prototype = {
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
-    var frobber = new $frobMochitest.MochiFrobber(stream, function(failures) {
-      self._frobberDone(frobber, job, failures);
-    });
+    var frobber = new $frobMochitest.MochiFrobber(
+      stream, job.summaryKey, job.detailKeyPrefix, function(writeCells) {
+        self._frobberDone(frobber, job, writeCells);
+      });
     return frobber;
   },
 
@@ -879,9 +846,10 @@ Overmind.prototype = {
     var self = this;
 
     var stream = $hackjobs.gimmeStreamForThing(job.build.logURL);
-    var frobber = new $frobReftest.ReftestFrobber(stream, function(failures) {
-      self._frobberDone(frobber, job, failures);
-    });
+    var frobber = new $frobReftest.ReftestFrobber(
+      stream, job.summaryKey, job.detailKeyPrefix, function(writeCells) {
+        self._frobberDone(frobber, job, writeCells);
+      });
     return frobber;
   },
 

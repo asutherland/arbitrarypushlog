@@ -480,7 +480,8 @@ wy.defineWidget({
         console.log("context", this.__context, "obj", this.obj);
         var log = (this.__context.subPushId ?
                      (this.__context.subPushId + ":") : "") +
-                  buildBinding.obj.id;
+                  buildBinding.obj.id + ":" +
+                  this.obj.uniqueName;
         this.emit_navigate({pushid: this.__context.pushId,
                             log: log});
       },

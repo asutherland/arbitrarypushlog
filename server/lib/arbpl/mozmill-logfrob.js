@@ -51,16 +51,22 @@ var RE_START = /^##### MOZMILL-RICH-FAILURES-BEGIN #####$/m;
 var RE_END = /^##### MOZMILL-RICH-FAILURES-END #####$/m;
 var OVERLAP_PADDING = 32;
 
+var RE_BACKSLASH = /\\/g;
+
 /**
  * Consume
  */
-function Frobber(stream, callback) {
+function Frobber(stream, summaryKey, detailKeyPrefix, callback) {
   stream.on("data", this.onData.bind(this));
   stream.on("end", this.onEnd.bind(this));
 
+  this.detailKeyPrefix = detailKeyPrefix;
   this.callback = callback;
 
-  this.jsonObjs = [];
+  this.overview = {type: "mozmill", failures: []};
+  this.writeCells = {};
+  this.writeCells[summaryKey] = this.overview;
+
   this.inBlock = false;
   this.leftover = null;
 }
@@ -71,7 +77,27 @@ Frobber.prototype = {
       // ignore blank lines...
       if (!bits[i])
         continue;
-      this.jsonObjs.push(JSON.parse(bits[i]));
+
+      var detailObj = JSON.parse(bits[i]);
+
+      // XXX temporary windows path normalization that runtests.py is not
+      //  fixing for us; long term we want runtests.py to not need to do this.
+      if (detailObj.fileName.indexOf("\\") != -1) {
+        detailObj.fileName = detailObj.fileName.replace(RE_BACKSLASH, "/");
+        var pathParts = detailObj.fileName.split("/");
+        detailObj.fileName = pathParts.slice(-2).join("/");
+      }
+
+      var summaryObj = {};
+      for (var key in detailObj) {
+        if (key != "failureContext")
+          summaryObj[key] = detailObj[key];
+      }
+      var testUniqueName = detailObj.fileName + "-" + detailObj.testName;
+      summaryObj.uniqueName = testUniqueName;
+      detailObj.type = "mozmill";
+      this.overview.failures.push(summaryObj);
+      this.writeCells[this.detailKeyPrefix + ":" + testUniqueName] = detailObj;
     }
   },
   onData: function(data) {
@@ -122,18 +148,17 @@ Frobber.prototype = {
   },
 
   onEnd: function(data) {
-    this.callback(this.jsonObjs);
+    this.callback(this.writeCells);
   },
 };
 exports.MozmillFrobber = Frobber;
 
-exports.dummyTestRun = function(path) {
-  var stream = $fs.createReadStream(path);
-
-  var frobber = new Frobber(stream, function(objs) {
-    for (var i = 0; i < objs.length; i++) {
-      console.log(objs[i].exception.message);
-    }
+exports.dummyTestRun = function(stream) {
+  var frobber = new Frobber(stream, "s", "d", function(writeCells) {
+    console.log("SUMMARY");
+    console.log(writeCells.s);
+    console.log("WRITE CELLS:");
+    console.log(writeCells);
   });
 };
 

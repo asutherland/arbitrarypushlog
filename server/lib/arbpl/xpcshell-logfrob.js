@@ -59,15 +59,19 @@ define(
 var FST_LOOKING_FOR_FAILED_TEST = 0;
 /**
  * We are in a log processing it, looking for the first TEST-UNEXPECTED-FAIL in
- *  the log.  Once we see it, we transition to FST_DONE_WITH_LOG.
+ *  the log.  Once we see it, we transition to FST_DONE_WITH_LOG.  We archive
+ *  all lines for retrieval, as well as generating a deterministic trace for
+ *  consultation.
  */
 var FST_IN_TEST_LOG = 1;
 /**
  * We saw the first TEST-UNEXPECTED-FAIL in a log and are now waiting for the
- *  end of the log.  We ignore everything after the first failure because
- *  after that point things tend to go off the rails and become gibberishy.
- *  (Exception death, unexpected additional turns of the event loop that the
- *  test framework was not really expecting, etc.)
+ *  end of the log.  We ignore everything after the first failure for
+ *  deterministic trace purposes because after that point things tend to go off
+ *  the rails and become gibberishy.  However, our general logging continues
+ *  because the test framework might say some useful things humans care about on
+ *  the way out.  (Exception death, unexpected additional turns of the event
+ *  loop that the test framework was not really expecting, etc.)
  *
  * We transition back to FST_LOOKING_FOR_FAILED_TEST when we see the "<<<<<<<"
  *  that signals the end of the log.
@@ -120,7 +124,8 @@ var RE_IS_MOCHITEST = /^chrome:/;
  *  unlikely that a change in file path would meaningfully happen without some
  *  other change to the deterministic trace.)
  */
-function XpcshellFrobber(stream, callback) {
+function XpcshellFrobber(stream, summaryKey, detailKeyPrefix, callback) {
+  this.detailKeyPrefix = detailKeyPrefix;
   this.callback = callback;
 
   this.carrier = $carrier.carry(stream);
@@ -135,8 +140,12 @@ function XpcshellFrobber(stream, callback) {
 
   this.state = FST_LOOKING_FOR_FAILED_TEST;
 
-  this.failures = [];
+  this.overview = {type: "xpcshell", failures: []};
+  this.writeCells = {};
+  this.writeCells[summaryKey] = this.overview;
+
   this.curFailure = null;
+  this.curDetails = null;
 }
 XpcshellFrobber.prototype = {
   onLine: function(line) {
@@ -164,11 +173,20 @@ XpcshellFrobber.prototype = {
           match = RE_TEST_TREE_PATH_BASE.exec(fullPath);
           if (!match)
             console.error("failed to match on", fullPath);
-          var testPath = match[1];
+          var testPath = match[1].replace(RE_BACKSLASH, "/");
           this.curFailure = {
-            test: testPath.replace(RE_BACKSLASH, "/"),
+            test: testPath,
+            uniqueName: testPath,
             hash: null,
+            details: [],
           };
+          this.curDetails = {
+            type: "xpcshell",
+            rawLog: [],
+            deterministicLog: [],
+          };
+          this.writeCells[this.detailKeyPrefix + ":" + testPath] =
+            this.curDetails;
           // (don't push the failure on the list until the log gets closed out
           //  as a paranoia move in case the log is somehow truncated.)
         }
@@ -176,20 +194,25 @@ XpcshellFrobber.prototype = {
       break;
 
       case FST_IN_TEST_LOG: {
+        if (line === LOG_START_MARKER)
+          break;
+        this.curDetails.rawLog.push(line);
         match = RE_TEST_DETERMINISTIC_LINE.exec(line);
         if (match) {
-          //console.log("hashing on line:", line);
-          var goodBit = line.substring(line.indexOf("|", match[0].length) + 1);
+          // use indexOf "|" to skip over the path name, "|" and whitespace
+          var goodBit = line.substring(line.indexOf("|", match[0].length) + 2);
+          this.curDetails.deterministicLog.push(goodBit);
           this.hasher.update(goodBit);
 
-          // if it's the (first) failure, we are done with the log and this
-          //  failure, close it out.
+          // If it's the (first) failure, we have enough to formalize the
+          //  failure.  This also concludes the deterministic trace.
           if (match[1] == "UNEXPECTED-FAIL") {
+            // For now, assume just the first failure is the only useful bit,
+            //  although we may be able to expand this using heuristics in the
+            //  future.
+            this.curFailure.details.push(goodBit);
             this.curFailure.hash = this.hasher.digest("base64");
-            this.failures.push(this.curFailure);
-
-            this.hasher = null;
-            this.curFailure = null;
+            this.overview.failures.push(this.curFailure);
 
             this.state = FST_DONE_WITH_LOG;
           }
@@ -198,25 +221,34 @@ XpcshellFrobber.prototype = {
       break;
 
       case FST_DONE_WITH_LOG: {
-        if (line === LOG_END_MARKER)
+        if (line === LOG_END_MARKER) {
+          this.hasher = null;
+          this.curFailure = null;
+          this.curDetails = null;
+
           this.state = FST_LOOKING_FOR_FAILED_TEST;
+        }
+        else {
+          this.curDetails.rawLog.push(line);
+        }
       }
       break;
     }
   },
   onEnd: function() {
-    this.callback(this.failures);
+    this.callback(this.writeCells);
   }
 };
 exports.XpcshellFrobber = XpcshellFrobber;
 
 exports.dummyTestRun = function(stream) {
-  var frobber = new XpcshellFrobber(stream, function(failures) {
-    for (var i = 0; i < failures.length; i++) {
-      console.log(failures[i]);
-    }
+  var frobber = new XpcshellFrobber(stream, "s", "d", function(writeCells) {
+    console.log("SUMMARY");
+    console.log(writeCells.s);
+    console.log(writeCells.s.failures);
+    console.log("WRITE CELLS:");
+    console.log(writeCells);
   });
 };
-
 
 }); // end define

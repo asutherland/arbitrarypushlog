@@ -170,12 +170,13 @@ FailCluster.prototype = {
    *
    * This is implemented by performing
    */
-  pathBasedPlacement: function(pathParts, type, name, signature, build) {
+  pathBasedPlacement: function(pathParts, type, name, signature, uniqueName,
+                               build) {
     var failGroup;
     if (this.usingPath == null) {
       this.usingPath = pathParts;
       this.name = this.usingPath.join("/") || this.explicitName;
-      failGroup = new FailGroup(type, name, signature);
+      failGroup = new FailGroup(type, name, signature, uniqueName);
       failGroup.inBuilds.push(build);
       this.kids.push(failGroup);
       return;
@@ -184,7 +185,7 @@ FailCluster.prototype = {
     // exact similarity match means just stick it in our list
     if (similarity === this.usingPath.length &&
         similarity === pathParts.length) {
-      this.groupifyInKids(type, name, signature, build);
+      this.groupifyInKids(type, name, signature, uniqueName, build);
       return;
     }
     // split if required
@@ -212,28 +213,31 @@ FailCluster.prototype = {
         similarity = similarPathComponents(kid.usingPath, pathParts);
         if (similarity) {
           // do not slice; the child will handle that.
-          kid.pathBasedPlacement(pathParts, type, name, signature, build);
+          kid.pathBasedPlacement(pathParts, type, name, signature, uniqueName,
+                                 build);
           return;
         }
       }
     }
     // - no existing sub-cluster, create.
     subCluster = new FailCluster();
-    subCluster.pathBasedPlacement(pathParts, type, name, signature, build);
+    subCluster.pathBasedPlacement(pathParts, type, name, signature, uniqueName,
+                                  build);
     this.kids.push(subCluster);
   },
-  groupifyInKids: function(type, name, signature, build) {
+  groupifyInKids: function(type, name, signature, uniqueName, build) {
     var failGroup;
     for (var i = 0; i < this.kids.length; i++) {
       failGroup = this.kids[i];
       if (failGroup.type === type &&
           failGroup.name === name &&
-          failGroup.signature === signature) {
+          failGroup.signature === signature &&
+          failGroup.uniqueName === uniqueName) {
         failGroup.inBuilds.push(build);
         return;
       }
     }
-    failGroup = new FailGroup(type, name, signature);
+    failGroup = new FailGroup(type, name, signature, uniqueName);
     failGroup.inBuilds.push(build);
     this.kids.push(failGroup);
   }
@@ -242,11 +246,12 @@ FailCluster.prototype = {
 /**
  * Groups failures of a specific test together.
  */
-function FailGroup(type, name, signature) {
+function FailGroup(type, name, signature, uniqueName) {
   // these field names are explicitly chosen to mimic the failure info!
   this.type = type;
   this.name = name;
   this.signature = signature;
+  this.uniqueName = uniqueName;
   this.inBuilds = [];
 }
 FailGroup.prototype = {
@@ -411,6 +416,7 @@ AggrBuildSummary.prototype = {
         // XXX we need to stop mutating testType inside the loop and hoist.
         var typeCluster = this.rootFailCluster.getOrCreateSubCluster(testType);
         typeCluster.pathBasedPlacement(pathParts, testType, testName, signature,
+                                       bfail.uniqueName,
                                        build);
       }
     }

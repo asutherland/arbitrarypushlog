@@ -332,41 +332,37 @@ function chewException(rawEx) {
  *  logHelper generated entries.
  *
  * @args[
- *   @param[rawDetails @dict[
- *     @key[failures @listof[MozmillFailureInfo]]
- *   ]]
+ *   @param[rawFailure MozmillFailureInfo]
  * ]
  */
-exports.chewMozmillFailures = function(rawDetails) {
+exports.chewMozmillFailure = function(rawFailure) {
   var chewedDetails = {
     failures: [],
   };
-  var chewedFailures = chewedDetails.failures,
-      rawFailures = rawDetails.failures;
+  var chewedFailures = chewedDetails.failures;
 
-  for (var iFailure = 0; iFailure < rawFailures.length; iFailure++) {
-    var outFailure = {}, rawFailure = rawFailures[iFailure];
-    chewedFailures.push(outFailure);
+  var outFailure = {};
+  chewedFailures.push(outFailure);
 
-    for (var key in rawFailure) {
-      if (key === "failureContext") {
-        var rawContext = rawFailure.failureContext;
-        var outContext = outFailure.failureContext = {};
-        for (var subkey in rawContext) {
-          if (subkey === "events" || subkey === "preEvents")
-            outContext[subkey] = chewEvents(rawContext[subkey]);
-          else
-            outContext[subkey] = rawContext[subkey];
-        }
-      }
-      else if (key === "exception") {
-        outFailure[key] = chewException(rawFailure[key]);
-      }
-      else {
-        outFailure[key] = rawFailure[key];
+  for (var key in rawFailure) {
+    if (key === "failureContext") {
+      var rawContext = rawFailure.failureContext;
+      var outContext = outFailure.failureContext = {};
+      for (var subkey in rawContext) {
+        if (subkey === "events" || subkey === "preEvents")
+          outContext[subkey] = chewEvents(rawContext[subkey]);
+        else
+          outContext[subkey] = rawContext[subkey];
       }
     }
+    else if (key === "exception") {
+      outFailure[key] = chewException(rawFailure[key]);
+    }
+    else {
+      outFailure[key] = rawFailure[key];
+    }
   }
+
   return chewedDetails;
 };
 

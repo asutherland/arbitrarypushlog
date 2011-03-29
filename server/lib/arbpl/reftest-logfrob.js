@@ -36,9 +36,8 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- * Process tinderbox mochitest logs as much as they deserve.  This file is a
- *  fork of xpcshell-logfrob because we don't want to contaminate that file
- *  with workarounds for annoying mochitest BS.
+ * Process reftests; they are closest to mochitests but have some weird logging
+ *  semantics and so are going to get the shortest end of the stick for now.
  **/
 
 define(
@@ -51,42 +50,26 @@ define(
     exports
   ) {
 
-/**
- * The regular expression to detect the python test runner reporting a failed
- *  test before it dumps the buffer.  Semantically different from the failure
- *  marker in a test, although otherwise similar.
- */
 var RE_FAILED_TEST_STARTS = /^REFTEST TEST-UNEXPECTED-FAIL \| (.+) \| /;
 
 var RE_GOBBLE = /^http:\/\/localhost:\d+\/\d+\/\d+\//;
 var RE_FALLBACK_GOBBLE = /\/test\/build\//;
 
 /**
- * Process a mochitest log for failures.  Mochitests have the following
- *  interesting characteristics with the noted compensations:
- *
- * - Additional metadata at a failure for a given test may be shown as
- *   TEST-UNEXPECTED-FAIL lines.  They are still identified by the same path
- *   string, so we just cluster the additional lines with the first line in
- *   terms of info.
- *
- * - PROCESS-CRASH lines can be expected or unexpected (and thus failures).  The
- *   testing framework already generates TEST-UNEXPECTED-FAILURE lines when
- *   the crash is unexpected, so we don't actually have to do anything.
- *   However, if we cared about processing the failure stacks, we would want
- *   to look for these.
- *
- * We do not bother to do any deterministic trace stuff like we do for xpcshell
- *  because we don't know where to find such trace data.
+ * Look for unexpected failures, log them.  For normalization we will pretend we
+ *  have details but it's all a big lie.
  */
-function ReftestFrobber(stream, callback) {
+function ReftestFrobber(stream, summaryKey, detailKeyPrefix, callback) {
+  this.detailKeyPrefix = detailKeyPrefix;
   this.callback = callback;
 
   this.carrier = $carrier.carry(stream);
   this.carrier.on("line", this.onLine.bind(this));
   stream.on("end", this.onEnd.bind(this));
 
-  this.failures = [];
+  this.overview = {type: "mochitest", failures: []};
+  this.writeCells = {};
+  this.writeCells[summaryKey] = this.overview;
   this.curFailure = null;
 }
 ReftestFrobber.prototype = {
@@ -113,22 +96,27 @@ ReftestFrobber.prototype = {
 
       this.curFailure = {
         test: relPath,
+        uniqueName: relPath,
         details: [goodBit],
       };
-      this.failures.push(this.curFailure);
+      this.overview.failures.push(this.curFailure);
+      this.writeCells[this.detailKeyPrefix + ":" + relPath] = {
+        type: "reftest",
+      };
     }
   },
   onEnd: function() {
-    this.callback(this.failures);
+    this.callback(this.writeCells);
   }
 };
 exports.ReftestFrobber = ReftestFrobber;
 
 exports.dummyTestRun = function(stream) {
-  var frobber = new ReftestFrobber(stream, function(failures) {
-    for (var i = 0; i < failures.length; i++) {
-      console.log(failures[i]);
-    }
+  var frobber = new ReftestFrobber(stream, "s", "d", function(writeCells) {
+    console.log("SUMMARY");
+    console.log(writeCells.s);
+    console.log("WRITE CELLS:");
+    console.log(writeCells);
   });
 };
 
