@@ -30,7 +30,57 @@
   }
 }
 
-#build-test-failure {
+#build-test-failure-xpcshell {
+  #root {
+    border-radius: 4px;
+    border: 2px solid black;
+    background-color: white;
+    margin-bottom: 16px;
+    padding: 4px;
+  }
+  #detLogLabel {
+    .coolio-bar;
+  }
+  #detLog {
+    display: block;
+    white-space: pre-wrap;
+  }
+  #rawLogLabel {
+    .coolio-bar;
+  }
+  #rawLog {
+    display: block;
+    white-space: pre-wrap;
+  }
+}
+
+#build-test-failure-mochitest {
+  #root {
+    border-radius: 4px;
+    border: 2px solid black;
+    background-color: white;
+    margin-bottom: 16px;
+    padding: 4px;
+  }
+  #screenshotGroup[hasScreenshot="false"] {
+    display: none;
+  }
+  #screenshotLabel {
+    .coolio-bar;
+  }
+  #screenshot {
+  }
+  #rawLogLabel {
+    .coolio-bar;
+  }
+  #rawLog {
+    display: block;
+    white-space: pre-wrap;
+  }
+}
+
+
+#build-test-failure-mozmill {
   #root {
     border-radius: 4px;
     border: 2px solid black;

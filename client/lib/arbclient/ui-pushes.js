@@ -474,8 +474,8 @@ wy.defineWidget({
   events: {
     types: {
       click: function(buildBinding) {
-        // bail if it's not mozmill
-        if (buildBinding.obj.builder.type.subtype != "mozmill")
+        // bail if it's a reftest
+        if (buildBinding.obj.builder.type.subtype === "reftest")
           return;
         console.log("context", this.__context, "obj", this.obj);
         var log = (this.__context.subPushId ?

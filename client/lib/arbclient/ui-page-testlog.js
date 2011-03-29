@@ -118,9 +118,62 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "build-test-failure",
+  name: "build-test-failure-xpcshell",
   constraint: {
     type: "build-test-failure",
+    obj: { type: "xpcshell" },
+  },
+  structure: {
+    detLogGroup: {
+      detLogLabel: '"Deterministic Log"',
+      detLog: "",
+    },
+    rawLogGroup: {
+      rawLogLabel: "Raw Log",
+      rawLog: "",
+    },
+  },
+  impl: {
+    postInit: function() {
+      this.detLog_element.textContent = this.obj.deterministicLog.join("\n");
+      this.rawLog_element.textContent = this.obj.rawLog.join("\n");
+    }
+  },
+});
+
+wy.defineWidget({
+  name: "build-test-failure-mochitest",
+  constraint: {
+    type: "build-test-failure",
+    obj: { type: "mochitest" },
+  },
+  structure: {
+    screenshotGroup: {
+      screenshotLabel: "Screenshot",
+      screenshot: wy.bindImage(wy.NONE),
+    },
+    rawLogGroup: {
+      rawLogLabel: "Raw Log",
+      rawLog: "",
+    },
+  },
+  impl: {
+    postInit: function() {
+      this.rawLog_element.textContent = this.obj.rawLog.join("\n");
+      this.screenshotGroup_element.setAttribute(
+        "hasScreenshot", this.obj.screenshotDataUrl != null);
+      if (this.obj.screenshotDataUrl)
+        this.screenshot_element.setAttribute("src", this.obj.screenshotDataUrl);
+    }
+  },
+});
+
+
+wy.defineWidget({
+  name: "build-test-failure-mozmill",
+  constraint: {
+    type: "build-test-failure",
+    obj: { type: "mozmill" },
   },
   focus: wy.focus.domain.vertical("windows", "preEvents", "events"),
   popups: {
