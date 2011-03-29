@@ -104,7 +104,7 @@
   #summary {
     display: table-cell;
   }
-  #desc {
+  #descStream {
     font-weight: bolder;
     white-space: pre-wrap;
   }
