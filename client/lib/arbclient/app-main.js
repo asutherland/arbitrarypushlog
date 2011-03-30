@@ -161,8 +161,9 @@ ArbApp.prototype = {
    *  This is the only code path for changing meaningful application state for
    *  simplicity.
    *
-   * The current state model is a bit soupy; it would likely be better to move
-   *  to a more straightforward URL model of existence with routing semantics.
+   * XXX The current state model is a bit soupy; it would likely be better to
+   *  move to a more straightforward URL model of existence with routing
+   *  semantics.
    */
   _popLocation: function() {
     var env = $env.getEnv(this.win);

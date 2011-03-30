@@ -39,11 +39,13 @@ define(
   [
     "wmsy/wmsy",
     "wmsy/examples/md5",
+    "./lstore",
     "text!./ui-peeps.css"
   ],
   function(
     $wmsy,
     $md5,
+    $lstore,
     $_css
   ) {
 
@@ -58,6 +60,22 @@ wy.defineWidget({
     pic: wy.bindImage(wy.computed("gravatarUrl")),
     displayName: wy.bind("displayName"),
   }, {title: ["emails", 0]}),
+  popups: {
+    person: {
+      constraint: {
+        type: "person-details"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        abovish: "root",
+      },
+      size: {
+        maxWidth: 0.95,
+        maxHeight: 0.95,
+      }
+    }
+  },
   impl: {
     gravatarUrl: function() {
       return "http://www.gravatar.com/avatar/" +
@@ -65,7 +83,58 @@ wy.defineWidget({
                "?s=16&d=retro";
     },
   },
+  events: {
+    root: {
+      click: function() {
+        this.popup_person(this.obj, this);
+      }
+    },
+  },
 });
 
+wy.defineWidget({
+  name: "email-address",
+  constraint: {
+    type: "email-address",
+  },
+  structure: {
+    address: wy.bind(wy.SELF),
+  },
+});
+
+wy.defineWidget({
+  name: "mozperson-details",
+  constraint: {
+    type: "person-details",
+  },
+  structure: {
+    identBlock: {
+      pic: wy.bindImage(wy.computed("gravatarUrl")),
+      words: {
+        displayName: wy.bind("displayName"),
+        emails: wy.vertList({type: "email-address"}, "emails"),
+      },
+    },
+    contextBlock: {
+      contextHeaderLabel: "Context:",
+
+      contextActions: {
+        //recentBugzillaComments: wy.hyperlink("Bugs commented on..."),
+        recentPushes: wy.hyperlink("recent pushed commits...",
+                                   {href: wy.computed("linkCommitsThisTree")}),
+      }
+    },
+  },
+  impl: {
+    gravatarUrl: function() {
+      return "http://www.gravatar.com/avatar/" +
+               $md5.hex_md5(this.obj.emails[0]) +
+               "?s=64&d=retro";
+    },
+    linkCommitsThisTree: function() {
+      this.__context.urlMaker({ pusher: this.obj.emails.join(",") });
+    },
+  },
+});
 
 }); // end define

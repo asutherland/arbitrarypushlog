@@ -1,6 +1,18 @@
+.hoverMixin {
+  background-color: #204a87;
+  color: white;
+}
+
 #mozperson {
   #root {
     display: inline-block;
+    cursor: pointer;
+    padding: 2px;
+    margin: -2px 0px;
+
+    :hover {
+      .hoverMixin;
+    }
   }
   #pic {
     vertical-align: middle;
@@ -12,4 +24,49 @@
   #displayName {
     vertical-align: top;
   }
+}
+
+.hbox {
+  display: box;
+  box-orientation: horizontal;
+}
+
+.coolio-bar (@height: 16px) {
+  display: inline-block;
+  background-color: #e8e8e8;
+  margin-left: -4px;
+  margin-top: 1em;
+  margin-bottom: 4px;
+  padding-left: 4px;
+  padding-right: @height / 2 - 2;
+  height: @height;
+  vertical-align: middle;
+  border-top-right-radius: @height / 2;
+  border-bottom-right-radius: @height / 2;
+  font-weight: bold;
+}
+
+#mozperson-details {
+  #root {
+    background-color: white;
+    padding: 4px;
+  }
+  #identBlock {
+    .hbox;
+  }
+  #pic {
+    width: 64px;
+    height: 64px;
+  }
+  #words {
+    padding: 4px;
+  }
+  #displayName {
+    display: block;
+    font-weight: bold;
+  }
+  #contextHeaderLabel {
+    .coolio-bar;
+  }
+
 }
