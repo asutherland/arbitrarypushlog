@@ -235,4 +235,10 @@
     border: 2px solid #34beda;
     background-color: rgba(52, 190, 218, 0.3);
   }
+  #focusedElem {
+    display: block;
+  }
+  #openPopups {
+    display: block;
+  }
 }
