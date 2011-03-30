@@ -286,9 +286,7 @@ wy.defineWidget({
     type: "logstream",
     obj: { type: "msgHdr" },
   },
-  structure: {
-    uri: wy.bind("name"),
-  },
+  structure: wy.bind("name"),
   impl: {
     SHOW_LOG_DETAIL: true,
   },
@@ -316,9 +314,7 @@ wy.defineWidget({
     type: "logstream",
     obj: { type: "domNode" },
   },
-  structure: {
-    name: wy.bind("name"),
-  },
+  structure: wy.bind("name"),
   impl: {
     SHOW_LOG_DETAIL: true,
   },
@@ -346,9 +342,7 @@ wy.defineWidget({
     type: "logstream",
     obj: { type: "domWindow" },
   },
-  structure: {
-    label: wy.computed("label"),
-  },
+  structure: wy.computed("label"),
   impl: {
     SHOW_LOG_DETAIL: true,
     label: function() {
