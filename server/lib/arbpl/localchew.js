@@ -117,6 +117,8 @@ LocalChewer.prototype = {
     var stream = $fs.createReadStream(this._path);
     var mozmillFrobber =
       new $mozmillFrobber.MozmillFrobber(stream,
+                                         "s:l:" + this._path,
+                                         "d:l:" + this._path,
                                          this._parsed.bind(this));
   },
 
