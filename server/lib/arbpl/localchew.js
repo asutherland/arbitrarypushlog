@@ -122,11 +122,13 @@ LocalChewer.prototype = {
                                          this._parsed.bind(this));
   },
 
-  _parsed: function(failures) {
+  _parsed: function(writeCells) {
     console.log("all parsed, writing");
     var logFileInfo = $fs.statSync(this._path);
     var logDate = new Date(logFileInfo.mtime);
     var logStamp = Math.floor(logDate.valueOf() / 1000);
+
+    var overview = writeCells["s:l:" + this._path];
 
     var setstate = {};
     // the revision info
@@ -146,6 +148,7 @@ LocalChewer.prototype = {
         }
       ],
     };
+
     // the synthetic-ish log entry
     // (this needs to be redundantly encoded)
     setstate["s:b:" + this._path] = JSON.stringify({
@@ -164,7 +167,8 @@ LocalChewer.prototype = {
         },
       },
       id: this._path,
-      state: failures.length ? "testfailed" : "success",
+      state: (overview.failures.length || overview.failureIndicated) ?
+               "testfailed" : "success",
       startTime: logStamp,
       endTime: logStamp,
       logURL: this._path,
@@ -173,29 +177,6 @@ LocalChewer.prototype = {
       errorParser: "mozmill",
       _scrape: "",
     });
-
-    var overviewFailures = [], detailedFailures = failures;
-    for (var i = 0; i < failures.length; i++) {
-      var failure = failures[i];
-      var overviewFail = {};
-      for (var key in failure) {
-        if (key != "failureContext")
-          overviewFail[key] = failure[key];
-      }
-      overviewFailures.push(overviewFail);
-    }
-
-    // put the summary results in...
-    setstate["s:l:" + this._path] = {
-      type: "mozmill",
-      failures: overviewFailures,
-    };
-
-    // put the detailed results in...
-    setstate["d:l:" + this._path] = {
-      type: "mozmill",
-      failures: detailedFailures,
-    };
 
     // XXX dev mode port only...
     var bridge = new $databus.ScraperBridgeSource(8009);

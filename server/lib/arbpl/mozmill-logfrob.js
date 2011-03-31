@@ -47,6 +47,11 @@ define(
     exports
   ) {
 
+/**
+ * Detect indicators of failure other than the silver platter JSON objects.
+ */
+var RE_OTHFAIL = /(^Disconnect Error: Application unexpectedly closed)|(^Timeout: bridge.execFunction)|(^ +TEST-UNEXPECTED-FAIL)/m;
+
 var RE_START = /^##### MOZMILL-RICH-FAILURES-BEGIN #####$/m;
 var RE_END = /^##### MOZMILL-RICH-FAILURES-END #####$/m;
 var OVERLAP_PADDING = 32;
@@ -63,7 +68,12 @@ function Frobber(stream, summaryKey, detailKeyPrefix, callback) {
   this.detailKeyPrefix = detailKeyPrefix;
   this.callback = callback;
 
-  this.overview = {type: "mozmill", failures: []};
+  this.overview = {
+    type: "mozmill",
+    failures: [],
+    failureIndicated: false,
+    unusualFailureIndicated: false,
+  };
   this.writeCells = {};
   this.writeCells[summaryKey] = this.overview;
 
@@ -105,6 +115,13 @@ Frobber.prototype = {
                  (this.leftover + data.toString("utf8")) :
                  data.toString("utf8");
     this.leftover = null;
+
+    var othFailMatch = RE_OTHFAIL.exec(dstr);
+    if (othFailMatch) {
+      this.overview.failureIndicated = true;
+      if (!othFailMatch[3])
+        this.overview.unusualFailureIndicated = true;
+    }
 
     var match;
     while (dstr) {
