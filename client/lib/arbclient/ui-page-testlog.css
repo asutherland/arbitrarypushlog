@@ -30,6 +30,11 @@
   }
 }
 
+.logtext {
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
 #build-test-failure-xpcshell {
   #root {
     border-radius: 4px;
@@ -42,15 +47,15 @@
     .coolio-bar;
   }
   #detLog {
+    .logtext;
     display: block;
-    white-space: pre-wrap;
   }
   #rawLogLabel {
     .coolio-bar;
   }
   #rawLog {
+    .logtext;
     display: block;
-    white-space: pre-wrap;
   }
 }
 
@@ -74,8 +79,8 @@
     .coolio-bar;
   }
   #rawLog {
+    .logtext;
     display: block;
-    white-space: pre-wrap;
   }
 }
 
