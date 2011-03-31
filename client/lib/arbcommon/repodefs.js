@@ -502,6 +502,22 @@ var TMPL_DESKTOP_TALOS_TYPE_GROUP = {
   ]
 };
 
+// TraceMonkey has added v8; it may spread?
+var TMPL_DESKTOP_EXTENDED_TALOS_TYPE_GROUP = {
+  name: "talos",
+  subgroups: [
+    {name: "a11y", subtype: "talos", capture: "a11y"},
+    {name: "chrome", subtype: "talos", capture: "chrome"},
+    {name: "dirty", subtype: "talos", capture: "dirty"},
+    {name: "dromaeo", subtype: "talos", capture: "dromaeo"},
+    {name: "nochrome", subtype: "talos", capture: "nochrome"},
+    {name: "scroll", subtype: "talos", capture: "scroll"},
+    {name: "svg", subtype: "talos", capture: "svg"},
+    {name: "tp4", subtype: "talos", capture: "tp4"},
+    {name: "v8", subtype: "talos", capture: "v8"},
+  ]
+};
+
 
 var FF_TYPE_GROUPS = [
   "build",
@@ -658,7 +674,7 @@ var TINDER_TREES = exports.TINDER_TREES = {
           "xpcshell",
           TMPL_MOCHITEST_TYPE_GROUP,
           TMPL_REFTEST_TYPE_GROUP,
-          TMPL_DESKTOP_TALOS_TYPE_GROUP,
+          TMPL_DESKTOP_EXTENDED_TALOS_TYPE_GROUP,
         ],
       },
       {
