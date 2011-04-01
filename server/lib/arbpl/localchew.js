@@ -122,15 +122,14 @@ LocalChewer.prototype = {
                                          this._parsed.bind(this));
   },
 
-  _parsed: function(writeCells) {
+  _parsed: function(setstate) {
     console.log("all parsed, writing");
     var logFileInfo = $fs.statSync(this._path);
     var logDate = new Date(logFileInfo.mtime);
     var logStamp = Math.floor(logDate.valueOf() / 1000);
 
-    var overview = writeCells["s:l:" + this._path];
+    var overview = setstate["s:l:" + this._path];
 
-    var setstate = {};
     // the revision info
     setstate["s:r"] = {
       id: this._usePushId,
