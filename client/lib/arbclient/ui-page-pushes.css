@@ -19,6 +19,9 @@
     [mode="range"] {
       .clicky;
     }
+    [connected="false"] {
+      color: red;
+    }
   }
 }
 

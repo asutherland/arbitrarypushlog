@@ -85,7 +85,7 @@ wy.defineWidget({
       this.obj.binding = this;
     }
   },
-  emit: ["subModeChanged"],
+  emit: ["subModeChanged", "connectionStateChanged"],
   receive: {
     navigate: function(keyDeltas) {
       this.obj.navigate(keyDeltas);

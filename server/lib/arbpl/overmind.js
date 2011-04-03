@@ -194,6 +194,18 @@ function Overmind(tinderTreeDef, config) {
    *  repo has been cleared out.
    */
   this._oneOffRevisionFetch = null;
+
+  /**
+   * When did we scrape the tinderbox?  This is used to state our data's date
+   *  of validity / when we failed to fetch.
+   */
+  this._tinderboxTimestamp = null;
+
+  /**
+   * Are we fetching historical data (true), or keeping things up to date
+   *  (false)?
+   */
+  this._isHistoricalFetch = null;
 }
 Overmind.prototype = {
   _noteState: function(newState, extra) {
@@ -212,6 +224,7 @@ Overmind.prototype = {
    *  starred stuff, slow builds, and the like.
    */
   syncUp: function() {
+    this._isHistoricalFetch = false;
     return this.syncTimeRange({
       // We kick endTime into the future to cause a fast-path branch
       //  to be taken where we don't even issue a query proper but just
@@ -226,6 +239,8 @@ Overmind.prototype = {
 
   syncTimeRange: function(timeRange) {
     console.log("syncTimeRange... through", new Date(timeRange.endTime));
+    if (this._isHistoricalFetch === null)
+      this._isHistoricalFetch = true;
     this._syncDeferred = $Q.defer();
 
     this._logProcJobs = [];
@@ -236,24 +251,43 @@ Overmind.prototype = {
     var self = this;
     when(this.tinderboxer.fetchRange(timeRange),
       this._procTinderboxBuildResults.bind(this),
-      function(err) {
+      function(errObj) {
         console.error("problem getting tinderbox results.");
+        self._abort(errObj.err, errObj.timestamp);
         self._syncDeferred.reject();
       });
 
     return this._syncDeferred.promise;
   },
 
-  _abort: function(err) {
-    this._syncDeferred.reject(err);
+  /**
+   * Abort, logging meta-data about out failure if this was a sync and not a
+   *  historical/backfill operation.
+   */
+  _abort: function(err, timestamp) {
+    if (this._isHistoricalFetch) {
+      this._syncDeferred.reject(err);
+      this._isHistoricalFetch = null;
+      return;
+    }
+    var self = this;
+    when(DB.metaLogTreeScrape(this.tinderTree.name, false,
+                              {timestamp: timestamp || this._tinderboxTimestamp,
+                               rev: 0}),
+      function() {
+        self._isHistoricalFetch = null;
+        self._syncDeferred.reject(err);
+      });
   },
 
   /**
    * Group results by build revision tuples, then ask the pushlog server for
    *  those revisions we do not currently know about.
    */
-  _procTinderboxBuildResults: function(results) {
+  _procTinderboxBuildResults: function(resultsObj) {
     this._noteState("tinderbox:processing");
+    var results = resultsObj.results;
+    this._tinderboxTimestamp = resultsObj.timestamp;
 
     var RE_SUBDIR_NORM = /^(?:releases|projects)\//;
     /**
@@ -451,12 +485,19 @@ Overmind.prototype = {
     this._pendingPushFetches++;
     var isCanonicalRepo = repoDef === this.tinderTree.repos[0];
 
-    console.log("fetching push info for", repoDef.name, "paramstr", paramStr);
+    console.log("fetching push info", url);
     when($reliahttp.reliago({url: url}),
       function(jsonStr) {
         self._pendingPushFetches--;
 
-        var pushes = JSON.parse(jsonStr);
+        var pushes;
+        try {
+          pushes = JSON.parse(jsonStr);
+        }
+        catch (ex) {
+          console.warn("bad JSON from repo somehow:\n", jsonStr);
+          throw ex;
+        }
 
         console.log("repo", repoDef.name, "got JSON");
         for (var pushId in pushes) {
@@ -500,7 +541,7 @@ Overmind.prototype = {
             // fail-fast since this is a very bad situation
             console.warn("failed to fetch revision info for", revs[0],
                          "aborting entire overmind job.");
-            self._syncDeferred.reject("unable to resolve " + revs[0]);
+            self._abort("unable to resolve " + revs[0]);
             // and wedge this FSM so we don't bother to do any more
             //  processing.
             self._pendingPushFetches++;
@@ -539,7 +580,7 @@ Overmind.prototype = {
       pushQueue.push({pushId: csmeta.push.id, changeset: changeset});
     }
     pushQueue.sort(function(a, b) { return a.pushId - b.pushId; });
-    this._processNextPush();
+    this._processNextPush(null);
   },
 
   /**
@@ -552,10 +593,9 @@ Overmind.prototype = {
    *  to tell.  Additionally, any derived information (like analysis of build
    *  logs) that has not been performed should also be scheduled.
    */
-  _processNextPush: function() {
-    this._noteState("db-delta:fetch");
-
+  _processNextPush: function(lastPushId) {
     if (this._pushQueue.length) {
+      this._noteState("db-delta:fetch");
       var repoDef = this.tinderTree.repos[0];
       var todo = this._pushQueue.shift();
 
@@ -575,7 +615,7 @@ Overmind.prototype = {
     }
 
     // (we only reach here if there were no more changesets to process)
-    this._allDone();
+    this._allDone(lastPushId);
   },
 
   /**
@@ -888,31 +928,55 @@ Overmind.prototype = {
     this._pendingSidebandState = null;
     this._pendingPushId = null;
 
-    if (anythingToSend) {
+    var haveMorePushes = Boolean(this._pushQueue.length);
+    // Only send sideband data if we have something to send or we want to
+    //  force a sidebanding to update our timestamp.
+    if (anythingToSend || !haveMorePushes) {
       var self = this;
       when(this.bridge.send({
              type: "push",
              treeName: this.tinderTree.name,
              pushId: pushId,
              keysAndValues: stateToSend,
+             scrapeTimestampMillis: haveMorePushes ?
+               null : self._tinderboxTimestamp,
+             revForTimestamp: 0,
            }),
         function() {
           //console.log("sideband push completed");
-          self._processNextPush();
+          self._processNextPush(pushId);
         },
         function() {
           console.warn("problem with sideband push!");
-          self._processNextPush();
+          self._processNextPush(pushId);
         }
       );
     }
     else {
-      this._processNextPush();
+      this._processNextPush(pushId);
     }
   },
 
-  _allDone: function() {
-    this._syncDeferred.resolve();
+  /**
+   * Indicate success, logging meta-data about our success first if this was a
+   *  sync and not a historical/backfill operation.
+   */
+  _allDone: function(highPushId) {
+    if (this._isHistoricalFetch) {
+      this._syncDeferred.resolve();
+      this._isHistoricalFetch = null;
+      return;
+    }
+    var self = this;
+    when(DB.metaLogTreeScrape(this.tinderTree.name, true,
+                              {timestamp: this._tinderboxTimestamp,
+                               rev: 0,
+                               highPushId: highPushId,
+                              }),
+      function() {
+        self._isHistoricalFetch = null;
+        self._syncDeferred.resolve();
+      });
   },
 };
 exports.Overmind = Overmind;

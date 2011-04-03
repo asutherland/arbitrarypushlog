@@ -66,10 +66,13 @@ define(
 var when = $Q.when;
 
 /**
- * The maximum number of pushes-per-tree to cache, where we only cache the
- *  most recent ones (for now).
+ * The maximum number of recent pushes-per-tree to cache.
  */
-var MAX_PUSHES_CACHED = 8;
+var MAX_RECENT_PUSHES_CACHED = 12;
+/**
+ * The maximum number of non-recent LRU pushes-per-tree to cache.
+ */
+var MAX_OLD_PUSHES_CACHED = 12;
 /**
  * The maximum number of subscriptions a client is allowed to maintain.  This
  *  doesn't actually affect our caching, so it's somewhat excessive right now.
@@ -102,15 +105,29 @@ var MAX_PUSH_SUBS = 8;
  *  requests to get its data.  So we do that (have the client issue a series
  *  on requests for reasonably-sized bites.)
  */
-function DataServer(ioSocky, bridgeSink) {
+function DataServer(ioSocky, bridgeSink, devMode) {
   /**
    * @typedef[ClientSub @dict[
    *   @key[client IOClient]{
    *     The socket.io connection for the subscriber.
    *   }
-   *   @key[treeName @oneof[null String]] {
-   *     The name of the tree the user is subscribed to; initially null and
-   *     set to null if a gibberish subscription request is received.
+   *   @key[activeSub Boolean]{
+   *     Are we actively subscribed (to something)?  This is set to true when
+   *     a subscription is made and set to false if we unsubscribe.  We track
+   *     this independently of `treeDef`/`treeCache` so that if a resubscribe
+   *     attempt is made we still know what their last subscription was.
+   *     (We do expect this to happen fairly frequently when the user
+   *     transitions from viewing pushlogs to viewing specific details, but where
+   *     it is not clear the user will return to the pushlog anytime soon, if
+   *     ever.)
+   *   }
+   *   @key[treeDef @oneof[null TinderTreeDef]] {
+   *     The tree the user is subscribed to; initially null and set to null if a
+   *     gibberish subscription request is received.
+   *   }
+   *   @key[treeCache TreeCache]
+   *   @key[newLatched Boolean]{
+   *     Does this client want to hear about all new pushes?
    *   }
    *   @key[highPushId Number]{
    *     The inclusive push id of the highest / most recent push the client is
@@ -157,23 +174,14 @@ function DataServer(ioSocky, bridgeSink) {
   this._allSubs = [];
 
   /**
-   * @typedef[TreeCache @dict[
-   *   @key[meta @dict[
-   *     @key[treeStatus @oneof["OPEN" "CLOSED" "APPROVAL REQUIRED"]]{
-   *       The current status of the tinderbox tree.
-   *     }
-   *     @key[treeNotes String]{
-   *       Any description up on the tinderbox tree status page accompanying the
-   *       `treeStatus`.
-   *     }
-   *   ]]
-   *   @key[newLatched Boolean]{
-   *     Does this client want to hear about all new pushes?
+   * @typedef[PushCache @dictof[
+   *   @key[lastUsedMillis Number]{
+   *     The last timestamp at which this cache entry was "used".  For our
+   *     purposes, a DB retrieval to populate the cache entry counts, as does
+   *     a cache hit, as does a sidebanded update that revises the cache entry
+   *     that has a subscribed client.
    *   }
-   *   @key[highPushId Number]{
-   *     The inclusive highest push id we know of.
-   *   }
-   *   @key[pushSummaries @dictof[
+   *   @key[columnsMap @dict[
    *     @key[pushId]{
    *       The (numeric) push id.
    *     }
@@ -185,6 +193,38 @@ function DataServer(ioSocky, bridgeSink) {
    *       the summary column family.  The detailed information is never cached.
    *     }
    *   ]]
+   * ]]
+   * @typedef[TreeCache @dict[
+   *   @key[meta @dict[
+   *     @key[treeStatus @oneof["OPEN" "CLOSED" "APPROVAL REQUIRED"]]{
+   *       The current status of the tinderbox tree.
+   *     }
+   *     @key[treeNotes String]{
+   *       Any description up on the tinderbox tree status page accompanying the
+   *       `treeStatus`.
+   *     }
+   *   ]]
+   *   @key[highPushId Number]{
+   *     The inclusive highest push id we know of.
+   *   }
+   *   @key[mostRecentTinderboxScrapeMillis Number]{
+   *     The timestamp in UTC milliseconds of the most recent (good) scraping of
+   *     the given tinderbox tree.  When loading from the database we derive
+   *     this value from the meta table.  Sidebanded data overwrites this value
+   *     with an explicit timestamp.
+   *   }
+   *   @key[revForTimestamp Number]{
+   *     Lets us express a change in data/meta-data for a
+   *   }
+   *   @key[recentPushCache PushColumnsMap]{
+   *     Cache of recent pushes as defined by `highPushId` -
+   *     MAX_RECENT_PUSHES_CACHED;
+   *   }
+   *   @key[oldPushCache PushColumnsMap]{
+   *     MRU cache of entries that do not belong in the `recentPushCache`.
+   *     Evicted `recentPushCache` entries do not get evicted into here,
+   *     although it might be a reasonable idea.
+   *   }
    * ]]
    **/
   /**
@@ -202,10 +242,50 @@ function DataServer(ioSocky, bridgeSink) {
 
   this._db = new $hstore.HStore();
 
+  this._devMode = devMode;
+
   this._ioSocky = ioSocky;
   ioSocky.on("connection", this.onConnection.bind(this));
 }
 DataServer.prototype = {
+  //////////////////////////////////////////////////////////////////////////////
+  // Bootstrap
+
+  /**
+   * Initialize our database connection and retrieve required meta-data; once
+   *  we fulfill our promise the caller will begin listening and we can receive
+   *  client and sideband connections.
+   *
+   * Our main goal is to know the timestamp of the most recent scrape for each
+   *  tree before clients can reconnect and start asserting subscriptions.  (We
+   *  could obviously just pend responding to those requests on our database
+   *  query, but that would complicate things for no win.)
+   */
+  bootstrap: function() {
+    var self = this;
+    return when (this._db.bootstrap(), function() {
+        // (returns a promise itself)
+        return self._bootstrapFetchScraperMetaState();
+      });
+  },
+
+  _bootstrapFetchScraperMetaState: function() {
+    var self = this;
+    return when(this._db.getMetaRow($hstore.META_ROW_SCRAPER),
+                function(keysAndValues){
+        var RE_GOOD_TREE = /m:tree:good:(.+)/, match;
+        for (var key in keysAndValues) {
+          if ((match = RE_GOOD_TREE.exec(key))) {
+            var timeObj = keysAndValues[key];
+            var treeName = match[1];
+            var treeCache = self._getOrCreateTreeCache(treeName);
+            treeCache.mostRecentTinderboxScrapeMillis = timeObj.timestamp;
+            treeCache.revForTimestamp = timeObj.rev;
+          }
+        }
+      });
+  },
+
   //////////////////////////////////////////////////////////////////////////////
   // Connection Management
 
@@ -215,7 +295,9 @@ DataServer.prototype = {
   onConnection: function(client) {
     var sub = {
       client: client,
-      treeName: null,
+      activeSub: false,
+      treeDef: null,
+      treeCache: null,
       newLatched: false,
       highPushdId: 0,
       pushCount: 0,
@@ -232,6 +314,8 @@ DataServer.prototype = {
    * We got a message from a client, dispatch to the right method.
    */
   onClientMessage: function(client, sub, msg) {
+    if (this._devMode)
+      console.log("clientMessage", msg.type);
     // Be concerned for sequence jumps unless this is the first thing we have
     //  heard from the client; if the server restarted, clients will have
     //  high sequence id's.
@@ -243,6 +327,9 @@ DataServer.prototype = {
     sub.seqId = msg.seqId;
 
     switch (msg.type) {
+      case "assertsub":
+        this.reqAssertSub(client, sub, msg);
+        break;
       case "subtree":
         this.reqSubscribeToTree(client, sub, msg);
         break;
@@ -266,10 +353,27 @@ DataServer.prototype = {
    */
   onClientDisconnect: function(client, sub) {
     this._allSubs.splice(this._allSubs.indexOf(sub), 1);
-    if (sub.treeName) {
-      var treeSubs = this._treeSubsMap[sub.treeName];
+    if (sub.treeDef) {
+      var treeSubs = this._treeSubsMap[sub.treeDef.name];
       treeSubs.splice(treeSubs.indexOf(sub), 1);
     }
+  },
+
+  /**
+   * Send helper that crams the information every packet should have in so
+   *  we aren't duplicating that logic all over the place.  As the extra info
+   *  we add grows in size, it might make sense to factor some of it out to
+   *  discrete messages sent only on transition.
+   */
+  sendToClient: function(sub, msg) {
+    msg.subTree = sub.treeDef ? sub.treeDef.name : null,
+    msg.subRecent = (sub.newLatched &&
+                     sub.highPushId === sub.treeCache.highPushId);
+    msg.subHighPushId = sub.highPushId;
+    msg.subPushCount = sub.pushCount;
+    msg.accurateAsOfMillis = sub.treeCache.mostRecentTinderboxScrapeMillis;
+    msg.revForTimestamp = sub.treeCache.revForTimestamp;
+    return sub.client.send(msg);
   },
 
   //////////////////////////////////////////////////////////////////////////////
@@ -280,15 +384,18 @@ DataServer.prototype = {
       this._treeCaches[treeName] = {
         meta: null,
         highPushId: null,
-        pushSummaries: {},
+        mostRecentTinderboxScrapeMillis: null,
+        revForTimestamp: null,
+        recentPushCache: {},
+        oldPushCache: {},
       };
     }
     return this._treeCaches[treeName];
   },
 
   /**
-   * We have the results of a fresh db query and should cache it if it is
-   *  recent.
+   * We have the results of a fresh db query and should cache it either as a
+   *  recent push or an MRU old push.  In the future it might be worth
    *
    * We do not need to worry about the race case where we already have a cache
    *  entry for the push (because the scraper told us about the push after the
@@ -309,16 +416,27 @@ DataServer.prototype = {
   _maybeCachePushFromDb: function(treeDef, isRecent, pushId, keysAndValues) {
     var treeCache = this._getOrCreateTreeCache(treeDef.name);
 
-    if (isRecent && !treeCache.highPushId) {
-      treeCache.highPushId = parseInt(pushId);
-    }
-    if (isRecent && treeCache.pushSummaries.hasOwnProperty(pushId)) {
-      console.log("ignoring cache request for already cached push:", pushId,
-                  "we probably just consolidated two client requests...");
-      return;
-    }
+    var now = Date.now();
+    // It's recent if it's defined as recent or if its push id falls in the
+    //  recent cache's current caching range
+    if (isRecent ||
+        (treeCache.highPushId &&
+         (pushId > treeCache.highPushId - MAX_RECENT_PUSHES_CACHED))) {
+      if (!treeCache.highPushId)
+        treeCache.highPushId = parseInt(pushId);
 
-    treeCache.pushSummaries[pushId] = keysAndValues;
+      treeCache.recentPushCache[pushId] = {
+        lastUsedMillis: now,
+        columnsMap: keysAndValues,
+      };
+    }
+    else {
+      treeCache.oldPushCache[pushId] = {
+        lastUsedMillis: now,
+        columnsMap: keysAndValues,
+      };
+      this._maybeEvictOldPushCacheEntry(treeCache);
+    }
   },
 
   /**
@@ -346,30 +464,62 @@ DataServer.prototype = {
 
     // - bail if the change is not new and not already cached
     if (pushId <= treeCache.highPushId &&
-        !treeCache.pushSummaries.hasOwnProperty(pushId))
+        !treeCache.recentPushCache.hasOwnProperty(pushId) &&
+        !treeCache.oldPushCache.hasOwnProperty(pushId))
       return;
 
     // - new!
     if (pushId > treeCache.highPushId) {
       treeCache.highPushId = parseInt(pushId);
-      this._evictOldEntriesFromCache(treeCache);
-      treeCache.pushSummaries[pushId] = deltaKeyValues;
+      this._evictOldEntriesFromRecentPushCache(treeCache);
+      treeCache.recentPushCache[pushId] = {
+        lastUsedMillis: Date.now(),
+        columnsMap: deltaKeyValues,
+      };
       return;
     }
 
-    // - old, delta!
-    var curKeyValues = treeCache.pushSummaries[pushId];
+    // - existing, delta!
+    var cacheEntry;
+    if (treeCache.recentPushCache.hasOwnProperty(pushId))
+      cacheEntry = treeCache.recentPushCache[pushId];
+    else
+      cacheEntry = treeCache.oldPushCache[pushId];
+    cacheEntry.lastUsedMillis = Date.now();
+    var curKeyValues = cacheEntry.columnsMap;
     for (var key in deltaKeyValues) {
       curKeyValues[key] = deltaKeyValues[key];
     }
   },
 
-  _evictOldEntriesFromCache: function(treeCache) {
-    var threshId = treeCache.highPushId - MAX_PUSHES_CACHED;
-    for (var key in treeCache.pushSummaries) {
+  /**
+   * Remove any entries from the recent push cache not falling in the current
+   *  recent push range as bounded by the high push and the cache limit.
+   */
+  _evictOldEntriesFromRecentPushCache: function(treeCache) {
+    var threshId = treeCache.highPushId - MAX_RECENT_PUSHES_CACHED;
+    for (var key in treeCache.recentPushCache) {
       if (parseInt(key) <= threshId)
-        delete treeCache.pushSummaries[key];
+        delete treeCache.recentPushCache[key];
     }
+  },
+
+  /**
+   * Evict 0 or 1 oldPushCache entries on an LRU basis if we are over the old
+   *  push cache limit.
+   */
+  _maybeEvictOldPushCacheEntry: function(treeCache) {
+    var count = 0, oldestPushKey = null, oldestMillis = null;
+    for (var key in treeCache.oldPushCache) {
+      count++;
+      var stamp = treeCache.oldPushCache[key].lastUsedMillis;
+      if (oldestMillis === null || oldestMillis > stamp) {
+        oldestPushKey = key;
+        oldestMillis = stamp;
+      }
+    }
+    if (count > MAX_OLD_PUSHES_CACHED)
+      delete treeCache.oldPushCache[oldestPushKey];
   },
 
   /**
@@ -377,21 +527,29 @@ DataServer.prototype = {
    *  representation in the cache, and, if so, return it.
    *
    * @args[
-   *   @param[treeName String]
+   *   @param[treeCache TreeCache]
    *   @param[pushId @oneof["recent" Number]]
    * ]
    */
-  _maybeGetCachedPush: function(treeName, pushId) {
-    var treeCache = this._getOrCreateTreeCache(treeName);
+  _maybeGetCachedPush: function(treeCache, pushId) {
+    var cacheEntry;
     if (pushId === "recent") {
       if (treeCache.highPushId === null ||
-          !treeCache.pushSummaries.hasOwnProperty(treeCache.highPushId))
+          !treeCache.recentPushCache.hasOwnProperty(treeCache.highPushId))
         return null;
-      return treeCache.pushSummaries[treeCache.highPushId];
+      cacheEntry = treeCache.recentPushCache[treeCache.highPushId];
     }
-    if (!treeCache.pushSummaries.hasOwnProperty(pushId))
+    else if (treeCache.recentPushCache.hasOwnProperty(pushId)) {
+      cacheEntry = treeCache.recentPushCache[pushId];
+    }
+    else if (treeCache.oldPushCache.hasOwnProperty(pushId)) {
+      cacheEntry = treeCache.oldPushCache[pushId];
+    }
+    else {
       return null;
-    return treeCache.pushSummaries[pushId];
+    }
+    cacheEntry.lastUsedMillis = Date.now();
+    return cacheEntry.columnsMap;
   },
 
   //////////////////////////////////////////////////////////////////////////////
@@ -406,6 +564,10 @@ DataServer.prototype = {
    *   @param[msg @dict[
    *     @key[type "push"]
    *     @key[treeName String]
+   *     @key[scrapeTimestampMillis @oneof[null Number]]{
+   *       If this is the last push from the scrape, this will contain the
+   *       timestamp of the tinderbox request/response.
+   *     }
    *     @key[pushId Number]
    *     @key[keysAndValues Object]
    *   ]
@@ -417,10 +579,24 @@ DataServer.prototype = {
                                          msg.keysAndValues);
 
     var isFullPush = msg.keysAndValues.hasOwnProperty("s:r");
+    var treeCache = this._getOrCreateTreeCache(msg.treeName);
 
+    // -- update timestamp info for the tree
+    // (And flag that we need to send the info about our up-to-date-ness even
+    //  if the user does not care about this particular push, noting that the
+    //  sideband server will only tell us about a timestamp change at the
+    //  conclusion of its last push, so it's not like we'll be spamming
+    //  otherwise uninterested clients.)
+    var timestampUpdated = false;
+    if (msg.scrapeTimestampMillis) {
+      timestampUpdated = true;
+      treeCache.mostRecentTinderboxScrapeMillis = msg.scrapeTimestampMillis;
+      treeCache.revForTimestamp = msg.revForTimestamp;
+    }
+
+    // -- send to all subscribed people
     if (!this._treeSubsMap.hasOwnProperty(msg.treeName))
       return;
-    var treeCache = this._getOrCreateTreeCache(msg.treeName);
     var treeSubs = this._treeSubsMap[msg.treeName];
     for (var iSub = 0; iSub < treeSubs.length; iSub++) {
       var sub = treeSubs[iSub];
@@ -445,21 +621,27 @@ DataServer.prototype = {
       else {
         // bail if the push id is not covered by the subscription
         if (msg.pushId < lowPushId ||
-            msg.pushId > sub.highPushId)
+            msg.pushId > sub.highPushId) {
+          // do tell them about a timestamp update before going (see above)
+          if (timestampUpdated) {
+            this.sendToClient(sub, {
+              seqId: -1, lastForSeq: true,
+              type: "treemeta",
+              // sendToClient will fill in accurateAsOfMillis/revForTimestamp
+              //  for us.
+            });
+          }
           continue;
+        }
         // (keep going if it's covered by the subscription)
       }
 
-      sub.client.send({
+      this.sendToClient(sub, {
         // unexpected by the client, no more known unexpected things coming
         seqId: -1, lastForSeq: true,
         type: isFullPush ? "pushinfo" : "pushdelta",
         pushId: msg.pushId,
         keysAndValues: msg.keysAndValues,
-        // it definitely needs to know that its subscription may have changed!
-        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
-        subHighPushId: sub.highPushId,
-        subPushCount: sub.pushCount,
       });
     }
   },
@@ -481,16 +663,107 @@ DataServer.prototype = {
   },
 
   /**
+   * Idempotently subscribe the given clientsub to the given tree name.
+   */
+  _treeSubscribe: function(treeName, sub) {
+    if (!this._treeSubsMap.hasOwnProperty(treeName))
+      this._treeSubsMap[treeName] = [];
+    var treeSubs = this._treeSubsMap[treeName];
+    if (treeSubs.indexOf(sub) === -1)
+      treeSubs.push(sub);
+  },
+
+  /**
+   * Idempotently unsubscribe the given client sub from the given tree.
+   */
+  _treeUnsubscribe: function(treeName, sub) {
+    if (!this._treeSubsMap.hasOwnProperty(treeName))
+      return;
+    var treeSubs = this._treeSubsMap[treeName];
+    var index = treeSubs.indexOf(sub);
+    if (index !== -1)
+      treeSubs.splice(index, 1);
+  },
+
+  /**
    * Unsubscribe the client from any subscribed tree.  As a side-effect of
    *  having received any message at all, this should invalidate pending
    *  requests by bumping the sequence id (in the sense that we should check
    *  that value and bail on any callbacks that fire after this point.)
    */
   reqUnsubscribe: function(client, sub, msg) {
-    if (sub.treeName) {
-      var treeSubs = this._treeSubsMap[sub.treeName];
+    if (sub.treeDef) {
+      var treeSubs = this._treeSubsMap[sub.treeDef.name];
       treeSubs.splice(treeSubs.indexOf(sub), 1);
+      sub.activeSub = false;
     }
+  },
+
+  /**
+   * The client has reconnected and wants to verify the state of its
+   *  subscription and the validity of the data it has.  We convert this to
+   *  a subscription request if the data is no good.
+   */
+  reqAssertSub: function(client, sub, msg) {
+    if (sub.activeSub)
+      throw new Error("assertsub's resub logic assumes no active sub!");
+
+    // - find the push sub range
+    var minPush = null, maxPush = null;
+    for (var iPush = 0; iPush < msg.knownPushesAndVersions.length; iPush++){
+      var pushId = msg.knownPushesAndVersions[iPush].id;
+      if (minPush === null || pushId < minPush)
+        minPush = pushId;
+      if (maxPush === null || pushId > maxPush)
+        maxPush = pushId;
+    }
+
+    var treeDef = $repodefs.safeGetTreeByName(msg.treeName);
+    if (!treeDef) {
+      // let the subscription case handle this gibberish
+      this.reqSubscribeToTree(client, sub, msg);
+      return;
+    }
+    var treeCache = this._getOrCreateTreeCache(msg.treeName);
+
+    // -- up-to-date?
+    if (treeCache.mostRecentTinderboxScrapeMillis === msg.timestamp &&
+        treeCache.revForTimestamp === msg.timestampRev) {
+      sub.treeDef = treeDef;
+      sub.treeCache = treeCache;
+
+      sub.newLatched = msg.mode === "recent";
+
+      // If they didn't tell us about any pushes, just force them into a
+      //  "recent" subscription.
+      if (minPush === null) {
+        msg.pushId = "recent";
+        this.reqSubscribeToTree(client, sub, msg);
+        return;
+      }
+      sub.highPushId = maxPush;
+      sub.pushCount = Math.min(maxPush - minPush + 1, MAX_PUSH_SUBS);
+
+      this._treeSubscribe(msg.treeName, sub);
+      sub.activeSub = true;
+
+      if (this._devMode)
+        console.log("resubscribed; high push: ", sub.highPushId, "count:",
+                    sub.pushCount);
+      this.sendToClient(sub, {
+        seqId: sub.seqId, lastForSeq: true,
+        type: "assertedsub",
+      });
+      return;
+    }
+
+    // -- not up-to-date
+    // treat it as a new subscription request based on the mode/etc.
+    if (msg.mode === "recent" || !maxPush)
+      msg.pushId = "recent";
+    else
+      msg.pushId = maxPush;
+    this.reqSubscribeToTree(client, sub, msg);
   },
 
   /**
@@ -503,9 +776,8 @@ DataServer.prototype = {
    * We send them an entirely new set of data.
    */
   reqSubscribeToTree: function(client, sub, msg) {
-    var treeSubs;
     // - validate
-    // ignore gibberish trees.
+    // ignore gibberish trees; don't nuke a valid subscription.
     var treeDef = $repodefs.safeGetTreeByName(msg.treeName);
     if (!treeDef) {
       this._scoldClient(client, sub.seqId,
@@ -529,23 +801,21 @@ DataServer.prototype = {
     sub.highPushId = sub.pendingRetrievalPushId = msg.pushId;
     sub.pushCount = 0;
 
-    if (msg.treeName != sub.treeName) {
+    if (msg.treeDef !== sub.treeDef) {
       // remove from old tree sub list...
-      if (sub.treeName) {
-        treeSubs = this._treeSubsMap[sub.treeName];
-        treeSubs.splice(treeSubs.indexOf(sub), 1);
+      if (sub.treeDef) {
+        this._treeUnsubscribe(sub.treeDef.name, sub);
       }
 
       // add to new tree sub list
-      if (!this._treeSubsMap.hasOwnProperty(msg.treeName))
-        this._treeSubsMap[msg.treeName] = [];
-      treeSubs = this._treeSubsMap[msg.treeName];
+      this._treeSubscribe(msg.treeName, sub);
 
-      sub.treeName = msg.treeName;
-      treeSubs.push(sub);
+      sub.activeSub = true;
+      sub.treeDef = treeDef;
+      sub.treeCache = this._getOrCreateTreeCache(treeDef.name);
 
       /*
-      var treeMeta = this._bridgeSink.getTreeMeta(sub.treeName);
+      var treeMeta = this._bridgeSink.getTreeMeta(sub.treeDef.name);
       if (treeMeta)
         client.send({seqId: sub.seqId, lastForSeq: false,
                      type: "treemeta", meta: treeMeta});
@@ -561,20 +831,15 @@ DataServer.prototype = {
     }
 
     // -- if the cache knows, use that
-    var cached = this._maybeGetCachedPush(treeDef.name,
+    var cached = this._maybeGetCachedPush(sub.treeCache,
                                           sub.pendingRetrievalPushId);
     if (cached) {
       sub.pushCount = 1;
       sub.highPushId = parseInt(cached["s:r"].id);
-      var treeCache = this._getOrCreateTreeCache(treeDef.name);
-      client.send({
+      this.sendToClient(sub, {
         seqId: sub.seqId, lastForSeq: true,
         type: "pushinfo",
         keysAndValues: cached,
-        // make sure it knows what its subscription is, may remove this.
-        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
-        subHighPushId: sub.highPushId,
-        subPushCount: sub.pushCount,
       });
       return;
     }
@@ -620,7 +885,7 @@ DataServer.prototype = {
         // (If we were looking for "recent", be sure to re-ask using "recent"
         //  to avoid leaving the client in a state where they will not hear
         //  about new pushes because they fell far behind.)
-        var cachedData = self._maybeGetCachedPush(treeDef,
+        var cachedData = self._maybeGetCachedPush(sub.treeCache,
                                                   sub.pendingRetrievalPushId);
         if (!cachedData) {
           self._maybeCachePushFromDb(treeDef,
@@ -640,16 +905,11 @@ DataServer.prototype = {
         sub.highPushId = (targHighPushId === null) ? pushId : targHighPushId;
         sub.pushCount = targPushCount;
         sub.pendingRetrievalPushId = null;
-        var treeCache = self._getOrCreateTreeCache(treeDef.name);
-        client.send({
+        self.sendToClient(sub, {
           seqId: sub.seqId, lastForSeq: true,
           type: "pushinfo",
           pushId: pushId,
           keysAndValues: colsAndValues,
-          // make sure it knows what its subscription is, may remove this.
-          subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
-          subHighPushId: sub.highPushId,
-          subPushCount: sub.pushCount,
         });
       }
     );
@@ -669,9 +929,9 @@ DataServer.prototype = {
    */
   reqSubscriptionGrow: function(client, sub, msg) {
     // - err out if there's no valid push subscription
-    if (!sub.treeName || !sub.pushCount) {
+    if (!sub.treeDef || !sub.pushCount) {
       this._scoldClient(client, sub.seqId,
-                        "no valid subscription (" + sub.treeName + ": " +
+                        "no valid subscription (" + sub.treeDef + ": " +
                         sub.pushCount + ")");
       return;
     }
@@ -707,19 +967,15 @@ DataServer.prototype = {
       pushId = sub.highPushId - sub.pushCount; // note, no + 1
 
     // - use cached data if possible
-    var cached = this._maybeGetCachedPush(sub.treeName, pushId);
+    var cached = this._maybeGetCachedPush(sub.treeCache, pushId);
     if (cached) {
       sub.highPushId = targHighPushId;
       sub.pushCount = targPushCount;
-      var treeCache = this._getOrCreateTreeCache(sub.treeName);
-      client.send({
+      this.sendToClient(sub, {
         seqId: sub.seqId, lastForSeq: true,
         type: "pushinfo",
         pushId: pushId,
         keysAndValues: cached,
-        subRecent: sub.newLatched && sub.highPushId == treeCache.highPushId,
-        subHighPushId: sub.highPushId,
-        subPushCount: sub.pushCount,
       });
       return;
     }
@@ -727,11 +983,10 @@ DataServer.prototype = {
     // - fallback to a db request
     sub.pendingRetrievalPushId = pushId;
 
-    var treeDef = $repodefs.safeGetTreeByName(sub.treeName);
     this._commonPushFetch(
       client, sub,
-      this._db.getPushInfo(treeDef.id, pushId),
-      treeDef, targHighPushId, targPushCount, true
+      this._db.getPushInfo(sub.treeDef.id, pushId),
+      sub.treeDef, targHighPushId, targPushCount, true
     );
   },
 

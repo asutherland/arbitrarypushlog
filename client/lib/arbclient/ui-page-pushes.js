@@ -69,22 +69,45 @@ wy.defineWidget({
     subtype: "newer",
   },
   structure: wy.block({
-    label: wy.computed("appropriateLabel"),
-  }, {mode: "mode"}),
+    label: [wy.computed("connectionStatusLabel"),
+            wy.computed("dataAccurateAsOfLabel"),
+            wy.computed("subscriptionLabel")],
+  }, {mode: "mode", connected: ["rstore", "_connected"]}),
   emit: ["subDelta"],
   receive: {
+    connectionStateChanged: function() {
+      this.update();
+    },
     subModeChanged: function() {
       this.update();
     },
   },
   impl: {
-    // XXX should be localizable...
-    appropriateLabel: function() {
-      if (this.obj.mode === "recent")
-        return "You are subscribed to recent pushes; the page will " +
-               "automatically update.";
+    // XXX all of these should be localizable...
+    connectionStatusLabel: function() {
+      if (this.obj.rstore._connected)
+        return "You are connected to the server. ";
       else
-        return "Newer";
+        return "You are NOT connected to the server. ";
+    },
+    dataAccurateAsOfLabel: function() {
+      var accurateAsOfMillis = this.obj.rstore._accurateAsOfMillis;
+      if (accurateAsOfMillis === null)
+        return "Our data is BAD. ";
+      return "Data is accurate as of " +
+        (new Date(accurateAsOfMillis)).toTimeString().substring(0, 5) + ". ";
+    },
+    subscriptionLabel: function() {
+      if (this.obj.rstore._subMode === "recent") {
+        if (!this.obj.rstore._connected)
+          return "NO new/updated pushes until we reconnect.";
+        if (this.obj.rstore._modeAcked)
+          return "New/updated pushes will show up automatically.";
+        return "Negotiating with server about new pushes.";
+      }
+      else {
+        return "Click to see Newer Pushes.";
+      }
     },
   },
   events: {

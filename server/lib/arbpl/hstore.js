@@ -164,7 +164,35 @@ var TDEF_FAIL_ANALYTIC = {
 var TDEF_REV_TO_PUSH = {
 };
 
+var TABLE_META_STATE = "arbpl_meta";
+/**
+ * Stores information about our configuration, when we last scraped, etc.  This
+ *  is currently blindly written by the scraper and read by the web server at
+ *  startup.
+ *
+ * Rows:
+ * - scraper: Columns are of the format:
+ *     - "m:tree:good:TREEID": Where the value is a JSON blob characterizing
+ *         the last good scrape of the given tree.
+ *     - "m:tree:bad:TREEID": Where value is a JSON blob characterizing the
+ *         last bad scrape of a given tree.
+ */
+var TDEF_META_STATE = {
+  name: TABLE_META_STATE,
+  columnFamilies: [
+    new $baseTypes.ColumnDescriptor({
+      name: "m",
+      // Keep multiple versions around for easier debugging since it turns out
+      //  I am not doing a great job of hooking up a logging solution.
+      maxVersions: 60,
+    }),
+  ],
+};
+
+var META_ROW_SCRAPER = exports.META_ROW_SCRAPER = "scraper";
+
 var SCHEMA_TABLES = [
+  TDEF_META_STATE,
   TDEF_PUSH_FOCUSED,
 ];
 
@@ -326,6 +354,14 @@ HStore.prototype = {
       this._processNextOp();
   },
 
+  _readOpCommon: function(op) {
+    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
+      return this._dbOpsMap[op.hash].deferred.promise;
+    }
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
   _processNextOp: function() {
     if (!this._dbOpsList.length)
       return;
@@ -335,6 +371,7 @@ HStore.prototype = {
     //  better than sticking direct function references or always performing
     //  dynamic lookup.  I'm not wedded to this.
     switch (op.opcode) {
+      // - pushes
       case "recent":
         truePromise = this._getMostRecentKnownPush(op.treeId);
         break;
@@ -347,6 +384,15 @@ HStore.prototype = {
 
       case "putPush":
         truePromise = this._putPushStuff(op.treeId, op.pushId, op.keysAndValues);
+        break;
+
+      // - meta
+      case "getMetaRow":
+        truePromise = this._getMetaRow(op.treeId);
+        break;
+
+      case "putMetaRow":
+        truePromise = this._putMetaRow(op.treeId, op.keysAndValues);
         break;
     }
     var self = this;
@@ -370,38 +416,78 @@ HStore.prototype = {
     );
   },
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Push DB Ops
+
+  /**
+   * Retrieve the (un-normalized) push-info for the most recent push for the
+   *  given tree by using a scanner to find the most recent push.
+   */
   getMostRecentKnownPush: function(treeId) {
     var op = new DBReadOp("recent", treeId, 0, "");
-    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.hash].deferred.promise;
-    }
-    this._scheduleOp(op);
-    return op.deferred.promise;
+    return this._readOpCommon(op);
   },
 
+  /**
+   * Retrieve the (un-normalized) push-info for the given push in the given
+   *  tree.
+   */
   getPushInfo: function(treeId, pushId) {
     var op = new DBReadOp("pushSummary", treeId, pushId, "");
-    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.hash].deferred.promise;
-    }
-    this._scheduleOp(op);
-    return op.deferred.promise;
+    return this._readOpCommon(op);
   },
 
+  /**
+   * Retrieve the data associated with a specific failure in a specific build
+   *  log for a given push in a given tree.
+   */
   getPushLogDetail: function(treeId, pushId, buildId) {
     var op = new DBReadOp("logDetail", treeId, pushId, buildId);
-    if (this._dbOpsMap.hasOwnProperty(op.hash)) {
-      return this._dbOpsMap[op.hash].deferred.promise;
-    }
-    this._scheduleOp(op);
-    return op.deferred.promise;
+    return this._readOpCommon(op);
   },
 
+  /**
+   * Write some cells associated with a given push in a given tree.
+   */
   putPushStuff: function(treeId, pushId, keysAndValues) {
     var op = new DBWriteOp("putPush", treeId, pushId, keysAndValues);
     this._scheduleOp(op);
     return op.deferred.promise;
   },
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Meta DB Ops
+
+  /**
+   * Retrieve the (normalized) contents of the given meta row.
+   */
+  getMetaRow: function(rowId) {
+    var op = new DBReadOp("getMetaRow", rowId, null, null);
+    return this._readOpCommon(op);
+  },
+
+  /**
+   * Write some cells to the given meta row.
+   */
+  putMetaRow: function(rowId, keysAndValues) {
+    var op = new DBWriteOp("putMetaRow", rowId, null, keysAndValues);
+    this._scheduleOp(op);
+    return op.deferred.promise;
+  },
+
+  /**
+   * Helper to log the results of a scrape operation for the given tree to
+   *  the appropriate meta row/cell.  There is no corresponding read helper
+   *  right now; that logic lives in the `DataServer` logic.
+   */
+  metaLogTreeScrape: function(treeName, wasGood, timeObj) {
+    var keysAndValues = {};
+    keysAndValues["m:tree:" + (wasGood ? "good:" : "bad:") + treeName] =
+      timeObj;
+    return this.putMetaRow(META_ROW_SCRAPER, keysAndValues);
+  },
+
+  //////////////////////////////////////////////////////////////////////////////
 
   _getMostRecentKnownPush: function(treeId) {
     //console.log("getMostRecentKnownPush...", treeId);
@@ -541,6 +627,57 @@ HStore.prototype = {
     }
     return deferred.promise;
   },
+
+  _getMetaRow: function(rowId) {
+    var deferred = $Q.defer();
+    var self = this;
+    this.client.getRowWithColumns(
+      TABLE_META_STATE, rowId,
+      ["m"],
+      function(err, rowResults) {
+        if (err) {
+          console.error("Unhappiness getting meta row: " + rowId);
+          deferred.reject(err);
+        }
+        else {
+          deferred.resolve(self.normalizeOneRow(rowResults));
+        }
+      });
+    return deferred.promise;
+  },
+
+  _putMetaRow: function(rowId, keysAndValues) {
+    var deferred = $Q.defer();
+    var mutations = [];
+    for (var key in keysAndValues) {
+      var value = keysAndValues[key];
+      mutations.push(new $baseTypes.Mutation({
+        column: key,
+        value: JSON.stringify(value),
+      }));
+    }
+
+    // if there are no mutations, do not bother issuing a write.
+    if (mutations.length) {
+      this.client.mutateRow(
+        TABLE_META_STATE, rowId,
+        mutations,
+        function(err) {
+          if (err) {
+            console.error("Problem saving row: " + rowId);
+            console.error(err);
+            deferred.reject(err);
+          }
+          else {
+            deferred.resolve();
+          }
+        });
+    }
+    else {
+      deferred.resolve();
+    }
+    return deferred.promise;
+  }
 };
 exports.HStore = HStore;
 

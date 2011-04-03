@@ -78,6 +78,8 @@ function commonLoad(url, promiseName, promiseRef) {
   return deferred.promise;
 }
 
+var CONNECT_RETRY_INTERVAL = 5000;
+
 /**
  * Per-tinderbox tree server talking.
  */
@@ -99,6 +101,8 @@ function RemoteStore(listener) {
    */
   this._knownPushes = null;
   this._subMode = null;
+  this._prevSubMode = null;
+  this._modeAcked = false;
   this._desiredPushes = null;
 
   /**
@@ -111,13 +115,47 @@ function RemoteStore(listener) {
    */
   this._pendingSeq = 0;
 
+  /**
+   * The timestamp in milliseconds the push data is accurate as-of.  This is
+   *  time at which the tinderbox data was "retrieved".  Please see the
+   *  `DataServer` documentation for the precise semantics of how this value is
+   *  derived; the short story is that this is the value to display to the user
+   *  to convey how accurate/up-to-date the data is and used to let the server
+   *  figure out what deltas it needs to send us.
+   */
+  this._accurateAsOfMillis = null;
+  /**
+   * This is part of a strictly increasing lexicographical tuple whose first
+   *  element is `accurateAsOfMillis`.  It exists to convey changes in state
+   *  that do not correspond to a change in the `_accurateAsOfMillis` timestamp.
+   *  Specifically, the processing of log files does not necessarily merit
+   *  a revision in the timestamp.  (If/when we switch to streaming consumption
+   *  like buildbot, it probably will.)
+   */
+  this._revForTimestamp = null;
 
+  this._connected = false;
+  this._retryTimeout = null;
+
+  /**
+   * If we have an assertsub request pending, do we need to reissue our pushes
+   *  to the UI or does the UI already know?
+   */
+  this._needToReissuePushes = false;
 
   this.hookupSocket();
 }
 RemoteStore.prototype = {
   useTree: function(tinderTree) {
+    // nothing to do if we are already using the right three
+    if (tinderTree === this.tinderTree)
+      return;
+
     this.tinderTree = tinderTree;
+    // clear all cached state on tree change.
+    this._knownPushes = null;
+    this._subMode = this._prevSubMode = null;
+    this._modeAcked = false;
   },
 
   /**
@@ -133,10 +171,29 @@ RemoteStore.prototype = {
     this._sock.connect();
   },
 
+  /**
+   * Re-assert subscription status on reconnect.
+   */
   onConnect: function() {
-    // XXX this is where we might want to resubmit our current state to the
-    //  server or cause a higher level to re-establish, etc.
-    //console.log("socket.io connection established");
+    this._connected = true;
+    this._listener.onConnectionStateChange();
+
+    if (this._retryTimeout !== null) {
+      window.clearTimeout(this._retryTimeout);
+      this._retryTimeout = null;
+    }
+
+    // If we have no mode or our mode was not acknowledged, do not attempt to
+    //  resubscribe.  (The assumption in terms of _modeAcked is that our message
+    //  was queued; there is a potential race here depending on transmission
+    //  guarantees provided by socket.io; mainly, if it can drop things, we can
+    //  wedge.)
+    if (!this._subMode || !this._modeAcked) {
+      //console.log("connected, not resubscribing:", this._subMode,
+      //            this._modeAcked);
+      return;
+    }
+    this._resubscribe(this._subMode, true);
   },
 
   onMessage: function(msg) {
@@ -144,6 +201,8 @@ RemoteStore.prototype = {
     if (msg.seqId !== -1) {
       if (msg.seqId === this._pendingSeq) {
         this._pendingSeq = 0;
+        if (msg.type !== "error" && this._subMode)
+          this._modeAcked = true;
       }
       else {
         console.warn("Unexpected message seq; expected",
@@ -168,12 +227,47 @@ RemoteStore.prototype = {
       case "pushdelta":
         this.msgPushDelta(msg);
         break;
+
+      case "assertedsub":
+        // nothing to do; the logic above implicitly acknowledged the mode
+        this.msgAssertedSub(msg);
+        break;
     }
   },
 
   onDisconnect: function() {
-    //console.log("socket.io connection lost");
+    this._connected = false;
+    this._listener.onConnectionStateChange();
+
+    //console.log("socket.io connection lost; attempting reconnect");
+    this._tryToReconnect();
+  },
+
+  /**
+   * Attempt to reconnect.  Establish a completely new connection in order to
+   *  avoid the possibility of complicated state mismatches, although in theory
+   *  assertsub and the like may save us.  (But let's wait on actual analysis
+   *  to conclude it's safe rather than just assume.)
+   *
+   * Socket.io currently does not support auto-reconnect, nor great/any
+   *  notifications on error, at least not consistently.  So we use the simple
+   *  heuristic of trying to connect and setting a timeout.
+   */
+  _tryToReconnect: function() {
     this.hookupSocket();
+    if (this._retryTimeout === null) {
+      var self = this;
+      this._retryTimeout = window.setTimeout(function() {
+        self._retryTimeout = null;
+        if (self._connected)
+          return;
+        // avoid having two outstanding requests...
+        if (self._sock.readystate !== 0)
+          self._sock.disconnect();
+        //console.log("attempting connect");
+        self._tryToReconnect();
+      }, CONNECT_RETRY_INTERVAL);
+    }
   },
 
   _pushSorter: function(a, b) {
@@ -181,8 +275,14 @@ RemoteStore.prototype = {
   },
 
   subscribeToRecent: function(desiredPushesCount) {
+    if (this._prevSubMode === "recent") {
+      this._resubscribe(this._prevSubMode, false);
+      return;
+    }
+
     this._knownPushes = {};
     this._subMode = "recent";
+    this._modeAcked = false;
     this._desiredPushes = desiredPushesCount;
 
     this._sock.send({
@@ -194,8 +294,16 @@ RemoteStore.prototype = {
   },
 
   subscribeToPushId: function(highPushId, desiredPushesCount) {
+    if (this._prevSubMode === "range" &&
+        this._knownPushes.hasOwnProperty(highPushId) &&
+        this._desiredPushes === desiredPushesCount) {
+      this._resubscribe(this._prevSubMode, false);
+      return;
+    }
+
     this._knownPushes = {};
     this._subMode = "range";
+    this._modeAcked = false;
     this._desiredPushes = desiredPushesCount;
 
     this._sock.send({
@@ -206,11 +314,46 @@ RemoteStore.prototype = {
     });
   },
 
+  /**
+   * Attempt to reuse our previous subscription data in the hopes that little
+   *  has changed.  It's on the caller to ensure we had a previous mode.
+   */
+  _resubscribe: function(mode, automatic) {
+    this._subMode = mode;
+    this._prevSubMode = null;
+    this._modeAcked = false;
+    this._needToReissuePushes = !automatic;
 
+    // (use a rich rep because we may want to send additional meta-data soon)
+    var knownPushesAndVersions = [];
+    for (var pushKey in this._knownPushes) {
+      var buildPush = this._knownPushes[pushKey];
+      knownPushesAndVersions.push({
+        id: buildPush.push.id,
+      });
+    }
+
+    this._sock.send({
+      seqId: (this._pendingSeq = this._nextSeqId++),
+      type: "assertsub",
+      treeName: this.tinderTree.name,
+      mode: this._subMode,
+      timestamp: this._accurateAsOfMillis,
+      timestampRev: this._revForTimestamp,
+      knownPushesAndVersions: knownPushesAndVersions,
+    });
+  },
+
+  /**
+   * Unsubscribe from our current subscription setup, but do not destroy any of
+   *  the data we have received at this point.  If the user hits the back
+   *  button, we want to be able to reuse the data we have in the event that no
+   *  updates have occurred or just apply deltas if only a small number of
+   *  changes have occurred (and the server supports it.)
+   */
   unsubscribe: function() {
-    this._knownPushes = {};
+    this._prevSubMode = this._subMode;
     this._subMode = null;
-    this._desiredPushes = 0;
 
     this._sock.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
@@ -251,6 +394,16 @@ RemoteStore.prototype = {
     }
   },
 
+  _checkAccuracyChange: function(msg) {
+    if (msg.accurateAsOfMillis &&
+        msg.accurateAsOfMillis != this._accurateAsOfMillis ||
+        msg.revForTimestamp != this._revForTimestamp) {
+      this._accurateAsOfMillis = msg.accurateAsOfMillis;
+      this._revForTimestamp = msg.revForTimestamp;
+      this._listener.onConnectionStateChange();
+    }
+  },
+
   /**
    * Information on a fully formed push.
    */
@@ -277,6 +430,8 @@ RemoteStore.prototype = {
     var buildPush = this._normalizeOnePush(msg.keysAndValues);
     this._knownPushes[buildPush.push.id] = buildPush;
     this._listener.onNewPush(buildPush);
+
+    this._checkAccuracyChange(msg);
   },
 
   /**
@@ -291,12 +446,38 @@ RemoteStore.prototype = {
       return;
     }
 
+    // see if the server is actually telling us new data or just using this as
+    //  a hacky way to update related meta-state.
+    // XXX I meant to use treemeta to avoid sending a fake delta, but this isn't
+    //  a bad guard...
+    var anyChanges = false;
+    for (var key in msg.keysAndValues) {
+      anyChanges = true;
+      break;
+    }
+
     var buildPush = this._knownPushes[msg.pushId];
     //console.log("delta!", buildPush);
-    this._normalizeOnePush(msg.keysAndValues, buildPush);
-    this._listener.onModifiedPush(buildPush);
+    if (anyChanges) {
+      this._normalizeOnePush(msg.keysAndValues, buildPush);
+      this._listener.onModifiedPush(buildPush);
+    }
 
     this._checkSubs(msg);
+    this._checkAccuracyChange(msg);
+  },
+
+  /**
+   * We are being told our data is still good; repopulate the UI.
+   */
+  msgAssertedSub: function(msg) {
+    if (!this._needToReissuePushes)
+      return;
+    for (var pushId = msg.subHighPushId;
+         this._knownPushes.hasOwnProperty(pushId);
+         pushId--) {
+      this._listener.onNewPush(this._knownPushes[pushId]);
+    }
   },
 
   /**

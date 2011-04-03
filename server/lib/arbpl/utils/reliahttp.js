@@ -98,6 +98,7 @@ Agent.prototype._getConnection = function(host, port, cb) {
       // Destroy the connection so we can't hear anything more the socket might
       //  say; we don't want a weird race where the socket comes back to life
       //  but we have kicked off a new one.
+      console.warn("  killing connection due to timeout!");
       c.end();
     }
   );
@@ -153,7 +154,7 @@ exports.reliago = function reliago(config) {
   function tryIt() {
     // add something to grep for so we can see if this ever gets used...
     if (triesLeft !== DEFAULT_TRIES)
-      console.log("RETRYING: " + config.url);
+      console.log("  reliago RETRYING: " + config.url);
 
     if (--triesLeft <= 0) {
       deferred.reject("out of tries");

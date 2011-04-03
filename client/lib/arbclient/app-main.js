@@ -263,8 +263,7 @@ ArbApp.prototype = {
       page: "pushes",
       pathNodes: pathNodes,
       pushes: self._slice_pushes,
-      // XXX we should just be told this by rstore.
-      mode: highPushId ? "range" : "recent",
+      rstore: self.rstore,
     };
     self._updateState("good");
 
@@ -316,12 +315,19 @@ ArbApp.prototype = {
     //this.binding.ANTICS.go("buildpush");
   },
 
+  /**
+   * Notification from rstore that we have connected/disconnected or our data
+   *  validity has changed.
+   */
+  onConnectionStateChange: function() {
+    this.binding.emit_connectionStateChanged();
+  },
+
   subDelta: function(delta) {
     this.rstore.subGrowOrShift(delta);
   },
 
   onSubModeChange: function(mode) {
-    this.page.mode = mode;
     this.binding.emit_subModeChanged();
   },
 

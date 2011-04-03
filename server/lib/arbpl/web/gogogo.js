@@ -164,9 +164,6 @@ app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
     });
 });
 
-console.log("LISTENING ON", LISTEN_PORT);
-app.listen(LISTEN_PORT);
-
 ////////////////////////////////////////////////////////////////////////////////
 // sideband notifications from the scraper, socket.io hookup
 
@@ -174,9 +171,16 @@ var sideServer = new $http.Server();
 var scraperSink = new $databus.ScraperBridgeSink(sideServer);
 
 var socky = $io.listen(app);
-var dataServer = new $datastore.DataServer(socky, scraperSink);
+var dataServer = new $datastore.DataServer(socky, scraperSink,
+                                           LISTEN_PORT === 8008);
 
-console.log("SIDEBAND LISTENING ON", LISTEN_PORT + 1);
-sideServer.listen(LISTEN_PORT + 1);
+// do not accept incoming connections until we have bootstrapped
+when(dataServer.bootstrap(), function() {
+  console.log("LISTENING ON", LISTEN_PORT);
+  app.listen(LISTEN_PORT);
+
+  console.log("SIDEBAND LISTENING ON", LISTEN_PORT + 1);
+  sideServer.listen(LISTEN_PORT + 1);
+});
 
 }); // end require.def

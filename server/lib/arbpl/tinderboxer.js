@@ -358,6 +358,7 @@ Tinderboxer.prototype = {
     //  dumb.)  In those cases, we need to either retry or give up the fight.
     var tinderboxRetriesLeft = 3;
     function tryIt() {
+      var timestamp = Date.now();
       if (--tinderboxRetriesLeft <= 0) {
         console.error("out of retries on fetch of: " + url);
         deferred.reject("out of retries!");
@@ -368,7 +369,8 @@ Tinderboxer.prototype = {
         function(dataStr) {
           try {
             var tinderObj = parseStupidJsonBlob(dataStr);
-            deferred.resolve(self._parseTinderbox(tinderObj));
+            deferred.resolve({timestamp: timestamp,
+                              results: self._parseTinderbox(tinderObj)});
           }
           catch (ex) {
             console.error("Exception parsing tinderbox data, maybe retrying",
@@ -380,7 +382,7 @@ Tinderboxer.prototype = {
           // There is no retry in this case; reliahttp already handled that for
           //  us.
           console.error("Problem fetching tinderbox log!", err);
-          deferred.reject(err);
+          deferred.reject({timestamp: timestamp, err: err});
         });
     }
     tryIt();
