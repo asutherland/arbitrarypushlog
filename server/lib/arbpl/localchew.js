@@ -184,19 +184,32 @@ LocalChewer.prototype = {
     sideband["s:b:" + this._path] = setstate["s:b:" + this._path];
     sideband["s:l:" + this._path] = setstate["s:l:" + this._path];
 
+    var scrapeStamp = Date.now();
+
     var self = this;
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
       function() {
-        when(bridge.send({
-               type: "push",
-               treeName: LOCAL_TREE_NAME,
-               pushId: self._usePushId,
-               keysAndValues: sideband
-             }),
-          function() {
-            self._chewDeferred.resolve(self._usePushId);
-          }
-        );
+        when(self._db.metaLogTreeScrape("Local", true,
+               {timestamp: scrapeStamp, rev: 0, highPushId: self._usePushId}),
+             function() {
+          console.log("write meta tree junk");
+          when(bridge.send({
+                 type: "push",
+                 treeName: LOCAL_TREE_NAME,
+                 pushId: self._usePushId,
+                 keysAndValues: sideband,
+                 scrapeTimestampMillis: scrapeStamp,
+                 revForTimestamp: 0,
+               }),
+            function() {
+              self._chewDeferred.resolve(self._usePushId);
+            },
+            function() {
+              console.warn("problem sidebanding, continuing.");
+              self._chewDeferred.resolve(self._usePushId);
+            }
+          );
+        }, function() {console.error("problem writing meta tree junk");});
       });
   },
 };
