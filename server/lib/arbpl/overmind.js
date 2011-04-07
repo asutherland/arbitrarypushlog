@@ -504,7 +504,13 @@ Overmind.prototype = {
           var pinfo = pushes[pushId];
           pinfo.id = parseInt(pushId);
 
-          for (var iChange = 0; iChange < pinfo.changesets.length; iChange++) {
+          // The changesets are ordered oldest to newest; so length-1 is the tip
+          //  for this push.  So for overload handling, we want to take only a
+          //  chunk from the back.
+          // We are choosing a limit of 128 because that's still pretty nuts but
+          //  tractable for the system to take a bit of.
+          var iChange = Math.max(0, pinfo.changesets.length - 128);
+          for (; iChange < pinfo.changesets.length; iChange++) {
             var csinfo = pinfo.changesets[iChange];
 
             var shortRev = csinfo.node.substring(0, 12);
