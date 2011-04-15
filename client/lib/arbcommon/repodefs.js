@@ -326,6 +326,20 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+  "mozilla-aurora": new CodeRepoDef({
+    name: "mozilla-aurora",
+    url: "http://hg.mozilla.org/mozilla-aurora/",
+    kind: "aurora",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
+  "mozilla-beta": new CodeRepoDef({
+    name: "mozilla-beta",
+    url: "http://hg.mozilla.org/mozilla-beta/",
+    kind: "beta",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
   "try": new CodeRepoDef({
     name: "try",
     url: "http://hg.mozilla.org/try/",
