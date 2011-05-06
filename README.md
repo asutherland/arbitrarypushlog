@@ -47,3 +47,28 @@ right thing (build it).
 For development:
 - node-dev: Auto-restart helper; the webserve scripts use this if present on
    the path.
+
+
+## Server HBase Setup
+
+There is an example hbase-site.xml file in server (example-hbase-site.xml)
+which has some reasonable settings to use to make sure your hbase server does
+not explode if you give it a small heap.  (Heap size is set in hbase-env.sh.)
+
+You will strongly want to consider modifying hbase-env.sh to set the heap used
+by Hbase.  arbpl.visophyte.org is currently using a 400m heap for the master
+and 200m for the thrift daemon.  This is hackily accomplished by modifying
+/usr/lib/hbase/bin/hbase to include the following block where it currently sets
+JAVA_HEAP_MAX.
+
+    # check envvars which might override default args
+    if [ "$HBASE_HEAPSIZE" != "" ]; then
+      #echo "run with heapsize $HBASE_HEAPSIZE"
+      if [ "$COMMAND" != "thrift" ]; then
+        JAVA_HEAP_MAX="-Xmx""$HBASE_HEAPSIZE""m"
+      else
+        JAVA_HEAP_MAX="-Xmx200m"
+      fi
+      #echo $JAVA_HEAP_MAX
+    fi
+
