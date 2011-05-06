@@ -98,6 +98,12 @@ var OPTS = [
     name: "tree",
     string: "--tree=TREE",
   },
+  {
+    name: "days",
+    string: "--days=DAYS",
+    default: 5,
+    help: "for backfill, how many days to backfill",
+  },
 ];
 
 // We need to do our own argv slicing to compensate for RequireJS' r.js
@@ -141,7 +147,7 @@ switch (options.command) {
           bridgePort: parseInt(options["bridge-port"]),
           tree: options.tree,
         });
-        when($hivemind.HIVE_MIND.backfillAll(5),
+        when($hivemind.HIVE_MIND.backfillAll(options.days),
           function() {
             console.log("synchronized everyone! woo!");
             process.exit(0);
