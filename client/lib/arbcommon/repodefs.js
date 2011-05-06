@@ -340,6 +340,13 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+  "mozilla-miramar": new CodeRepoDef({
+    name: "mozilla-miramar",
+    url: "http://hg.mozilla.org/mozilla-miramar/",
+    kind: "beta",
+    path_mapping: MC_MAPPING,
+    family: "mozilla",
+  }),
   "try": new CodeRepoDef({
     name: "try",
     url: "http://hg.mozilla.org/try/",
@@ -396,6 +403,22 @@ var REPOS = exports.REPOS = {
   }),
 
 
+  "comm-miramar": new CodeRepoDef({
+    name: "comm-miramar",
+    url: "http://hg.mozilla.org/releases/comm-miramar/",
+    kind: "release",
+    path_mapping: CC_MAPPING,
+    family: "comm",
+    dependent: true,
+  }),
+  "comm-2.0": new CodeRepoDef({
+    name: "comm-2.0",
+    url: "http://hg.mozilla.org/releases/comm-2.0/",
+    kind: "release",
+    path_mapping: CC_MAPPING,
+    family: "comm",
+    dependent: true,
+  }),
   "comm-1.9.2": new CodeRepoDef({
     name: "comm-1.9.2",
     url: "http://hg.mozilla.org/releases/comm-1.9.2/",
