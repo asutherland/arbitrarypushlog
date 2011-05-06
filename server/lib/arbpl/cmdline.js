@@ -107,7 +107,7 @@ var OPTS = [
 ];
 
 // We need to do our own argv slicing to compensate for RequireJS' r.js
-var options = $nomnom.parseArgs(OPTS, null, process.argv.slice(3));
+var options = $nomnom.opts(OPTS).parseArgs(process.argv.slice(3));
 switch (options.command) {
   case "web":
     $require(
@@ -232,7 +232,8 @@ switch (options.command) {
     break;
 
   default:
-    console.error("unknown command: " + options.command);
+    console.error("unknown command: " + options.command + " (args were: '" +
+                  process.argv.slice(3).join("' '") + "')");
     process.exit(-1);
     break;
 }

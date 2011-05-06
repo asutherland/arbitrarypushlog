@@ -87,8 +87,10 @@ var GOBBLE_URL_LEN = ("chrome://mochitests/content/").length;
 /**
  * The maximum number of lines to put in the raw log.  People can go see the
  *  full log for themselves if they are so inclined...
+ *
+ * This number has been set at 4096 since we clamped the maximum cell size.
  */
-var MAX_LOG_LENGTH_IN_LINES = 8192;
+var MAX_LOG_LENGTH_IN_LINES = 4096;
 
 /**
  * Process a mochitest log for failures.  Mochitests have the following

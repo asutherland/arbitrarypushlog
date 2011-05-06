@@ -7,3 +7,6 @@
 [submodule "client/deps/requirejs"]
 	path = client/deps/requirejs
 	url = git://github.com/jrburke/requirejs.git
+[submodule "server/node_modules/compress"]
+	path = server/node_modules/compress
+	url = git://github.com/sjmulder/node-compress.git

@@ -1,4 +1,15 @@
 {
-  "name": "mozdecrazy",
-  "lib": "lib"
+  "name": "arbpl",
+  "lib": "lib",
+  "version": "0.0.1",
+  "dependencies": {
+    "nomnom": ">= 0.0.1",
+    "q": ">= 0.0.1",
+    "q-http": ">= 0.0.1",
+    "carrier": ">= 0.0.1",
+    "connect": ">= 0.0.1",
+    "express": ">= 0.0.1",
+    "thrift": ">= 0.0.1",
+    "socket.io": ">= 0.0.1"
+  }
 }

@@ -27,8 +27,8 @@ out with "--recursive".  If you forgot to do that, do "git submodule init" then
 
 ## Server Deps:
 
-You need to install these via npm; I probably need to make a useful
-package.json...
+Just do "npm install" in server and the stuff should show up.  Read
+package.json to know what shows up.
 
 - q, q-http: promises stuff
 - carrier: simple line-reader stream filter
@@ -37,11 +37,10 @@ package.json...
 - nomnom: option parsing
 - socket.io: realtime updates
 
-The npm version is no good and so you need to git clone the below and then
-install using npm somehow.  (I use "npm link".)
+Note: we also locally have a git submodule for a modified version of the
+compress module that actually works.  "npm install" will see it and do the
+right thing (build it).
 
-- compress: decompress, npm packageable one from
-   git://github.com/sjmulder/node-compress.git
 
 ## Server Optional Deps
 
