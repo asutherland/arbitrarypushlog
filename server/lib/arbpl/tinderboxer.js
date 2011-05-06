@@ -153,7 +153,7 @@ var OS_PLATFORMS = [
  */
 var BUILD_TYPES = [
   {
-    regexes: [/talos (?:remote-)?(a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4|v8|tdhtml|tpan|ts|tsspider|tsvg|twinopen|tp4_nochrome)$/],
+    regexes: [/talos (?:remote-)?(a11y|chrome|cold|dirty|dromaeo|nochrome|scroll|svg|tp4|v8|tdhtml|tpan|ts|tsspider|tsvg|twinopen|tp4_nochrome|paint)$/],
     buildType: {
       type: "perf",
       subtype: "talos",
@@ -249,6 +249,13 @@ var BUILD_TYPES = [
     buildType: {
       type: "build",
       subtype: "shark",
+    },
+  },
+  {
+    regexes: [/spidermonkey-warnaserr/i],
+    buildType: {
+      type: "build",
+      subtype: "warnaserr",
     },
   },
   // catch-all builder
