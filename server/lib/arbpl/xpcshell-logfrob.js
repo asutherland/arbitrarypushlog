@@ -206,6 +206,14 @@ XpcshellFrobber.prototype = {
       case FST_IN_TEST_LOG: {
         if (line === LOG_START_MARKER)
           break;
+        // In the event of a runtime glitch, it's possible for an error log to
+        //  not include a well-defined error message, in which case we should
+        //  directly conclude logging.  For example:
+        //  "Error: cannot open file'....' for reading"
+        if (line === LOG_END_MARKER) {
+          this.closeOutError();
+          break;
+        }
 
         if (this.rawLog.length === MAX_LOG_LENGTH_IN_LINES)
           this.rawLog.push("TOO MANY LINES! I GIVE UP!");
@@ -243,17 +251,7 @@ XpcshellFrobber.prototype = {
 
       case FST_DONE_WITH_LOG: {
         if (line === LOG_END_MARKER) {
-          if (this.ignoredLineCount) {
-            this.rawLog.push("ignored: " + this.ignoredLineCount + " lines");
-            this.curDetails.ignoredLineCount = this.ignoredLineCount;
-            this.ignoredLineCount = 0;
-          }
-          this.hasher = null;
-          this.curFailure = null;
-          this.curDetails = null;
-          this.rawLog = null;
-
-          this.state = FST_LOOKING_FOR_FAILED_TEST;
+          this.closeOutError();
         }
         else {
          if (this.rawLog.length === MAX_LOG_LENGTH_IN_LINES)
@@ -269,7 +267,20 @@ XpcshellFrobber.prototype = {
   },
   onEnd: function() {
     this.callback(this.writeCells);
-  }
+  },
+  closeOutError: function() {
+    if (this.ignoredLineCount) {
+      this.rawLog.push("ignored: " + this.ignoredLineCount + " lines");
+      this.curDetails.ignoredLineCount = this.ignoredLineCount;
+      this.ignoredLineCount = 0;
+    }
+    this.hasher = null;
+    this.curFailure = null;
+    this.curDetails = null;
+    this.rawLog = null;
+
+    this.state = FST_LOOKING_FOR_FAILED_TEST;
+  },
 };
 exports.XpcshellFrobber = XpcshellFrobber;
 
