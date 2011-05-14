@@ -276,6 +276,16 @@ var RE_BASE_DIR_PARTS =
  * ]
  */
 function chewException(rawEx) {
+  // In degenerate cases, we can end up with an empty exception object, let's
+  //  handle that via a normalized fallback.
+  if (!("message" in rawEx)) {
+    rawEx = {
+      fileName: "n/a",
+      lineNumber: -1,
+      message: "(empty exception object!)",
+      stack: "",
+    };
+  }
   var outEx = {
     fileName: rawEx.fileName,
     lineNumber: rawEx.lineNumber,
@@ -284,7 +294,8 @@ function chewException(rawEx) {
   };
   var frames = outEx.stackFrames;
 
-  var stackLines = rawEx.stack.split("\n");
+  var stackLines = typeof(rawEx.stack) === "string" ? rawEx.stack.split("\n")
+                     : [];
   for (var iLine = 0; iLine < stackLines.length; iLine++) {
     var line = stackLines[iLine];
     if (!line)

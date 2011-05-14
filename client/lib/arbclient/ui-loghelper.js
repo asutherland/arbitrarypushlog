@@ -366,7 +366,8 @@ wy.defineWidget({
   },
   impl: {
     postInit: function() {
-      this.stack_element.textContent = this.obj.stack.join("\n");
+      this.stack_element.textContent = this.obj.stack ?
+                                         this.obj.stack.join("\n") : "";
     },
   },
 });
