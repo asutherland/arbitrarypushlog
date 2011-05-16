@@ -615,7 +615,13 @@ var TINDER_TREES = exports.TINDER_TREES = {
     },
     typeGroups: TB_TYPE_GROUPS,
   }),
+};
 
+/**
+ * We used to support these, but ArbPL has now reduced scope to only be about
+ *  Thunderbird.
+ */
+var ABANDONED_TREES = {
   // releases/comm-1.9.2 => c192
   // releases/comm-1.9.1 => c191
 
