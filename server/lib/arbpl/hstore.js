@@ -581,7 +581,8 @@ HStore.prototype = {
           dbstate[key] = JSON.parse(value);
         }
         catch (ex) {
-          console.error("Exception JSON parsing", value);
+          console.error("Exception JSON parsing hstore row result with key",
+                        key, "length", value.length);
         }
       }
     }
