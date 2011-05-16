@@ -502,7 +502,10 @@ Tinderboxer.prototype = {
     if (!scrape)
       return revs;
     var matches;
-    var re = /http:\/\/hg.mozilla.org\/([^/]+(?:\/[^/]+)?)\/rev\/([0-9a-f]{12})/g;
+    // ThunderbirdTry keeps regressing and ending up with URLs like:
+    //  http://hg.mozilla.org/mozilla-central//rev/60cfdbaf76fb
+    // so we now allow for 2 /-slashes between the repo-name and "rev"
+    var re = /http:\/\/hg.mozilla.org\/([^/]+(?:\/[^/]+)?)\/{1,2}rev\/([0-9a-f]{12})/g;
     for (var i = 0; i < scrape.length; i++) {
       // There may be multiple revs in different repos in one line of the
       // scrape, so keep exec()ing until we run out.
