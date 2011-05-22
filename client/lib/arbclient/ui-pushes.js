@@ -489,6 +489,18 @@ wy.defineWidget({
   },
 });
 
+// create specialized variants as-needed.
+wy.defineWidget({
+  name: "generic-build-fail-summary",
+  doc: "unspecialized build failure display",
+  constraint: {
+    type: "build-fail-summary",
+    obj: { type: wy.WILD },
+  },
+  structure: {
+    name: wy.bind("name"),
+  },
+});
 
 wy.defineWidget({
   name: "xpcshell-build-fail-summary",
@@ -511,57 +523,6 @@ wy.defineWidget({
         this.__context.tinderTree.name +
         "?name=xpcshell/tests/" + this.obj.name;
     },
-  },
-});
-
-// XXX these are all split out for ease of hyperlinking, but we could also
-//  just have the back-end rep be smarter, or admit we may not implement
-//  hyperlinking :)
-wy.defineWidget({
-  name: "mozmill-build-fail-summary",
-  doc: "characterize mozmill failures",
-  constraint: {
-    type: "build-fail-summary",
-    obj: { type: "mozmill" },
-  },
-  structure: {
-    name: wy.bind("name"),
-  },
-});
-
-wy.defineWidget({
-  name: "mochitest-build-fail-summary",
-  doc: "characterize mochitest failures",
-  constraint: {
-    type: "build-fail-summary",
-    obj: { type: "mochitest" },
-  },
-  structure: {
-    name: wy.bind("name"),
-  },
-});
-
-wy.defineWidget({
-  name: "reftest-build-fail-summary",
-  doc: "characterize reftest failures",
-  constraint: {
-    type: "build-fail-summary",
-    obj: { type: "reftest" },
-  },
-  structure: {
-    name: wy.bind("name"),
-  },
-});
-
-wy.defineWidget({
-  name: "jsreftest-build-fail-summary",
-  doc: "characterize reftest failures",
-  constraint: {
-    type: "build-fail-summary",
-    obj: { type: "jsreftest" },
-  },
-  structure: {
-    name: wy.bind("name"),
   },
 });
 

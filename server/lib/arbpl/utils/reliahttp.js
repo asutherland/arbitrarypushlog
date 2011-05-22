@@ -91,8 +91,22 @@ function Agent(options) {
 }
 $util.inherits(Agent, $http.Agent);
 
-Agent.prototype._getConnection = function(host, port, cb) {
-  var c = $net.createConnection(port, host);
+Agent.prototype._getConnection = function(options, cb) {
+  var c;
+
+  // old thyme impl (host, port, cb)
+  if (arguments.length === 3) {
+    c = $net.createConnection(arguments[1], arguments[0]);
+    cb = arguments[2];
+  }
+  // new thyme impl (options, cb)
+  else if (options.host) {
+    c = $net.createConnection(options.port, options.host);
+  } else if (options.socketPath) {
+    c = $net.createConnection(options.socketPath);
+  } else {
+    c = $net.createConnection(options.port);
+  }
   c.setTimeout(DEFAULT_IDLE_TIMEOUT_MS,
     function() {
       // Destroy the connection so we can't hear anything more the socket might

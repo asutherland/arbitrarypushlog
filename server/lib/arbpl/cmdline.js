@@ -195,6 +195,20 @@ switch (options.command) {
     );
     break;
 
+  case "logalchew":
+    $require(
+      ["arbpl/loggestchew"],
+      function($loggestchew) {
+        var chewer = new $loggestchew.LocalLoggestChewer();
+        when(chewer.chew(options[1]),
+          function(pushId) {
+            console.log("chewed log as push id:", pushId);
+            process.exit(0);
+          });
+      }
+    );
+    break;
+
   case "frob-xpcshell":
     $require(
       ["arbpl/xpcshell-logfrob"],
@@ -225,6 +239,15 @@ switch (options.command) {
   case "frob-mozmill":
     $require(
       ["arbpl/mozmill-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+      }
+    );
+    break;
+
+  case "frob-loggest":
+    $require(
+      ["arbpl/loggest-logfrob"],
       function($frobber) {
         $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
       }

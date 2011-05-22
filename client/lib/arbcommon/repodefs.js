@@ -235,6 +235,14 @@ var MC_MAPPING = {
   xulrunner: "XULRunner",
 };
 
+var DEUXDROP_MAPPING = {
+  clients: "Clients",
+  common: "Common",
+  deploy: "Deployment",
+  design: "Mockups",
+  servers: "Server",
+};
+
 /**
  * There is but one bug-tracker, and all code repositories orbit around it.
  */
@@ -301,6 +309,8 @@ CodeRepoDef.prototype = {
 };
 
 var REPOS = exports.REPOS = {
+  //////////////////////////////////////////////////////////////////////////////
+  // comm-* dev repos
   "comm-central": new CodeRepoDef({
     name: "comm-central",
     url: "http://hg.mozilla.org/comm-central/",
@@ -319,6 +329,8 @@ var REPOS = exports.REPOS = {
     dependent: true,
   }),
 
+  //////////////////////////////////////////////////////////////////////////////
+  // mozilla-* dev repos
   "mozilla-central": new CodeRepoDef({
     name: "mozilla-central",
     url: "http://hg.mozilla.org/mozilla-central/",
@@ -395,7 +407,8 @@ var REPOS = exports.REPOS = {
     family: "mozilla",
   }),
 
-
+  //////////////////////////////////////////////////////////////////////////////
+  // comm-* release repos
   "comm-miramar": new CodeRepoDef({
     name: "comm-miramar",
     url: "http://hg.mozilla.org/releases/comm-miramar/",
@@ -428,6 +441,9 @@ var REPOS = exports.REPOS = {
     family: "comm",
     dependent: true,
   }),
+
+  //////////////////////////////////////////////////////////////////////////////
+  // mozilla-* release repos
   "mozilla-miramar": new CodeRepoDef({
     name: "mozilla-miramar",
     url: "http://hg.mozilla.org/releases/mozilla-miramar/",
@@ -463,6 +479,18 @@ var REPOS = exports.REPOS = {
     path_mapping: MC_MAPPING,
     family: "mozilla",
   }),
+
+  //////////////////////////////////////////////////////////////////////////////
+  // deuxdrop repos
+  "deuxdrop": new CodeRepoDef({
+    name: "deuxdrop",
+    url: "git://github.com/mozilla/deuxdrop.git",
+    kind: "trunk",
+    path_mapping: DEUXDROP_MAPPING,
+    family: "deuxdrop",
+  }),
+
+  //////////////////////////////////////////////////////////////////////////////
 };
 
 /**
@@ -807,26 +835,38 @@ var ABANDONED_TREES = {
 /**
  * A special magic dummy tree for "localchew" inserted logs.
  */
-var DUMMY_LOCAL_TREE = new TinderTreeDef({
-  id: "local",
-  name: "Local",
-  desc: "Local logs you imported...",
-  product: "Local",
-  repos: [REPOS["comm-central"]],
-  mount: {},
-  typeGroups: [
-    "mozmill",
-  ],
-});
+var DUMMY_LOCAL_TREES = {
+  Local: new TinderTreeDef({
+    id: "local",
+    name: "Local",
+    desc: "Local logs you imported...",
+    product: "Local",
+    repos: [REPOS["comm-central"]],
+    mount: {},
+    typeGroups: [
+      "mozmill",
+    ],
+  }),
+  Logal: new TinderTreeDef({
+    id: "logal",
+    name: "Logal",
+    desc: "Local loggest logs you imported...",
+    product: "Local",
+    repos: [REPOS["deuxdrop"]],
+    mount: {},
+    typeGroups: [
+      "loggest",
+    ],
+  })
+};
 
 exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
-  for (var key in TINDER_TREES) {
-    var tree = TINDER_TREES[key];
-    if (tree.name == treeName)
-      return tree;
+  if (TINDER_TREES.hasOwnProperty(treeName)) {
+    return TINDER_TREES[treeName];
   }
-  if (treeName == "Local")
-    return DUMMY_LOCAL_TREE;
+  if (DUMMY_LOCAL_TREES.hasOwnProperty(treeName)) {
+    return DUMMY_LOCAL_TREES[treeName];
+  }
   return null;
 };
 

@@ -305,35 +305,18 @@
 }
 
 
+#generic-build-fail-summary {
+  #name {
+    font-weight: 600;
+  }
+}
+
 #xpcshell-build-fail-summary {
   #name {
     font-weight: 600;
   }
 }
 
-#mozmill-build-fail-summary {
-  #name {
-    font-weight: 600;
-  }
-}
-
-#mochitest-build-fail-summary {
-  #name {
-    font-weight: 600;
-  }
-}
-
-#reftest-build-fail-summary {
-  #name {
-    font-weight: 600;
-  }
-}
-
-#jsreftest-build-fail-summary {
-  #name {
-    font-weight: 600;
-  }
-}
 
 #build-info {
   #root {

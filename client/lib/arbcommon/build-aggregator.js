@@ -398,7 +398,8 @@ AggrBuildSummary.prototype = {
           testName = pathParts.pop();
           signature = bfail.hash;
         }
-        else {
+        else if (testType === "reftest" ||
+                 testType === "jsreftest") {
           var jsrefmatch = RE_JSREF.exec(bfail.test);
           if (jsrefmatch) {
             testType = "jsreftest";
@@ -411,6 +412,16 @@ AggrBuildSummary.prototype = {
             testName = pathParts.pop();
             signature = "";
           }
+        }
+        else if (testType === "loggest") {
+          // loggest-logfrob is currently pretending to be like mozmill, so
+          //  we use the same logic.
+          pathParts = bfail.fileName.split("/");
+          testName = bfail.testName;
+          signature = "";
+        }
+        else {
+          throw new Error("'" + testType + "' is not a real test type.");
         }
 
         // XXX we need to stop mutating testType inside the loop and hoist.

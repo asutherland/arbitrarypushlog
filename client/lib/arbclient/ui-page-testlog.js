@@ -118,6 +118,22 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "build-test-failure-loggest",
+  constraint: {
+    type: "build-test-failure",
+    obj: { type: "loggest" },
+  },
+  structure: {
+    jsonDump: "",
+  },
+  impl: {
+    postInit: function() {
+      this.jsonDump_element.textContent = JSON.stringify(this.obj, null, 2);
+    }
+  },
+});
+
+wy.defineWidget({
   name: "build-test-failure-xpcshell",
   constraint: {
     type: "build-test-failure",
