@@ -43,6 +43,8 @@
  *    and expand to show the specific activities that took place.
  * - In each test step's time interval, display each actor's actions in its own
  *    column (roughly), but with strict time-ordering (so no vertical overlap).
+ *
+ * Note that much of the legwork will be done upstream in `chew-loggest.js`.
  **/
 
 define(
