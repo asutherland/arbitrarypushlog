@@ -49,7 +49,7 @@ define(
     "./ui-peeps",
     "./ui-page-testlog",
     "./ui-stream",
-    "./ui-loghelper",
+    "./ui-loghelper", "./ui-loggest",
     "text!./ui-main.css",
     "exports"
   ],
@@ -60,7 +60,7 @@ define(
     $ui_peeps,
     $ui_page_testlog,
     $ui_stream,
-    $ui_loghelper,
+    $ui_loghelper, $ui_loggest,
     $_css,
     exports
   ) {

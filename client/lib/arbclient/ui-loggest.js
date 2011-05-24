@@ -62,6 +62,81 @@ define(
 var wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "arbpl",
                                css: $_css});
 
+wy.defineWidget({
+  name: "loggest-test-perm",
+  doc: "test case permutation results display",
+  constraint: {
+    type: "loggest-test-perm",
+  },
+  structure: {
+    loggersBlock: {
+      loggersLabel: "Involved Loggers:",
+      loggers: wy.vertList({type: "loggest-test-logger"}, "loggers"),
+    },
+    thingsBlock: {
+      thingsLabel: "Things:",
+      things: wy.vertList({type: "loggest-test-thing"}, "things"),
+    },
+    stepsBlock: {
+      stepsLabel: "Steps:",
+      steps: wy.vertList({type: "loggest-test-step"}, "steps"),
+    },
+  },
+});
+
+wy.defineWidget({
+  name: "loggest-sem-stream-thing",
+  doc: "ThingMeta in a resolved semanticIdent stream",
+  constraint: {
+    type: "loggest-sem-stream",
+    obj: {
+      type: "thing",
+    }
+  },
+  structure: wy.flow({
+    loggerIdent: wy.bind("loggerIdent"),
+    loggerSemDelim: ": ",
+    semanticIdent: wy.bind("semanticIdent"),
+  }),
+});
+
+
+wy.defineWidget({
+  name: "loggest-test-logger",
+  doc: "LoggerMeta presentation",
+  constraint: {
+    type: "loggest-test-logger",
+  },
+  structure: wy.flow({
+    loggerIdent: wy.bind(["raw", "loggerIdent"]),
+    loggerSemDelim: ": ",
+    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+  }),
+});
+
+wy.defineWidget({
+  name: "loggest-test-thing",
+  doc: "ThingMeta presentation",
+  constraint: {
+    type: "loggest-test-thing",
+  },
+  structure: wy.flow({
+    loggerIdent: wy.bind("loggerIdent"),
+    semanticIdent: wy.bind("semanticIdent"),
+  }),
+});
+
+wy.defineWidget({
+  name: "loggest-test-step",
+  doc: "TestCaseStepMeta presentation",
+  constraint: {
+    type: "loggest-test-step",
+  },
+  structure: {
+    resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
+  },
+});
+
 /**
  * Generic log4moz record handler which has to be smart to deal with a number
  *  of possible permutations:

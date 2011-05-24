@@ -42,7 +42,7 @@ define(
     "wmsy/viewslice-array",
     "./rstore",
     "arbcommon/repodefs",
-    "./chew-loghelper",
+    "./chew-loghelper", "./chew-loggest",
     "./ui-main",
     "socket.io/socket.io",
     "require",
@@ -54,7 +54,7 @@ define(
     $vs_array,
     $rstore,
     $repodefs,
-    $chew_loghelper,
+    $chew_loghelper, $chew_loggest,
     $ui_main,
     $_na_socketio,
     $require,
@@ -139,7 +139,7 @@ function ArbApp(win) {
       cloney[key] = keyDeltas[key];
     }
     return self._urlMaker(cloney);
-  }
+  };
 }
 ArbApp.prototype = {
   _useTree: function(tinderTree) {
@@ -340,7 +340,23 @@ ArbApp.prototype = {
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
       function gotLogDetail(logDetail) {
-        var chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
+        var chewedDetails;
+        switch (logDetail.type) {
+          case "mozmill":
+            chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
+            break;
+
+          case "loggest":
+            chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
+            break;
+
+          default:
+            chewedDetails = {
+              failures: [logDetail],
+            };
+            break;
+        }
+         
         self.page = {
           page: "testlog",
           pathNodes: pathNodes,

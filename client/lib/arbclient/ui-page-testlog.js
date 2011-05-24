@@ -124,12 +124,7 @@ wy.defineWidget({
     obj: { type: "loggest" },
   },
   structure: {
-    jsonDump: "",
-  },
-  impl: {
-    postInit: function() {
-      this.jsonDump_element.textContent = JSON.stringify(this.obj, null, 2);
-    }
+    permutations: wy.vertList({type: "loggest-test-perm"}, "permutations"),
   },
 });
 

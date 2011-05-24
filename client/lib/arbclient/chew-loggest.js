@@ -125,6 +125,8 @@ function TestCaseLogBundle(raw) {
   this.permutations = [];
 }
 TestCaseLogBundle.prototype = {
+  // identify for the UI (type: build-test-failure, ui-page-testlog.js)
+  type: "loggest",
 };
 
 /**
@@ -137,6 +139,13 @@ TestCaseLogBundle.prototype = {
  */
 function TestCasePermutationLogBundle(raw) {
   this._raw = raw;
+
+  this._uniqueNameMap = {};
+
+  /**
+   * @listof[ThingMeta]
+   */
+  this.things = [];
 
   /**
    * @listof[TestCaseStepMeta]
@@ -210,14 +219,33 @@ TestCaseStepMeta.prototype = {
   },
 };
 
+var UNRESOLVED_LOGGER_RAW = {};
+var UNRESOLVED_LOGGER_ENTRIES = [];
+
 /**
  * Provides distilled information about a logger from its raw loggest JSON
  *  transport data, as well as access to the raw data.
  */
 function LoggerMeta(raw, entries) {
   this.raw = raw;
+  this.entries = entries;
 }
 LoggerMeta.prototype = {
+  type: "logger",
+};
+
+var UNRESOLVED_THING_RAW = {};
+
+/**
+ * Info about a thing as declared by a unit-test.  This will either serve as a
+ *  handle for look-ups to be handled by the `TestCasePermutationLogBundle` or
+ *  will just have the pre-computed information on it.  Unsure.
+ */
+function ThingMeta(raw) {
+  this.raw = raw;
+}
+ThingMeta.prototype = {
+  type: "thing",
 };
 
 /**
@@ -239,6 +267,9 @@ function LoggestLogTransformer() {
    * ]
    */
   this._schemaHandlerMaps = {};
+
+  /** An alias to the _uniqueNameMap on the permutation. */
+  this._uniqueNameMap = null;
 }
 LoggestLogTransformer.prototype = {
   _proc_stateVar: function(ignoredMeta, entry) {
@@ -336,6 +367,129 @@ LoggestLogTransformer.prototype = {
     }
   },
 
+  /**
+   * Resolve the provided unique name to a `LoggerMeta` or `ThingMeta`
+   *  instance, speculatively instantiating new instances as needed.
+   */
+  _resolveUniqueName: function(uniqueName) {
+    var sname = uniqueName.toString();
+    if (this._uniqueNameMap.hasOwnProperty(sname))
+      return this._uniqueNameMap[sname];
+
+    // actor/logger
+    var obj;
+    if (uniqueName > 0) {
+      obj = new LoggerMeta(UNRESOLVED_LOGGER_RAW, UNRESOLVED_LOGGER_ENTRIES);
+    }
+    else {
+      obj = new ThingMeta(UNRESOLVED_THING_RAW);
+    }
+    this._uniqueNameMap[sname] = obj;
+    return obj;
+  },
+
+  /**
+   * Resolve unique name references in semantic identifiers AND apply the
+   *  whitespacing logic.  Note that the whitespacing logic is obviously
+   *  pretty latin-character-set specific.  It probably makes sense to kick the
+   *  whitespacing logic up into wmsy as some kind of delimiter hookup at some
+   *  point.
+   */
+  _resolveSemanticIdent: function(semanticIdent) {
+    if (typeof(semanticIdent) === "string")
+      return semanticIdent;
+
+    // We pose things in terms of our need of whitespace and commas because
+    //  this is easy to think about, but in reality:
+    // - needSpace === !lastThingWasAUniqueName && i !== 0
+    // - maybeNeedComma === lastThingWasAUniqueName && i !== 0
+    var resolved = [], needSpace = false, maybeNeedComma = false;
+    for (var i = 0; i < semanticIdent.length; i++) {
+      var bit = semanticIdent[i];
+      if (typeof(bit) === "string") {
+        maybeNeedComma = false;
+
+        // -- If we need whitespace coming into the string...
+        if (needSpace) {
+          // - kill the need if the left-side of the string doesn't need space
+          switch (bit[0]) {
+            // no whitespace needed for the inside of groupy things
+            case ")":
+            case "}":
+            case "]":
+            // no whitespace needed for the left-side of delimiters
+            case ":":
+            case ";":
+            case ",":
+            // if it already has white-space...
+            case " ":
+              needSpace = false;
+              break;
+          }
+          // - prepend the space if still needed
+          if (needSpace)
+            bit = " " + bit;
+        }
+
+        // -- Check if we need to set the whitespace flag going out.
+        // Only need whitespace if something is coming after us.
+        // (and it must be a named reference because we require it.)
+        if (i + 1 < semanticIdent.length) {
+          var lastChar = bit[bit.length - 1];
+          switch (lastChar) {
+            // no whitespace for the inside of groupy things
+            case "(":
+            case "{":
+            case "[":
+            // if it already has white-space...
+            case " ":
+              break;
+
+            // and for everything else, we do want white-space.
+            // (esp. for the right-side of delimiters: comma/colon/semi-colon)
+            default:
+              bit = bit + " ";
+              break;
+          }
+        }
+        needSpace = false;
+        resolved.push(bit);
+      }
+      else {
+        if (maybeNeedComma)
+          resolved.push(", ");
+
+        resolved.push(this._resolveSemanticIdent(bit));
+
+        maybeNeedComma = true;
+      }
+    }
+    return resolved;
+  },
+
+  _makeThing: function(uniqueNameStr, raw) {
+    var thing;
+    if (this._uniqueNameMap.hasOwnProperty(uniqueNameStr)) {
+      thing = this._uniqueNameMap[uniqueNameStr];
+      thing.raw = raw;
+      return thing;
+    }
+
+    thing = this._uniqueNameMap[uniqueNameStr] = new ThingMeta(raw);
+    return thing;
+  },
+
+  /**
+   * Instantiate a `TestCaseStepMeta` for a test-case, resolving name references
+   *  in the semantic ident to proper `LoggerMeta` or `ThingMeta` instances.
+   */
+  _makeStep: function(raw, entries) {
+    var stepMeta = new TestCaseStepMeta(
+      this._resolveSemanticIdent(rawKid.semanticIdent), rawKid, stepEntries);
+
+    return stepMeta;
+  },
+
   _processEntries: function(schemaName, rawEntries) {
     if (!rawEntries.length)
       return null;
@@ -358,9 +512,17 @@ LoggestLogTransformer.prototype = {
    */
   _processPermutation: function(rawPerm) {
     var perm = new TestCasePermutationLogBundle(rawPerm);
+    this._uniqueNameMap = perm._uniqueNameMap;
     var rows = perm._perStepPerLoggerEntries;
 
     var nonTestLoggers = [], stepTimeSpans = [];
+
+    // -- process named things
+    for (var thingName in rawPerm.named) {
+      var rawThing = rawPerm.named[thingName];
+      var thing = this._makeThing(thingName, rawThing);
+      perm.things.push(thing);
+    }
 
     // -- filter test step loggers, create their metas, find their time-spans
     for (var iKid = 0; iKid < rawPerm.kids.length; iKid++) {
@@ -371,7 +533,7 @@ LoggestLogTransformer.prototype = {
       }
 
       var stepEntries = this._processEntries('testStep', rawKid.entries);
-      var stepMeta = new TestCaseStepMeta(rawKid, stepEntries);
+      var stepMeta = this._makeStep(rawKid, stepEntries);
       perm.steps.push(stepMeta);
 
       // every step adds 2 rows to the matrix (actual row, after-gap)
@@ -479,6 +641,16 @@ LoggestLogTransformer.prototype = {
       caseBundle.push(this._processPermutation(rawPerm));
     }
   }
+};
+
+exports.chewLoggestCase = function chewLoggestCase(logDetail) {
+  var transformer = new LoggestLogTransformer();
+  transformer.processSchemas(logDetail.schema);
+  var caseBundle = transformer.processTestCase(logDetail.log);
+  // temporary rep for consistency with mozmill
+  return {
+    failures: [caseBundle],
+  };
 };
 
 }); // end define

@@ -43,11 +43,7 @@
     margin-bottom: 16px;
     padding: 4px;
   }
-  #jsonDump {
-    .logtext;
-  }
 }
-
 
 #build-test-failure-xpcshell {
   #root {
