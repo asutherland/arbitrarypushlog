@@ -349,9 +349,9 @@ LoggestLogTransformer.prototype = {
       if ("asyncJobs" in schemaDef) {
         for (key in schemaDef.asyncJobs) {
           handlers[key + '_begin'] = this._proc_asyncJobBegin.bind(
-                                       this, key, schemaDef.asyncJobs[key]);
-          handlers[key + '_end'] = this._proc_asyncJobBegin.bind(
-                                     this, key, schemaDef.asyncJobs[key]);
+                                       this, schemaDef.asyncJobs[key], key);
+          handlers[key + '_end'] = this._proc_asyncJobEnd.bind(
+                                     this, schemaDef.asyncJobs[key], key);
         }
       }
       if ("calls" in schemaDef) {
@@ -398,6 +398,10 @@ LoggestLogTransformer.prototype = {
   _resolveSemanticIdent: function(semanticIdent) {
     if (typeof(semanticIdent) === "string")
       return semanticIdent;
+    if (semanticIdent === null)
+      return "null";
+    if (semanticIdent.length === 1 && semanticIdent[0] === null)
+      return "[null]";
 
     // We pose things in terms of our need of whitespace and commas because
     //  this is easy to think about, but in reality:
@@ -459,7 +463,7 @@ LoggestLogTransformer.prototype = {
         if (maybeNeedComma)
           resolved.push(", ");
 
-        resolved.push(this._resolveSemanticIdent(bit));
+        resolved.push(this._resolveUniqueName(bit));
 
         maybeNeedComma = true;
       }
@@ -485,7 +489,7 @@ LoggestLogTransformer.prototype = {
    */
   _makeStep: function(raw, entries) {
     var stepMeta = new TestCaseStepMeta(
-      this._resolveSemanticIdent(rawKid.semanticIdent), rawKid, stepEntries);
+      this._resolveSemanticIdent(raw.semanticIdent), raw, entries);
 
     return stepMeta;
   },
@@ -497,8 +501,8 @@ LoggestLogTransformer.prototype = {
     var handlers = this._schemaHandlerMaps[schemaName];
     var entries = [];
     for (var i = 0; i < rawEntries.length; i++) {
-      var entry = entries[i];
-      entries.push(handlers(entry[0], entry));
+      var entry = rawEntries[i];
+      entries.push(handlers[entry[0]](entry));
     }
     return entries;
   },
@@ -526,7 +530,7 @@ LoggestLogTransformer.prototype = {
 
     // -- filter test step loggers, create their metas, find their time-spans
     for (var iKid = 0; iKid < rawPerm.kids.length; iKid++) {
-      var rawKid = kids[iKid];
+      var rawKid = rawPerm.kids[iKid];
       if (rawKid.loggerIdent !== 'testStep') {
         nonStepLoggers.push(rawKid);
         continue;
@@ -542,18 +546,18 @@ LoggestLogTransformer.prototype = {
       // the case's time-range should be defined by its first-if-any entry being
       //  a 'run' job-begin and its last-although-possibly-missing entry being a
       // 'run' job-end.
-      if (stepEntries.length === 0)
+      if (stepEntries === null) // zero-length is normalized to null!
         continue;
 
-      if (!(caseEntries[0] instanceof AsyncJobBeginEntry) ||
-          caseEntries[0].name !== 'run')
+      if (!(stepEntries[0] instanceof AsyncJobBeginEntry) ||
+          stepEntries[0].name !== 'run')
         throw new Error("Test step's first entry *must* be a run entry if " +
                         "it has any entries!");
-      var timeStart = caseEntries[0].timestamp, timeEnd;
-      var iLastEntry = caseEntries.length - 1;
-      if ((caseEntries[iLastEntry] instanceof AsyncJobEndEntry) &&
-          caseEntries[iLastEntry].name === 'run')
-        timeEnd = caseEntries[iLastEntry].timestamp;
+      var timeStart = stepEntries[0].timestamp, timeEnd;
+      var iLastEntry = stepEntries.length - 1;
+      if ((stepEntries[iLastEntry] instanceof AsyncJobEndEntry) &&
+          stepEntries[iLastEntry].name === 'run')
+        timeEnd = stepEntries[iLastEntry].timestamp;
       else
         timeEnd = null;
       stepTimeSpans.push([timeStart, timeEnd]);
@@ -631,14 +635,14 @@ LoggestLogTransformer.prototype = {
     // XXX process run_begin/run_end here perchance...
 
     var caseBundle = new TestCaseLogBundle(rawCase);
-    for (var iPerm = 0; iPerm < caseBundle.kids.length; iPerm++) {
-      var rawPerm = caseBundle.kids[iPerm];
+    for (var iPerm = 0; iPerm < rawCase.kids.length; iPerm++) {
+      var rawPerm = rawCase.kids[iPerm];
       if (rawPerm.loggerIdent !== 'testCasePermutation')
         throw new Error("The 'testCase' you gave us has a '" +
                         rawPerm.loggerIdent + "' kid where a " +
                         "'testCasePermutation' should be!");
 
-      caseBundle.push(this._processPermutation(rawPerm));
+      caseBundle.permutations.push(this._processPermutation(rawPerm));
     }
   }
 };
