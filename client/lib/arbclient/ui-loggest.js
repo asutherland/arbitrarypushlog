@@ -179,9 +179,11 @@ wy.defineWidget({
   }, {result: "result"}),
   impl: {
     postInitUpdate: function() {
-      this.collapsed = true;
+      this.collapsed = this.obj.result === 'pass';
       // set it on the twisty because of webkit's selector deficiencies
       this.twisty_element.setAttribute("collapsed", this.collapsed);
+      if (!this.collapsed)
+        this.logEntries_set(this.obj.entries);
     },
     toggleCollapsed: function() {
       this.collapsed = !this.collapsed;
@@ -288,8 +290,7 @@ wy.defineWidget({
   name: "loggest-entry-call",
   constraint: {
     type: "loggest-entry",
-    // XXX I'm not sure this will work right against the wildcard...
-    obj: {type: "call", ex: wy.NONE},
+    obj: {type: "call", ex: null},
   },
   structure: wy.flow({
     name: wy.bind("name"),
