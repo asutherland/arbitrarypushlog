@@ -595,7 +595,7 @@ LoggestLogTransformer.prototype = {
     for (var iKid = 0; iKid < rawPerm.kids.length; iKid++) {
       var rawKid = rawPerm.kids[iKid];
       if (rawKid.loggerIdent !== 'testStep') {
-        nonStepLoggers.push(rawKid);
+        nonTestLoggers.push(rawKid);
         continue;
       }
 
@@ -631,10 +631,18 @@ LoggestLogTransformer.prototype = {
       var rawLogger = nonTestLoggers[iLogger];
       var entries = this._processEntries(rawLogger.loggerIdent,
                                          rawLogger.entries);
+      var iRow;
+      if (entries === null) {
+        for (iRow = 0; iRow < rows.length; iRow++) {
+          rows[iRow].push(null);
+        }
+        continue;
+      }
+      
       var loggerMeta = new LoggerMeta(rawLogger, entries);
       perm.loggers.push(loggerMeta);
 
-      var iSpan, iRow, iEntry = 0, markEntry;
+      var iSpan, iEntry = 0, markEntry;
       // keep in mind that a failed test may not have run all the way and so
       //  we may not have all the spans.
       for (iSpan = 0, iRow = 0; iSpan < stepTimeSpans.length; iSpan++) {

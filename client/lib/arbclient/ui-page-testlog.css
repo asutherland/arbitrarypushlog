@@ -13,6 +13,15 @@
   font-weight: bold;
 }
 
+#page-header-testlog {
+  #root {
+    color: white;
+    vertical-align: center;
+  }
+  #trackNew {
+    margin-bottom: -2px;
+  }
+}
 
 #page-testlog-no-failures {
   #root {

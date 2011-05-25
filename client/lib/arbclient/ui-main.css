@@ -77,6 +77,19 @@
   #page {
     margin-top: 30px;
   }
+
+  #header {
+    display: box;
+  }
+  #pathNodes {
+    box-flex: 0;
+  }
+  #flexSoak {
+    box-flex: 1;
+  }
+  #pageHeader {
+    box-flex: 0;
+  }
 }
 
 @pathNode-height: 12px;

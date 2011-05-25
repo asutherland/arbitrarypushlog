@@ -117,7 +117,14 @@ function ArbApp(win) {
   this.error = null;
 
   /**
-   * The active UI page
+   * @dict[
+   *   @key[page String]{
+   *     The page name; wmsy widgets slave off this.
+   *   }
+   *   @key[pathNodes @listof[PathNode]]
+   * ]{
+   *   The active UI page.
+   * }
    */
   this.page = null;
 
@@ -356,11 +363,13 @@ ArbApp.prototype = {
             };
             break;
         }
-         
+
         self.page = {
           page: "testlog",
           pathNodes: pathNodes,
           failures: chewedDetails.failures,
+          // should we subscribe to new failures and jump to them?
+          autoTransitionToNewFailures: false,
         };
         self._updateState("good");
       },

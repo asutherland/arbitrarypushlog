@@ -181,6 +181,8 @@ wy.defineWidget({
   structure: {
     header: {
       pathNodes: wy.horizList({type: "header-pathnode"}, ["page", "pathNodes"]),
+      flexSoak: {},
+      pageHeader: wy.widget({type: "page-header"}, "page"),
     },
     page: wy.widget({type: "page"}, "page"),
   },
@@ -214,6 +216,15 @@ wy.defineWidget({
     arrowOutline: {},
     arrow: {},
   },
+});
+
+wy.defineWidget({
+  name: "page-header-none",
+  constraint: {
+    type: "page-header",
+    obj: { page: wy.WILD },
+  },
+  structure: {},
 });
 
 

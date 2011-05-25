@@ -77,6 +77,17 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "page-header-testlog",
+  constraint: {
+    type: "page-header",
+    obj: { page: "testlog" },
+  },
+  structure: {
+    trackNew: wy.checkbox("Track New", "autoTransitionToNewFailures"),
+  },
+});
+
+wy.defineWidget({
   name: "page-testlog-no-failures",
   constraint: {
     type: "page",
