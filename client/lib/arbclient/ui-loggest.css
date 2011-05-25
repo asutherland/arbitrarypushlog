@@ -1,1 +1,139 @@
-/* css */
+.coolio-bar (@height: 16px) {
+  display: inline-block;
+  background-color: #e8e8e8;
+  margin-left: -4px;
+  margin-top: 1em;
+  margin-bottom: 4px;
+  padding-left: 4px;
+  padding-right: @height / 2 - 2;
+  height: @height;
+  vertical-align: middle;
+  border-top-right-radius: @height / 2;
+  border-bottom-right-radius: @height / 2;
+  font-weight: bold;
+}
+
+.clickabub {
+  cursor: pointer;
+  border-bottom: 1px dotted gray;
+  display: inline-block;
+}
+
+#loggest-test-perm {
+  #whoBlock {
+  }
+
+  #actorsBlock, #loggersBlock, #thingsBlock {
+    display: inline-block;
+    border-radius: 4px;
+    border: 1px solid black;
+    margin: 4px;
+    padding: 4px;
+    vertical-align: top;
+  }
+
+  #actorsLabel, #loggersLabel, #thingsLabel {
+    display: block;
+    border-radius: 4px;
+    margin: -4px;
+    margin-bottom: 4px;
+    padding: 4px;
+    background-color: black;
+    color: white;
+  }
+
+  #stepsLabel {
+    .coolio-bar;
+  }
+
+  #stepsBlock {
+    padding: 4px;
+  }
+}
+
+#loggest-test-actor {
+  #root {
+  }
+}
+
+#loggest-test-thing {
+  #root {
+  }
+}
+
+#loggest-sem-stream-actor {
+  #root {
+    .clickabub;
+  }
+  #semanticIdent {
+    font-weight: bold;
+  }
+}
+
+#loggest-sem-stream-thing {
+  #root {
+    .clickabub;
+  }
+  #name {
+    font-weight: bold;
+  }
+}
+
+@pass-bg-color: #efe;
+@fail-bg-color: #fee;
+@skip-bg-color: #ffe;
+
+
+#loggest-test-step {
+  #root {
+    margin: 4px;
+    border: 1px solid gray;
+    border-radius: 4px;
+    padding: 4px;
+  }
+  #root[result="pass"] {
+    background-color: @pass-bg-color;
+  }
+  #root[result="fail"] {
+    background-color: @fail-bg-color;
+  }
+  #root[result="skip"] {
+    background-color: @skip-bg-color;
+  }
+
+  #twisty {
+    display: inline-block;
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAACBJREFUGNNjYEADLi4u/9HFmBiIANRTxIjNDQTBIHA4AGoSBW8bLg5PAAAAAElFTkSuQmCC");
+    width: 9px;
+    height: 9px;
+    margin-right: 4px;
+
+    [collapsed="false"] {
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAABRJREFUGNNjYBh8gNHFxeU/wxAEAEg0Ac1XyUc8AAAAAElFTkSuQmCC");
+    }
+  }
+}
+
+
+#loggest-entry-state-change {
+}
+
+#loggest-entry-event {
+}
+
+#loggest-entry-async-job-begin {
+}
+#loggest-entry-async-job-end {
+}
+#loggest-entry-call {
+}
+#loggest-entry-call-with-ex {
+  #stack {
+    margin-left: 2em;
+    white-space: pre-wrap;
+  }
+}
+
+
+#loggest-entry-error {
+}

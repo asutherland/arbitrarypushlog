@@ -123,7 +123,12 @@ wy.defineWidget({
     type: "build-test-failure",
     obj: { type: "loggest" },
   },
+  focus: wy.focus.container.vertical("permutations"),
   structure: {
+    testHeader: {
+      testName: wy.bind("testName"),
+      fileName: wy.bind("fileName"),
+    },
     permutations: wy.vertList({type: "loggest-test-perm"}, "permutations"),
   },
 });

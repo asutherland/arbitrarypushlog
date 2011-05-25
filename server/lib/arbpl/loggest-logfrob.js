@@ -124,6 +124,7 @@ Frobber.prototype = {
         }
         var detailObj = {
           type: "loggest",
+          fileName: definerLog.semanticIdent,
           schema: schema,
           log: testCaseLog,
         };

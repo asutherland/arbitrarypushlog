@@ -57,7 +57,7 @@ function StateChangeEntry(timestamp, seq, name, value) {
   this.value = value;
 }
 StateChangeEntry.prototype = {
-  type: "begin",
+  type: "state",
 };
 
 function EventEntry(timestamp, seq, name, args) {
@@ -114,8 +114,11 @@ ErrorEntry.prototype = {
   type: "error",
 };
 
-function TestCaseLogBundle(raw) {
+function TestCaseLogBundle(fileName, raw) {
   this._raw = raw;
+
+  this.fileName = fileName;
+  this.testName = raw.semanticIdent;
 
   /**
    * @listof[TestCasePermutationLogBundle]{
@@ -143,7 +146,16 @@ function TestCasePermutationLogBundle(raw) {
   this._uniqueNameMap = {};
 
   /**
-   * @listof[ThingMeta]
+   * @listof[ActorMeta]{
+   *   The 'actors' defined in this test case/permutation.
+   * }
+   */
+  this.actors = [];
+
+  /**
+   * @listof[ThingMeta]{
+   *   The 'things' defined in this test case/permutation.
+   * }
    */
   this.things = [];
 
@@ -180,9 +192,15 @@ function TestCasePermutationLogBundle(raw) {
 TestCasePermutationLogBundle.prototype = {
 };
 
-function TestCaseStepMeta(raw, entries) {
+function TestCaseStepMeta(resolvedIdent, raw, entries) {
+  this.resolvedIdent = resolvedIdent;
   this._raw = raw;
-  this._entries = entries;
+  this.entries = entries;
+
+  if (raw.latched && ("result" in raw.latched))
+    this.result = raw.latched.result;
+  else
+    this.result = 'skip';
 
   /**
    * @listof[LoggerMeta]{
@@ -219,8 +237,6 @@ TestCaseStepMeta.prototype = {
   },
 };
 
-var UNRESOLVED_LOGGER_RAW = {};
-var UNRESOLVED_LOGGER_ENTRIES = [];
 
 /**
  * Provides distilled information about a logger from its raw loggest JSON
@@ -247,6 +263,23 @@ function ThingMeta(raw) {
 ThingMeta.prototype = {
   type: "thing",
 };
+
+var UNRESOLVED_ACTOR_RAW = {};
+
+/**
+ * Info about an actor as declared by a unit-test.  This mainly serves as an
+ *  alias to a logger that can be referenced on its own by the semantic
+ *  identifiers of test cases.  (Currently the theory is that loggers should
+ *  not be name-checked in semantic identifiers which is significant because
+ *  loggers and actors using the same numeric space for their unique names.)
+ */
+function ActorMeta(raw) {
+  this.raw = raw;
+}
+ActorMeta.prototype = {
+  type: "actor",
+};
+
 
 /**
  * Feed it some schemas then feed it logs derived from those schemas and it will
@@ -307,7 +340,7 @@ LoggestLogTransformer.prototype = {
       args[key] = entry[++numArgs];
     }
     if (entry.length > numArgs + 5)
-      ex = entry[numArgs + 3];
+      ex = entry[numArgs + 5];
     return new CallEntry(entry[numArgs+1], entry[numArgs+2],
                          entry[numArgs+3], entry[numArgs+4],
                          entry[0], args, ex);
@@ -368,19 +401,21 @@ LoggestLogTransformer.prototype = {
   },
 
   /**
-   * Resolve the provided unique name to a `LoggerMeta` or `ThingMeta`
-   *  instance, speculatively instantiating new instances as needed.
+   * Resolve the provided unique name in a semantic ident context to a
+   *  `ActorMeta` or `ThingMeta` instance, speculatively instantiating new
+   *  instances as needed.
    */
-  _resolveUniqueName: function(uniqueName) {
+  _resolveUniqueNameInSemanticIdent: function(uniqueName) {
     var sname = uniqueName.toString();
     if (this._uniqueNameMap.hasOwnProperty(sname))
       return this._uniqueNameMap[sname];
 
-    // actor/logger
+    // - actor (loggers forbidden in this context)
     var obj;
     if (uniqueName > 0) {
-      obj = new LoggerMeta(UNRESOLVED_LOGGER_RAW, UNRESOLVED_LOGGER_ENTRIES);
+      obj = new ActorMeta(UNRESOLVED_ACTOR_RAW);
     }
+    // - thing
     else {
       obj = new ThingMeta(UNRESOLVED_THING_RAW);
     }
@@ -463,14 +498,35 @@ LoggestLogTransformer.prototype = {
         if (maybeNeedComma)
           resolved.push(", ");
 
-        resolved.push(this._resolveUniqueName(bit));
+        resolved.push(this._resolveUniqueNameInSemanticIdent(bit));
 
         maybeNeedComma = true;
+        needSpace = true;
       }
     }
     return resolved;
   },
 
+  /**
+   * Instantiate a new actor if not already present in the unique name map, or
+   *  update the existing entry if it is already there.
+   */
+  _makeActor: function(uniqueNameStr, raw) {
+    var actor;
+    if (this._uniqueNameMap.hasOwnProperty(uniqueNameStr)) {
+      actor = this._uniqueNameMap[uniqueNameStr];
+      actor.raw = raw;
+      return thing;
+    }
+
+    actor = this._uniqueNameMap[uniqueNameStr] = new ActorMeta(raw);
+    return actor;
+  },
+
+  /**
+   * Instantiate a new thing if not already present in the unique name map, or
+   *  update the existing entry if it is already there.
+   */
   _makeThing: function(uniqueNameStr, raw) {
     var thing;
     if (this._uniqueNameMap.hasOwnProperty(uniqueNameStr)) {
@@ -521,11 +577,18 @@ LoggestLogTransformer.prototype = {
 
     var nonTestLoggers = [], stepTimeSpans = [];
 
-    // -- process named things
-    for (var thingName in rawPerm.named) {
-      var rawThing = rawPerm.named[thingName];
-      var thing = this._makeThing(thingName, rawThing);
-      perm.things.push(thing);
+    // -- process named things/actors
+    // (Loggers share the same namespace (positive numbers) as actors but don't
+    //  go in this dictionary because they live in the kids hierarchy tree.)
+    for (var strName in rawPerm.named) {
+      var numName = parseInt(strName);
+      var rawNamed = rawPerm.named[strName];
+      // - actor
+      if (numName > 0)
+        perm.actors.push(this._makeActor(strName, rawNamed));
+      // - thing
+      else
+        perm.things.push(this._makeThing(strName, rawNamed));
     }
 
     // -- filter test step loggers, create their metas, find their time-spans
@@ -627,14 +690,14 @@ LoggestLogTransformer.prototype = {
    *
    * @return[TestCaseLogBundle]
    */
-  processTestCase: function(rawCase) {
+  processTestCase: function(fileName, rawCase) {
     if (rawCase.loggerIdent !== 'testCase')
       throw new Error("You gave us a '" + rawCase.loggerIdent +
                       "', not a 'testCase'!");
 
     // XXX process run_begin/run_end here perchance...
 
-    var caseBundle = new TestCaseLogBundle(rawCase);
+    var caseBundle = new TestCaseLogBundle(fileName, rawCase);
     for (var iPerm = 0; iPerm < rawCase.kids.length; iPerm++) {
       var rawPerm = rawCase.kids[iPerm];
       if (rawPerm.loggerIdent !== 'testCasePermutation')
@@ -644,13 +707,15 @@ LoggestLogTransformer.prototype = {
 
       caseBundle.permutations.push(this._processPermutation(rawPerm));
     }
+    return caseBundle;
   }
 };
 
 exports.chewLoggestCase = function chewLoggestCase(logDetail) {
   var transformer = new LoggestLogTransformer();
   transformer.processSchemas(logDetail.schema);
-  var caseBundle = transformer.processTestCase(logDetail.log);
+  var caseBundle = transformer.processTestCase(logDetail.fileName,
+                                               logDetail.log);
   // temporary rep for consistency with mozmill
   return {
     failures: [caseBundle],

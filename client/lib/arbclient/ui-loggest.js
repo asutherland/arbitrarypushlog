@@ -68,20 +68,43 @@ wy.defineWidget({
   constraint: {
     type: "loggest-test-perm",
   },
+  focus: wy.focus.container.vertical("steps"),
   structure: {
-    loggersBlock: {
-      loggersLabel: "Involved Loggers:",
-      loggers: wy.vertList({type: "loggest-test-logger"}, "loggers"),
+    whoBlock: {
+      actorsBlock: {
+        actorsLabel: "Actors:",
+        actors: wy.vertList({type: "loggest-test-actor"}, "actors"),
+      },
+      thingsBlock: {
+        thingsLabel: "Things:",
+        things: wy.vertList({type: "loggest-test-thing"}, "things"),
+      },
+      loggersBlock: {
+        loggersLabel: "Involved Loggers:",
+        loggers: wy.vertList({type: "loggest-test-logger"}, "loggers"),
+      },
     },
-    thingsBlock: {
-      thingsLabel: "Things:",
-      things: wy.vertList({type: "loggest-test-thing"}, "things"),
-    },
+    stepsLabel: "Steps:",
     stepsBlock: {
-      stepsLabel: "Steps:",
       steps: wy.vertList({type: "loggest-test-step"}, "steps"),
     },
   },
+});
+
+wy.defineWidget({
+  name: "loggest-sem-stream-actor",
+  doc: "ActorMeta in a resolved semanticIdent stream",
+  constraint: {
+    type: "loggest-sem-stream",
+    obj: {
+      type: "actor",
+    }
+  },
+  structure: wy.flow({
+    actorIdent: wy.bind(["raw", "actorIdent"]),
+    ws: " ",
+    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+  }),
 });
 
 wy.defineWidget({
@@ -115,14 +138,28 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "loggest-test-actor",
+  doc: "ActorMeta presentation",
+  constraint: {
+    type: "loggest-test-actor",
+  },
+  structure: wy.flow({
+    actorIdent: wy.bind(["raw", "actorIdent"]),
+    ws: " ",
+    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+  }),
+});
+
+wy.defineWidget({
   name: "loggest-test-thing",
   doc: "ThingMeta presentation",
   constraint: {
     type: "loggest-test-thing",
   },
   structure: wy.flow({
-    loggerIdent: wy.bind("loggerIdent"),
-    semanticIdent: wy.bind("semanticIdent"),
+    type: wy.bind(["raw", "type"]),
+    ws: " ",
+    name: wy.bind(["raw", "name"]),
   }),
 });
 
@@ -132,9 +169,185 @@ wy.defineWidget({
   constraint: {
     type: "loggest-test-step",
   },
-  structure: {
-    resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
+  focus: wy.focus.item,
+  structure: wy.block({
+    headerRow: {
+      twisty: {},
+      resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
+    },
+    logEntries: wy.vertList({type: "loggest-entry"}, wy.NONE),
+  }, {result: "result"}),
+  impl: {
+    postInitUpdate: function() {
+      this.collapsed = true;
+      // set it on the twisty because of webkit's selector deficiencies
+      this.twisty_element.setAttribute("collapsed", this.collapsed);
+    },
+    toggleCollapsed: function() {
+      this.collapsed = !this.collapsed;
+      if (this.collapsed)
+        this.logEntries_set(null);
+      else
+        this.logEntries_set(this.obj.entries);
+      this.twisty_element.setAttribute("collapsed", this.collapsed);
+      this.FOCUS.bindingResized(this);
+    },
   },
+  events: {
+    root: {
+      command: function() {
+        this.toggleCollapsed();
+      },
+    },
+  },
+
 });
+
+function stringifyArgs(args) {
+  var s = "";
+  for (var key in args) {
+    if (s)
+      s += ", ";
+    s += key + ": " + args[key];
+  }
+  return s;
+}
+
+wy.defineWidget({
+  name: "loggest-entry-state-change",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "state"},
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    arrow: " => ",
+    value: wy.bind("value"),
+  }),
+});
+
+wy.defineWidget({
+  name: "loggest-entry-event",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "event"},
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    lParen: "! (",
+    argsStr: "",
+    rParen: ")",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-async-job-begin",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "async-begin"},
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    lParen: "(",
+    argsStr: "",
+    rParenDots: ")...",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-async-job-end",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "async-end"},
+  },
+  structure: wy.flow({
+    dots: "...",
+    name: wy.bind("name"),
+    lParen: "(",
+    argsStr: "",
+    rParen: ")",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-call",
+  constraint: {
+    type: "loggest-entry",
+    // XXX I'm not sure this will work right against the wildcard...
+    obj: {type: "call", ex: wy.NONE},
+  },
+  structure: wy.flow({
+    name: wy.bind("name"),
+    lParen: "(",
+    argsStr: "",
+    rParen: ")",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-call-with-ex",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "call", ex: wy.WILD},
+  },
+  structure: {
+    eventLine: wy.flow({
+      name: wy.bind("name"),
+      lParen: "(",
+      argsStr: "",
+      rParen: ") => ",
+      exMessage: wy.bind(["ex", "message"]),
+    }),
+    exBlock: {
+      stack: wy.bind(["ex", "stack"]),
+    },
+  },
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+
+wy.defineWidget({
+  name: "loggest-entry-error",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "error"},
+  },
+  structure: wy.flow({
+    errLabel: "ERR! ",
+    name: wy.bind("name"),
+    colon: ": ",
+    argsStr: "",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
 
 }); // end define
