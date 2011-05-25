@@ -170,18 +170,22 @@ wy.defineWidget({
     type: "loggest-test-step",
   },
   focus: wy.focus.item,
-  structure: wy.block({
-    headerRow: {
+  structure: {
+    headerRow: wy.block({
       twisty: {},
       resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
-    },
-    logEntries: wy.vertList({type: "loggest-entry"}, wy.NONE),
-  }, {result: "result"}),
+    }, {result: "result"}),
+    contentBlock: {
+      logEntries: wy.vertList({type: "loggest-entry"}, wy.NONE),
+    }
+  },
   impl: {
     postInitUpdate: function() {
       this.collapsed = this.obj.result === 'pass';
-      // set it on the twisty because of webkit's selector deficiencies
+      // set it on all these directly because of webkit's selector deficiencies
       this.twisty_element.setAttribute("collapsed", this.collapsed);
+      this.headerRow_element.setAttribute("collapsed", this.collapsed);
+      this.contentBlock_element.setAttribute("collapsed", this.collapsed);
       if (!this.collapsed)
         this.logEntries_set(this.obj.entries);
     },
@@ -192,6 +196,8 @@ wy.defineWidget({
       else
         this.logEntries_set(this.obj.entries);
       this.twisty_element.setAttribute("collapsed", this.collapsed);
+      this.headerRow_element.setAttribute("collapsed", this.collapsed);
+      this.contentBlock_element.setAttribute("collapsed", this.collapsed);
       this.FOCUS.bindingResized(this);
     },
   },

@@ -89,15 +89,22 @@
     margin: 4px;
     border: 1px solid gray;
     border-radius: 4px;
+  }
+  #headerRow {
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
     padding: 4px;
   }
-  #root[result="pass"] {
+  #headerRow[collapsed="true"] {
+    border-radius: 4px;
+  }
+  #headerRow[result="pass"] {
     background-color: @pass-bg-color;
   }
-  #root[result="fail"] {
+  #headerRow[result="fail"] {
     background-color: @fail-bg-color;
   }
-  #root[result="skip"] {
+  #headerRow[result="skip"] {
     background-color: @skip-bg-color;
   }
 
@@ -111,6 +118,16 @@
     [collapsed="false"] {
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAABRJREFUGNNjYBh8gNHFxeU/wxAEAEg0Ac1XyUc8AAAAAElFTkSuQmCC");
     }
+  }
+
+  #contentBlock {
+    border-top: 1px solid gray;
+  }
+  #contentBlock[collapsed="true"] {
+    display: none;
+  }
+  #logEntries {
+    margin: 4px;
   }
 }
 
