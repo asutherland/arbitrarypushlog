@@ -279,10 +279,10 @@ wy.defineWidget({
       // the rows we care about, based on our step index.  Every step cares about
       //  its before and itself, the last step cares about its after too.
       var rows = [];
-      rows.push(perm._perStepPerLoggerEntries[stepIndex*2]);
-      rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 1]);
+      rows.push(perm._perStepPerLoggerEntries[stepIndex*2]); // before
+      rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 1]); // the step
       if (isLastStep)
-        rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 2]);
+        rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 2]); // after
 
       // -- figure out the involved loggers from the step info
       var iLogger, logger, colMeta;
@@ -562,6 +562,28 @@ wy.defineWidget({
     name: wy.bind("name"),
     colon: ": ",
     argsStr: "",
+  }),
+  impl: {
+    postInitUpdate: function() {
+      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
+    }
+  }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-failed-expectation",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "failed-expectation"},
+  },
+  structure: wy.flow({
+    errLabel: "failed expectation: ",
+    expType: wy.bind("expType"),
+    colon: ": ",
+    name: wy.bind("name"),
+    lParen: "(",
+    argsStr: "",
+    rParen: ")",
   }),
   impl: {
     postInitUpdate: function() {

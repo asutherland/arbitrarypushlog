@@ -114,6 +114,17 @@ ErrorEntry.prototype = {
   type: "error",
 };
 
+function FailedExpectationEntry(timestamp, seq, expType, name, args) {
+  this.timestamp = timestamp;
+  this.seq = seq;
+  this.expType = expType;
+  this.name = name;
+  this.args = args;
+}
+FailedExpectationEntry.prototype = {
+  type: "failed-expectation",
+};
+
 function TestCaseLogBundle(fileName, raw) {
   this._raw = raw;
 
@@ -354,6 +365,20 @@ LoggestLogTransformer.prototype = {
     return new ErrorEntry(entry[numArgs+1], entry[numArgs+2], entry[0], args);
   },
 
+  _proc_failedExpectation: function(schemaSoup, entry) {
+    var exp = entry[1];
+    var expName = exp[0];
+    var schemaType = schemaSoup[expName][0];
+    var schema = schemaSoup[expName][1];
+
+    var numArgs = 0, args = {};
+    for (var key in schema) {
+      args[key] = exp[++numArgs];
+    }
+    return new FailedExpectationEntry(entry[2], entry[3], schemaType,
+                                      expName, args);
+  },
+
   /**
    * Tell us about the schemas used in one or more loggers before we process
    *  them.
@@ -367,33 +392,44 @@ LoggestLogTransformer.prototype = {
     for (var schemaName in schemas) {
       var key, schemaDef = schemas[schemaName];
       var handlers = this._schemaHandlerMaps[schemaName] = {};
+      var schemaSoup = {};
+
+      handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
+                                                                 schemaSoup);
 
       if ("stateVars" in schemaDef) {
         for (key in schemaDef.stateVars) {
+          schemaSoup[key] = ['state', schemaDef.stateVars[key]];
           handlers[key] = this._proc_stateVar.bind(this,
                                                    schemaDef.stateVars[key]);
         }
       }
       if ("events" in schemaDef) {
         for (key in schemaDef.events) {
+          schemaSoup[key] = ['event', schemaDef.events[key]];
           handlers[key] = this._proc_event.bind(this, schemaDef.events[key]);
         }
       }
       if ("asyncJobs" in schemaDef) {
         for (key in schemaDef.asyncJobs) {
+          schemaSoup[key + '_begin'] = ['async job begin',
+                                        schemaDef.asyncJobs[key]];
           handlers[key + '_begin'] = this._proc_asyncJobBegin.bind(
                                        this, schemaDef.asyncJobs[key], key);
+          schemaSoup[key + '_end'] = ['async job end', schemaDef.asyncJobs[key]];
           handlers[key + '_end'] = this._proc_asyncJobEnd.bind(
                                      this, schemaDef.asyncJobs[key], key);
         }
       }
       if ("calls" in schemaDef) {
         for (key in schemaDef.calls) {
+          schemaSoup[key] = ['call', schemaDef.calls[key]];
           handlers[key] = this._proc_call.bind(this, schemaDef.calls[key]);
         }
       }
       if ("errors" in schemaDef) {
         for (key in schemaDef.errors) {
+          schemaSoup[key] = ['error', schemaDef.errors[key]];
           handlers[key] = this._proc_error.bind(this, schemaDef.errors[key]);
         }
       }
@@ -621,6 +657,9 @@ LoggestLogTransformer.prototype = {
       if ((stepEntries[iLastEntry] instanceof AsyncJobEndEntry) &&
           stepEntries[iLastEntry].name === 'run')
         timeEnd = stepEntries[iLastEntry].timestamp;
+      else if ((stepEntries[iLastEntry] instanceof ErrorEntry) &&
+               stepEntries[iLastEntry].name === 'timeout')
+        timeEnd = stepEntries[iLastEntry].timestamp;
       else
         timeEnd = null;
       stepTimeSpans.push([timeStart, timeEnd]);
@@ -664,7 +703,7 @@ LoggestLogTransformer.prototype = {
         var timeEnd = stepTimeSpans[iSpan][1];
         // unbounded timeEnd means everything goes in there!
         if (timeEnd === null) {
-          markEntry = entries.length;
+          iEntry = entries.length;
         }
         else {
           while (iEntry < entries.length &&

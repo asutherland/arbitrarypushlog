@@ -167,3 +167,9 @@
 
 #loggest-entry-error {
 }
+
+#loggest-entry-failed-expectation {
+  #root {
+    color: red;
+  }
+}
