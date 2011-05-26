@@ -80,11 +80,18 @@ function commonLoad(url, promiseName, promiseRef) {
 
 var CONNECT_RETRY_INTERVAL = 5000;
 
+var APP_LISTENER_DUMMY = {
+  onNewPush: function() {},
+  onModifiedPush: function() {},
+  onUnsubscribedPush: function() {},
+};
+
 /**
  * Per-tinderbox tree server talking.
  */
 function RemoteStore(listener) {
-  this._listener = listener;
+  this._connListener = listener;
+  this._appListener = null;
 
   this.tinderTree = null;
   this.urlBase = "/";
@@ -176,7 +183,7 @@ RemoteStore.prototype = {
    */
   onConnect: function() {
     this._connected = true;
-    this._listener.onConnectionStateChange();
+    this._connListener.onConnectionStateChange();
 
     if (this._retryTimeout !== null) {
       window.clearTimeout(this._retryTimeout);
@@ -237,7 +244,7 @@ RemoteStore.prototype = {
 
   onDisconnect: function() {
     this._connected = false;
-    this._listener.onConnectionStateChange();
+    this._connListener.onConnectionStateChange();
 
     //console.log("socket.io connection lost; attempting reconnect");
     this._tryToReconnect();
@@ -274,8 +281,11 @@ RemoteStore.prototype = {
     return b.push.pushDate - a.push.pushDate;
   },
 
-  subscribeToRecent: function(desiredPushesCount) {
-    if (this._prevSubMode === "recent") {
+  subscribeToRecent: function(desiredPushesCount, appListener) {
+    this._appListener = appListener;
+    if (this._subMode === "recent") {
+    }
+    else if (this._subMode === null && this._prevSubMode === "recent") {
       this._resubscribe(this._prevSubMode, false);
       return;
     }
@@ -293,8 +303,9 @@ RemoteStore.prototype = {
     });
   },
 
-  subscribeToPushId: function(highPushId, desiredPushesCount) {
-    if (this._prevSubMode === "range" &&
+  subscribeToPushId: function(highPushId, desiredPushesCount, appListener) {
+    this._appListener = appListener;
+    if (this._subMode === null && this._prevSubMode === "range" &&
         this._knownPushes.hasOwnProperty(highPushId) &&
         this._desiredPushes === desiredPushesCount) {
       this._resubscribe(this._prevSubMode, false);
@@ -352,6 +363,7 @@ RemoteStore.prototype = {
    *  changes have occurred (and the server supports it.)
    */
   unsubscribe: function() {
+    this._appListener = APP_LISTENER_DUMMY;
     this._prevSubMode = this._subMode;
     this._subMode = null;
 
@@ -383,14 +395,14 @@ RemoteStore.prototype = {
       if (pushId < lowSub || pushId > highSub) {
         var buildPush = this._knownPushes[pushIdStr];
         delete this._knownPushes[pushIdStr];
-        this._listener.onUnsubscribedPush(buildPush);
+        this._appListener.onUnsubscribedPush(buildPush);
       }
     }
 
     var believedRecent = (this._subMode === "recent");
     if (believedRecent != msg.subRecent) {
       this._subMode = msg.subRecent ? "recent" : "range";
-      this._listener.onSubModeChange(this._subMode);
+      this._connListener.onSubModeChange(this._subMode);
     }
   },
 
@@ -400,7 +412,7 @@ RemoteStore.prototype = {
         msg.revForTimestamp != this._revForTimestamp) {
       this._accurateAsOfMillis = msg.accurateAsOfMillis;
       this._revForTimestamp = msg.revForTimestamp;
-      this._listener.onConnectionStateChange();
+      this._connListener.onConnectionStateChange();
     }
   },
 
@@ -429,7 +441,7 @@ RemoteStore.prototype = {
 
     var buildPush = this._normalizeOnePush(msg.keysAndValues);
     this._knownPushes[buildPush.push.id] = buildPush;
-    this._listener.onNewPush(buildPush);
+    this._appListener.onNewPush(buildPush);
 
     this._checkAccuracyChange(msg);
   },
@@ -460,7 +472,7 @@ RemoteStore.prototype = {
     //console.log("delta!", buildPush);
     if (anyChanges) {
       this._normalizeOnePush(msg.keysAndValues, buildPush);
-      this._listener.onModifiedPush(buildPush);
+      this._appListener.onModifiedPush(buildPush);
     }
 
     this._checkSubs(msg);
@@ -476,7 +488,7 @@ RemoteStore.prototype = {
     for (var pushId = msg.subHighPushId;
          this._knownPushes.hasOwnProperty(pushId);
          pushId--) {
-      this._listener.onNewPush(this._knownPushes[pushId]);
+      this._appListener.onNewPush(this._knownPushes[pushId]);
     }
   },
 

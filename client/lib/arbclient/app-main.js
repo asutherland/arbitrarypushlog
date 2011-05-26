@@ -68,6 +68,16 @@ var DESIRED_PUSHES = 6;
  * Responsible for tracking the general state of the application and handling
  *  navigation amongst various supported pages including web browser history
  *  ramifications.  Bound into wmsy widgets in ui-main.js.
+ *
+ * @typedef[AbsoluteLoc @dictof[
+ *   @key["location value" String]{
+ *     One of the keys from `ORDERED_LOCATION_KEYS`.
+ *   }
+ *   @value[Object]
+ * ]]{
+ *   An object representing an explicit document location rather than
+ *   transition information relative to the current location.
+ * }
  */
 function ArbApp(win) {
   this.tinderTree = null;
@@ -80,6 +90,10 @@ function ArbApp(win) {
 
   /**
    * @oneof[
+   *   @case["picktree"]{
+   *     We don't know what tree we want to connect to yet.  Nothing happens
+   *     until the user picks a tree.
+   *   }
    *   @case["connecting"]{
    *     Our initial state when we are assuming the server is there but we have
    *     not yet gotten it to spill the required set of initial data.
@@ -113,8 +127,6 @@ function ArbApp(win) {
    *  have a UI, a sufficient stub must be provided.
    */
   this.binding = null;
-
-  this.error = null;
 
   /**
    * @dict[
@@ -162,7 +174,7 @@ ArbApp.prototype = {
       this.binding.update();
   },
 
-  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "test"],
+  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "autonew"],
   /**
    * Infer current application state from our current URL state and make it so.
    *  This is the only code path for changing meaningful application state for
@@ -209,9 +221,19 @@ ArbApp.prototype = {
     }
 
     // yes log, request it
-    this._getLog(loc.pushid, loc.log, loc.test, pathNodes);
+    this._getLog(loc.pushid, loc.log, pathNodes, loc.autonew);
   },
 
+  /**
+   * Generate a (relative) navigation URL to accomplish the provided
+   *  (absolute) location object state.  The `boundUrlMaker` and `navigate`
+   *  methods take a relative dictionary that applies changes on top of the
+   *  current location, and are probably what you want to use instead.
+   *
+   * @args[
+   *   @param[loc AbsoluteLoc]
+   * ]
+   */
   _urlMaker: function(loc) {
     var qbits = [];
     for (var iKey = 0; iKey < this.ORDERED_LOCATION_KEYS.length; iKey++) {
@@ -226,6 +248,19 @@ ArbApp.prototype = {
     return navUrl;
   },
 
+  /**
+   * Update our concept of our current location, possibly updating the
+   *  application state.
+   *
+   * @args[
+   *   @param[loc AbsoluteLoc]
+   *   @param[alreadyInEffect Boolean]{
+   *     If false, then we automatically call `_popLocation` to update the
+   *     application state to be consistent with the URL.  Otherwise we
+   *     assume the application is already in the state named by `loc.
+   *   }
+   * ]
+   */
   _setLocation: function(loc, alreadyInEffect) {
     this._loc = loc;
     var navUrl = this._urlMaker(loc);
@@ -262,64 +297,8 @@ ArbApp.prototype = {
    *  push/set of pushes.
    */
   _getPushes: function(highPushId, pathNodes) {
-    this._updateState("connecting");
-    var self = this;
-
-    self._slice_pushes = new $vs_array.ArrayViewSlice([]);
-    self.page = {
-      page: "pushes",
-      pathNodes: pathNodes,
-      pushes: self._slice_pushes,
-      rstore: self.rstore,
-    };
-    self._updateState("good");
-
-    if (!highPushId)
-      self.rstore.subscribeToRecent(DESIRED_PUSHES);
-    else
-      self.rstore.subscribeToPushId(highPushId, DESIRED_PUSHES);
-  },
-
-  /**
-   * Notification from the `RemoteStore` about a new `BuildPush`.
-   *
-   * @args[
-   *   @param[push BuildPush]
-   * ]
-   */
-  onNewPush: function(buildPush) {
-    // This goes at either end, so we don't have to get fancy on the index
-    //  finding.  Put it at the front unless it's older than the front push.
-    // (We order most recent to oldest.)
-    var idx = 0;
-    var slist = this._slice_pushes._list;
-    if (slist.length &&
-        buildPush.push.id < slist[0].push.id)
-      idx = slist.length;
-    // no antics for now, it doesn't know what to do for adds anyways.
-    //this.binding.ANTICS.prepare("buildpush");
-    this._slice_pushes.mutateSplice(idx, 0, buildPush);
-    //this.binding.ANTICS.go("buildpush");
-  },
-
-  /**
-   * Notification from the `RemoteStore` that an existing `BuildPush` or one
-   *  of its children has been updated.
-   */
-  onModifiedPush: function(buildPush) {
-    this.binding.IDSPACE.updateUsingObject("buildpush", buildPush);
-  },
-
-  /**
-   * Notification from the `RemoteStrore` that a `BuildPush` known to us has
-   *  been unsubscribed.
-   */
-  onUnsubscribedPush: function(buildPush) {
-    var slist = this._slice_pushes._list;
-    // no antics for now, it doesn't know what to do for adds anyways.
-    //this.binding.ANTICS.prepare("buildpush");
-    this._slice_pushes.mutateSplice(slist.indexOf(buildPush), 1);
-    //this.binding.ANTICS.go("buildpush");
+    this.page = new PushesPage(highPushId, pathNodes, this.rstore);
+    this._updateState("good");
   },
 
   /**
@@ -338,7 +317,20 @@ ArbApp.prototype = {
     this.binding.emit_subModeChanged();
   },
 
-  _getLog: function(pushId, buildId, filterToTest, pathNodes) {
+  /**
+   * Retrieve the test log for a specific test and display it, or switch to
+   *  an error state if we failed to retrieve the log.
+   *
+   * @args[
+   *   @param[pushId]
+   *   @param[buildId]{
+   *     A compound, opaque identifier that is comprised of the build/test log
+   *     in question and the specific test from that run we are interested in.
+   *   }
+   *   @param[pathNodes]
+   * ]
+   */
+  _getLog: function(pushId, buildId, pathNodes, autoNew) {
     this._updateState("connecting");
 
     // XXX actually, we probably still want a sub, just no watched pushes.
@@ -364,13 +356,8 @@ ArbApp.prototype = {
             break;
         }
 
-        self.page = {
-          page: "testlog",
-          pathNodes: pathNodes,
-          failures: chewedDetails.failures,
-          // should we subscribe to new failures and jump to them?
-          autoTransitionToNewFailures: false,
-        };
+        self.page = new TestLogPage(pushId, chewedDetails, autoNew,
+                                    pathNodes, self.rstore);
         self._updateState("good");
       },
       function fetchProblem(err) {
@@ -381,10 +368,128 @@ ArbApp.prototype = {
   },
 };
 
+function PushesPage(highPushId, pathNodes, rstore) {
+  this.pathNodes = pathNodes;
+  this.rstore = rstore;
+
+  if (!highPushId)
+    this.rstore.subscribeToRecent(DESIRED_PUSHES, this);
+  else
+    this.rstore.subscribeToPushId(highPushId, DESIRED_PUSHES, this);
+
+  this.pushes = new $vs_array.ArrayViewSlice([]);
+}
+PushesPage.prototype = {
+  page: "pushes",
+
+  /**
+   * Notification from the `RemoteStore` about a new `BuildPush`.
+   *
+   * @args[
+   *   @param[push BuildPush]
+   * ]
+   */
+  onNewPush: function(buildPush) {
+    // This goes at either end, so we don't have to get fancy on the index
+    //  finding.  Put it at the front unless it's older than the front push.
+    // (We order most recent to oldest.)
+    var idx = 0;
+    var slist = this.pushes._list;
+    if (slist.length &&
+        buildPush.push.id < slist[0].push.id)
+      idx = slist.length;
+    // no antics for now, it doesn't know what to do for adds anyways.
+    //this.binding.ANTICS.prepare("buildpush");
+    this.pushes.mutateSplice(idx, 0, buildPush);
+    //this.binding.ANTICS.go("buildpush");
+  },
+
+  /**
+   * Notification from the `RemoteStore` that an existing `BuildPush` or one
+   *  of its children has been updated.
+   */
+  onModifiedPush: function(buildPush) {
+    APP.binding.IDSPACE.updateUsingObject("buildpush", buildPush);
+  },
+
+  /**
+   * Notification from the `RemoteStrore` that a `BuildPush` known to us has
+   *  been unsubscribed.
+   */
+  onUnsubscribedPush: function(buildPush) {
+    var slist = this._slice_pushes._list;
+    // no antics for now, it doesn't know what to do for adds anyways.
+    //this.binding.ANTICS.prepare("buildpush");
+    this.pushes.mutateSplice(slist.indexOf(buildPush), 1);
+    //this.binding.ANTICS.go("buildpush");
+  },
+};
+
+function TestLogPage(pushId, chewedDetails, autoNew, pathNodes, rstore) {
+  this.pushId = pushId;
+  this.testName = chewedDetails.failures[0].testName;
+
+  this.failures = chewedDetails.failures;
+  this.autoTransitionToNewFailures = autoNew;
+  this.pathNodes = pathNodes;
+  this.rstore = rstore;
+
+  if (autoNew)
+    this.rstore.subscribeToRecent(DESIRED_PUSHES, this);
+  else
+    this.rstore.unsubscribe();
+}
+TestLogPage.prototype = {
+  page: "testlog",
+  /**
+   * Evaluate a new/modified build-push for whether it has any newer test
+   * results for the current test that we should jump to instead.  If it does,
+   * jump to it.
+   */
+  _considerPush: function(buildPush) {
+    // bail if the push is the same as / older than the one we are looking at
+    // XXX eventually we will want to handle multiple build results per push.
+    if (buildPush.push.id <= this.pushId)
+      return;
+
+    // This does not work with composite repo's like comm-central, but
+    //  since comm-central does't produce loggest runs, that doesn't really
+    //  matter.
+    for (var iBuild = 0; iBuild < buildPush.builds.length; iBuild++) {
+      var build = buildPush.builds[iBuild];
+      if ((build.type !== "loggest") || !build.processedLog)
+        continue;
+
+      var tests = build.processedLog.successes.concat(
+                    build.processedLog.failures);
+      for (var iTest = 0; iTest < tests.length; iTest++) {
+        var test = tests[iTest];
+        // found a more recent one! go to it!
+        if (test.testName === this.testName) {
+          APP.navigate({
+            pushId: this.pushId,
+            log: build.id + ":" + test.uniqueName
+          });
+          return;
+        }
+      }
+    }
+  },
+  onNewPush: function(buildPush) {
+    this._considerPush(buildPush);
+  },
+  onModifiedPush: function(buildPush) {
+    this._considerPush(buildPush);
+  },
+  onUnsubscribedPush: function(buildPush) {
+  },
+};
+
+var APP;
 exports.main = function main() {
   var env = $env.getEnv();
 
-  var app = window.app = new ArbApp(window);
+  var app = APP = window.app = new ArbApp(window);
   $ui_main.bindApp(app);
 };
 
