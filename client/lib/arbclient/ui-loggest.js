@@ -435,6 +435,22 @@ function stringifyArgs(args) {
   return s;
 }
 
+function dotMilliTimeFormatter(t) {
+  var wholish = Math.floor(t / 100).toString();
+  var len = wholish.length;
+  return wholish.substring(0, len - 1) + "." + wholish.substring(len - 1) +
+    "ms ";
+}
+
+wy.defineWidget({
+  name: "loggest-entry-timestamp",
+  constraint: {
+    type: "loggest-entry",
+    subwidget: "timestamp",
+  },
+  structure: wy.bind("relstamp", dotMilliTimeFormatter),
+});
+
 wy.defineWidget({
   name: "loggest-entry-state-change",
   constraint: {
@@ -442,6 +458,7 @@ wy.defineWidget({
     obj: {type: "state"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     arrow: " => ",
     value: wy.bind("value"),
@@ -455,6 +472,7 @@ wy.defineWidget({
     obj: {type: "event"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "! (",
     argsStr: "",
@@ -474,6 +492,7 @@ wy.defineWidget({
     obj: {type: "async-begin"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "(",
     argsStr: "",
@@ -493,6 +512,7 @@ wy.defineWidget({
     obj: {type: "async-end"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     dots: "...",
     name: wy.bind("name"),
     lParen: "(",
@@ -513,6 +533,7 @@ wy.defineWidget({
     obj: {type: "call", ex: null},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "(",
     argsStr: "",
@@ -533,6 +554,7 @@ wy.defineWidget({
   },
   structure: {
     eventLine: wy.flow({
+      timestamp: wy.subWidget({subwidget: "timestamp"}),
       name: wy.bind("name"),
       lParen: "(",
       argsStr: "",
@@ -558,6 +580,7 @@ wy.defineWidget({
     obj: {type: "error"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     errLabel: "ERR! ",
     name: wy.bind("name"),
     colon: ": ",
@@ -577,6 +600,7 @@ wy.defineWidget({
     obj: {type: "failed-expectation"},
   },
   structure: wy.flow({
+    timestamp: wy.subWidget({subwidget: "timestamp"}),
     errLabel: "failed expectation: ",
     expType: wy.bind("expType"),
     colon: ": ",

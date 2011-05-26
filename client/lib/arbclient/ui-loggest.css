@@ -145,6 +145,15 @@
   }
 }
 
+#loggest-entry-timestamp {
+  #root {
+    display: inline-block;
+    color: gray;
+    font-size: 75%;
+    min-width: 8em;
+  }
+}
+
 #loggest-entry-state-change {
 }
 

@@ -50,8 +50,9 @@ define(
     exports
   ) {
 
-function StateChangeEntry(timestamp, seq, name, value) {
+function StateChangeEntry(timestamp, relstamp, seq, name, value) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.value = value;
@@ -60,8 +61,9 @@ StateChangeEntry.prototype = {
   type: "state",
 };
 
-function EventEntry(timestamp, seq, name, args) {
+function EventEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
@@ -70,8 +72,9 @@ EventEntry.prototype = {
   type: "event",
 };
 
-function AsyncJobBeginEntry(timestamp, seq, name, args) {
+function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
@@ -80,8 +83,9 @@ AsyncJobBeginEntry.prototype = {
   type: "async-begin",
 };
 
-function AsyncJobEndEntry(timestamp, seq, name, args) {
+function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
@@ -90,9 +94,11 @@ AsyncJobEndEntry.prototype = {
   type: "async-end",
 };
 
-function CallEntry(startTimestamp, startSeq, endTimestamp, endSeq,
+function CallEntry(startTimestamp, startRelstamp, startSeq,
+                   endTimestamp, endSeq,
                    name, args, ex) {
   this.timestamp = startTimestamp;
+  this.relstamp = startRelstamp;
   this.seq = startSeq;
   this.endTimestamp = endTimestamp;
   this.endSeq = endSeq;
@@ -104,8 +110,9 @@ CallEntry.prototype = {
   type: "call",
 };
 
-function ErrorEntry(timestamp, seq, name, args) {
+function ErrorEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
@@ -114,8 +121,9 @@ ErrorEntry.prototype = {
   type: "error",
 };
 
-function FailedExpectationEntry(timestamp, seq, expType, name, args) {
+function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
   this.timestamp = timestamp;
+  this.relstamp = relstamp;
   this.seq = seq;
   this.expType = expType;
   this.name = name;
@@ -317,7 +325,8 @@ function LoggestLogTransformer() {
 }
 LoggestLogTransformer.prototype = {
   _proc_stateVar: function(ignoredMeta, entry) {
-    return new StateChangeEntry(entry[2], entry[3], entry[0], entry[1]);
+    return new StateChangeEntry(entry[2], entry[2] - this._baseTime,
+                                entry[3], entry[0], entry[1]);
   },
 
   _proc_event: function(metaArgs, entry) {
@@ -325,7 +334,8 @@ LoggestLogTransformer.prototype = {
     for (var key in metaArgs) {
       args[key] = entry[++numArgs];
     }
-    return new EventEntry(entry[numArgs+1], entry[numArgs+2], entry[0], args);
+    return new EventEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
+                          entry[numArgs+2], entry[0], args);
   },
 
   _proc_asyncJobBegin: function(metaArgs, name, entry) {
@@ -333,7 +343,9 @@ LoggestLogTransformer.prototype = {
     for (var key in metaArgs) {
       args[key] = entry[++numArgs];
     }
-    return new AsyncJobBeginEntry(entry[numArgs+1], entry[numArgs+2],
+    return new AsyncJobBeginEntry(entry[numArgs+1],
+                                  entry[numArgs+1] - this._baseTime,
+                                  entry[numArgs+2],
                                   name, args);
   },
 
@@ -342,7 +354,9 @@ LoggestLogTransformer.prototype = {
     for (var key in metaArgs) {
       args[key] = entry[++numArgs];
     }
-    return new AsyncJobEndEntry(entry[numArgs+1], entry[numArgs+2], name, args);
+    return new AsyncJobEndEntry(entry[numArgs+1],
+                                entry[numArgs+1] - this._baseTime,
+                                entry[numArgs+2], name, args);
   },
 
   _proc_call: function(metaArgs, entry) {
@@ -352,7 +366,8 @@ LoggestLogTransformer.prototype = {
     }
     if (entry.length > numArgs + 5)
       ex = entry[numArgs + 5];
-    return new CallEntry(entry[numArgs+1], entry[numArgs+2],
+    return new CallEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
+                         entry[numArgs+2],
                          entry[numArgs+3], entry[numArgs+4],
                          entry[0], args, ex);
   },
@@ -362,7 +377,8 @@ LoggestLogTransformer.prototype = {
     for (var key in metaArgs) {
       args[key] = entry[++numArgs];
     }
-    return new ErrorEntry(entry[numArgs+1], entry[numArgs+2], entry[0], args);
+    return new ErrorEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
+                          entry[numArgs+2], entry[0], args);
   },
 
   _proc_failedExpectation: function(schemaSoup, entry) {
@@ -375,7 +391,8 @@ LoggestLogTransformer.prototype = {
     for (var key in schema) {
       args[key] = exp[++numArgs];
     }
-    return new FailedExpectationEntry(entry[2], entry[3], schemaType,
+    return new FailedExpectationEntry(entry[2], entry[2] - this._baseTime,
+                                      entry[3], schemaType,
                                       expName, args);
   },
 
@@ -609,6 +626,8 @@ LoggestLogTransformer.prototype = {
   _processPermutation: function(rawPerm) {
     var perm = new TestCasePermutationLogBundle(rawPerm);
     this._uniqueNameMap = perm._uniqueNameMap;
+    this._baseTime = rawPerm.born;
+
     var rows = perm._perStepPerLoggerEntries;
 
     var nonTestLoggers = [], stepTimeSpans = [];
