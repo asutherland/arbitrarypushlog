@@ -83,8 +83,16 @@ wy.defineWidget({
     obj: { page: "testlog" },
   },
   structure: {
-    trackNew: wy.checkbox("Track New", "autoTransitionToNewFailures"),
+    trackNew: wy.checkbox("Track New", "autoTransitionToNew"),
   },
+  events: {
+    trackNew: {
+      command: function() {
+        // XXX ideally wmsy could handle this propagation?
+        this.obj.autoTransitionToNew = this.trackNew_element.checked;
+      }
+    }
+  }
 });
 
 wy.defineWidget({

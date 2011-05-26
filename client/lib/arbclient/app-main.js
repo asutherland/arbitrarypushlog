@@ -175,6 +175,7 @@ ArbApp.prototype = {
   },
 
   ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "autonew"],
+  NON_PATHNODE_KEYS: ["autonew"],
   /**
    * Infer current application state from our current URL state and make it so.
    *  This is the only code path for changing meaningful application state for
@@ -196,7 +197,8 @@ ArbApp.prototype = {
       }
       else if (env.hasOwnProperty(key)) {
         loc[key] = env[key];
-        pathNodes.push({type: key, value: loc[key]});
+        if (this.NON_PATHNODE_KEYS.indexOf(key) === -1)
+          pathNodes.push({type: key, value: loc[key]});
       }
       else {
         loc[key] = null;
@@ -220,12 +222,15 @@ ArbApp.prototype = {
       return;
     }
 
+    var autonew = (typeof(loc.autonew) === "string") ? (loc.autonew === "true")
+                    : Boolean(loc.autonew);
+
     // yes log, request it
-    this._getLog(loc.pushid, loc.log, pathNodes, loc.autonew);
+    this._getLog(parseInt(loc.pushid), loc.log, pathNodes, autonew);
   },
 
   /**
-   * Generate a (relative) navigation URL to accomplish the provided
+   * Generate a (query-change-only) navigation URL to accomplish the provided
    *  (absolute) location object state.  The `boundUrlMaker` and `navigate`
    *  methods take a relative dictionary that applies changes on top of the
    *  current location, and are probably what you want to use instead.
@@ -284,12 +289,12 @@ ArbApp.prototype = {
    *   }
    * ]
    */
-  navigate: function(keyDeltas) {
+  navigate: function(keyDeltas, alreadyInEffect) {
     for (var key in keyDeltas) {
       this._loc[key] = keyDeltas[key];
     }
     //console.log("trying to navigate to", this._loc);
-    this._setLocation(this._loc);
+    this._setLocation(this._loc, alreadyInEffect);
   },
 
   /**
@@ -430,23 +435,38 @@ function TestLogPage(pushId, chewedDetails, autoNew, pathNodes, rstore) {
   this.testName = chewedDetails.failures[0].testName;
 
   this.failures = chewedDetails.failures;
-  this.autoTransitionToNewFailures = autoNew;
   this.pathNodes = pathNodes;
   this.rstore = rstore;
 
-  if (autoNew)
-    this.rstore.subscribeToRecent(DESIRED_PUSHES, this);
-  else
-    this.rstore.unsubscribe();
+  this.autoTransitionToNew = autoNew;
 }
 TestLogPage.prototype = {
   page: "testlog",
+
+  get autoTransitionToNew() {
+    return this._autoTransitionToNew;
+  },
+
+  set autoTransitionToNew(autoNew) {
+    this._autoTransitionToNew = autoNew;
+    //console.log("auto transition:", autoNew);
+
+    if (autoNew)
+      this.rstore.subscribeToRecent(DESIRED_PUSHES, this);
+    else
+      this.rstore.unsubscribe();
+
+    APP.navigate({autonew: autoNew}, true);
+  },
+
   /**
    * Evaluate a new/modified build-push for whether it has any newer test
    * results for the current test that we should jump to instead.  If it does,
    * jump to it.
    */
   _considerPush: function(buildPush) {
+//console.log("considering push", buildPush, buildPush.push.id, this.pushId);
+
     // bail if the push is the same as / older than the one we are looking at
     // XXX eventually we will want to handle multiple build results per push.
     if (buildPush.push.id <= this.pushId)
@@ -457,7 +477,8 @@ TestLogPage.prototype = {
     //  matter.
     for (var iBuild = 0; iBuild < buildPush.builds.length; iBuild++) {
       var build = buildPush.builds[iBuild];
-      if ((build.type !== "loggest") || !build.processedLog)
+//console.log("considering build", build, build.type, build.processedLog);
+      if (!build.processedLog || (build.processedLog.type !== "loggest"))
         continue;
 
       var tests = build.processedLog.successes.concat(
@@ -466,9 +487,12 @@ TestLogPage.prototype = {
         var test = tests[iTest];
         // found a more recent one! go to it!
         if (test.testName === this.testName) {
+          console.log("FOUND NEWER, NAVIGATING", test, buildPush.push.id,
+                     build.id + ":" + test.uniqueName);
           APP.navigate({
-            pushId: this.pushId,
-            log: build.id + ":" + test.uniqueName
+            pushid: buildPush.push.id,
+            log: build.id + ":" + test.uniqueName,
+            autonew: true,
           });
           return;
         }
@@ -476,10 +500,12 @@ TestLogPage.prototype = {
     }
   },
   onNewPush: function(buildPush) {
-    this._considerPush(buildPush);
+    if (this.autoTransitionToNew)
+      this._considerPush(buildPush);
   },
   onModifiedPush: function(buildPush) {
-    this._considerPush(buildPush);
+    if (this.autoTransitionToNew)
+      this._considerPush(buildPush);
   },
   onUnsubscribedPush: function(buildPush) {
   },
