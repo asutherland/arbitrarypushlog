@@ -128,9 +128,22 @@
   }
   #logEntries {
     margin: 4px;
+    color: gray;
+  }
+  #entryMatrix {
+    margin: 4px;
   }
 }
 
+#loggest-case-entry-matrix {
+  #headerCol {
+    display: inline-block;
+    border: 1px solid gray;
+  }
+  #entryItem {
+    display: block;
+  }
+}
 
 #loggest-entry-state-change {
 }

@@ -68,6 +68,9 @@ wy.defineWidget({
   constraint: {
     type: "loggest-test-perm",
   },
+  provideContext: {
+    permutation: wy.SELF,
+  },
   focus: wy.focus.container.vertical("steps"),
   structure: {
     whoBlock: {
@@ -80,7 +83,7 @@ wy.defineWidget({
         things: wy.vertList({type: "loggest-test-thing"}, "things"),
       },
       loggersBlock: {
-        loggersLabel: "Involved Loggers:",
+        loggersLabel: "Loggers:",
         loggers: wy.vertList({type: "loggest-test-logger"}, "loggers"),
       },
     },
@@ -177,6 +180,12 @@ wy.defineWidget({
     }, {result: "result"}),
     contentBlock: {
       logEntries: wy.vertList({type: "loggest-entry"}, wy.NONE),
+      entryMatrix: wy.widget(
+        {
+          type: "loggest-case-entry-matrix",
+          headerConstraint: { type: "loggest-test-logger" },
+          entryConstraint: { type: "loggest-entry" },
+        }, wy.NONE),
     }
   },
   impl: {
@@ -186,15 +195,21 @@ wy.defineWidget({
       this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.headerRow_element.setAttribute("collapsed", this.collapsed);
       this.contentBlock_element.setAttribute("collapsed", this.collapsed);
-      if (!this.collapsed)
+      if (!this.collapsed) {
         this.logEntries_set(this.obj.entries);
+        this.entryMatrix_set(this.obj);
+      }
     },
     toggleCollapsed: function() {
       this.collapsed = !this.collapsed;
-      if (this.collapsed)
+      if (this.collapsed) {
         this.logEntries_set(null);
-      else
+        this.entryMatrix_set(null);
+      }
+      else {
         this.logEntries_set(this.obj.entries);
+        this.entryMatrix_set(this.obj);
+      }
       this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.headerRow_element.setAttribute("collapsed", this.collapsed);
       this.contentBlock_element.setAttribute("collapsed", this.collapsed);
@@ -210,6 +225,205 @@ wy.defineWidget({
   },
 
 });
+
+wy.defineWidget({
+  name: "loggest-case-entry-matrix-empty",
+  constraint: {
+    type: "loggest-case-entry-matrix",
+    headerConstraint: wy.PARAM,
+    entryConstraint: wy.PARAM,
+    obj: null,
+  },
+  structure: {
+  },
+});
+
+wy.defineWidget({
+  name: "loggest-case-entry-matrix",
+  constraint: {
+    type: "loggest-case-entry-matrix",
+    headerConstraint: wy.PARAM,
+    entryConstraint: wy.PARAM,
+  },
+  structure: {
+  },
+  protoConstructor: function(aConstraint, aGenesisDomNode) {
+    // note that we are using our own domain for the evaluation, which differs
+    //  from how a libWidget does it because it gets the domain passed in as
+    //  a constraint!
+    this._headerPartial = wy.domain.dtree.partialEvaluate(
+                            aConstraint.headerConstraint);
+    this._headerConstraint = aConstraint.headerConstraint;
+
+    this._entryPartial = wy.domain.dtree.partialEvaluate(
+                           aConstraint.entryConstraint);
+    this._entryConstraint = aConstraint.entryConstraint;
+  },
+  impl: {
+    postInit: function() {
+      var step = this.obj, perm = this.__context.permutation,
+          stepIndex = perm.steps.indexOf(step),
+          isLastStep = stepIndex === (perm.steps.length - 1);
+
+      var clsHeaderRow = this.__cssClassBaseName + "headerRow",
+          clsHeaderCol = this.__cssClassBaseName + "headerCol",
+          clsDuringRow = this.__cssClassBaseName + "duringRow",
+          clsOutsideRow = this.__cssClassBaseName + "outsideRow",
+          clsEntryRun = this._cssClassBaseName + "entryRun",
+          clsEntryItem = this.__cssClassBaseName + "entryItem";
+
+      // columnMetas is the list of the columns we are using in the order we are
+      //  using them.  usingColumnMap maps matrix column number to the meta
+      //  structure.
+      var columnMetas = [], usingColumnMap = {};
+      // the rows we care about, based on our step index.  Every step cares about
+      //  its before and itself, the last step cares about its after too.
+      var rows = [];
+      rows.push(perm._perStepPerLoggerEntries[stepIndex*2]);
+      rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 1]);
+      if (isLastStep)
+        rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 2]);
+
+      // -- figure out the involved loggers from the step info
+      var iLogger, logger, colMeta;
+      for (iLogger = 0; iLogger < step.involvedLoggers.length; iLogger++) {
+        logger = step.involvedLoggers[iLogger];
+        colMeta = {
+          logger: logger,
+          idxColumn: perm.loggers.indexOf(logger),
+          // involved == officially part of the step
+          involved: true,
+          layout: null,
+        };
+        columnMetas.push(colMeta);
+        usingColumnMap[iLogger] = colMeta;
+      }
+
+      // -- figure out the uninvolved loggers from the cells of the rows
+      var iRow, row, iCol, entries;
+      for (iRow = 0; iRow < rows.length; iRow++) {
+        row = rows[iRow];
+        for (iCol = 0; iCol < row.length; iCol++) {
+          entries = row[iCol];
+          if ((entries !== null) && (!(iCol in usingColumnMap))) {
+            colMeta = {
+              logger: perm.loggers[iCol],
+              idxColumn: iCol,
+              involved: false,
+              layout: null,
+            };
+            columnMetas.push(colMeta);
+            usingColumnMap[iCol] = colMeta;
+          }
+        }
+      }
+
+      // -- compute layout
+      // Although we are currently using a linear allocation that does not
+      //  actually require its own iteration pass, I'm expecting we may need
+      //  something slightly better in the near future.
+      var gapEms = 30, widthEms = 45, offEm = 0;
+      for (iCol = 0; iCol < columnMetas.length; iCol++) {
+        colMeta = columnMetas[iCol];
+
+        colMeta.layout = offEm;
+        offEm += gapEms;
+      }
+
+      var rowHolderNode = this.domNode, doc = rowHolderNode.ownerDocument;
+      // -- generate the column header.
+      var headerPartial = this._headerPartial,
+          headerConstraint = this._headerConstraint;
+      var headerDiv = doc.createElement("div");
+      headerDiv.setAttribute("class", clsHeaderRow);
+      rowHolderNode.appendChild(headerDiv);
+      for (iCol = 0; iCol < columnMetas.length; iCol++) {
+        colMeta = columnMetas[iCol];
+        var nextColMeta = (iCol + 1 < columnMetas.length) ?
+                            columnMetas[iCol + 1] : null;
+
+        headerConstraint.obj = colMeta.logger;
+        var headerCol = doc.createElement("div");
+        headerCol.className = clsHeaderCol;
+        headerDiv.appendChild(headerCol);
+
+        var headerFab = headerPartial.evaluate(headerConstraint);
+        var headerWidget = headerFab.bindOnto(headerConstraint, headerCol);
+
+        if (nextColMeta) {
+          headerCol.setAttribute(
+            "style", "width: " + (nextColMeta.layout - colMeta.layout) + "em;");
+        }
+      }
+
+
+      // -- process the rows, generating DOM nodes
+      var entryPartial = this._entryPartial,
+          entryConstraint = this._entryConstraint;
+      for (iRow = 0; iRow < rows.length; iRow++) {
+        row = rows[iRow];
+        var isDuringStepRow = (iRow === 1);
+
+        var rowNode = doc.createElement("div");
+        rowNode.setAttribute("class",
+                             isDuringStepRow ? clsDuringRow : clsOutsideRow);
+
+
+        var boxedEntries = this._timeOrderedEntriesForRow(row);
+        var curCol = null, curDiv = null;
+        for (var iEntry = 0; iEntry < boxedEntries.length; iEntry++) {
+          var boxedEntry = boxedEntries[iEntry],
+              entry = boxedEntries[iEntry].entry;
+          colMeta = usingColumnMap[boxedEntry.column];
+
+          if (curCol !== entry.column) {
+            curDiv = doc.createElement("div");
+            curDiv.setAttribute("class", clsEntryRun);
+            curDiv.setAttribute("style",
+                                "margin-left: " + colMeta.layout + "em; " +
+                                "max-width: " + widthEms + "em;");
+            rowNode.appendChild(curDiv);
+            curCol = entry.column;
+          }
+          entryConstraint.obj = entry;
+          var entryNode = doc.createElement("div");
+          entryNode.className = clsEntryItem;
+          curDiv.appendChild(entryNode);
+          var entryFab = entryPartial.evaluate(entryConstraint);
+          entryFab.bindOnto(entryConstraint, entryNode);
+        }
+
+        rowHolderNode.appendChild(rowNode);
+      }
+    },
+
+    _sortBoxedEntries: function(a, b) {
+      var ae = a.entry, be = b.entry;
+      if (ae.timestamp === be.timestamp)
+        return ae.seq - be.seq;
+      return ae.timestamp - be.timestamp;
+    },
+    /**
+     * Given a row of columns of loggest entries, return an array of the entries
+     *  in time order wrapped in objects of the form {column: N, entry: E}.
+     */
+    _timeOrderedEntriesForRow: function(row) {
+      var boxedEntries = [];
+
+      for (var iCol = 0; iCol < row.length; iCol++) {
+        var entries = row[iCol];
+        if (entries === null)
+          continue;
+        for (var iEntry = 0; iEntry < entries.length; iEntry++) {
+          boxedEntries.push({column: iCol, entry: entries[iEntry]});
+        }
+      }
+      boxedEntries.sort(this._sortBoxedEntries);
+      return boxedEntries;
+    },
+  },
+});
+
 
 function stringifyArgs(args) {
   var s = "";

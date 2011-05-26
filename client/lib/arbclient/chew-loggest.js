@@ -631,6 +631,9 @@ LoggestLogTransformer.prototype = {
       var rawLogger = nonTestLoggers[iLogger];
       var entries = this._processEntries(rawLogger.loggerIdent,
                                          rawLogger.entries);
+      var loggerMeta = new LoggerMeta(rawLogger, entries);
+      perm.loggers.push(loggerMeta);
+
       var iRow;
       if (entries === null) {
         for (iRow = 0; iRow < rows.length; iRow++) {
@@ -638,9 +641,6 @@ LoggestLogTransformer.prototype = {
         }
         continue;
       }
-      
-      var loggerMeta = new LoggerMeta(rawLogger, entries);
-      perm.loggers.push(loggerMeta);
 
       var iSpan, iEntry = 0, markEntry;
       // keep in mind that a failed test may not have run all the way and so
