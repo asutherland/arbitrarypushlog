@@ -51,11 +51,13 @@ define(
   [
     "wmsy/wmsy",
     "wmsy/wlib/objdict",
+    "./chew-loggest",
     "text!./ui-loggest.css"
   ],
   function(
     $wmsy,
     $_wlib_objdict, // unused, just a dependency.
+    $logmodel,
     $_css
   ) {
 
@@ -205,7 +207,18 @@ wy.defineWidget({
   },
   impl: {
     postInitUpdate: function() {
+      // be collapsed if we passed...
       this.collapsed = this.obj.result === 'pass';
+      // ...unless there are errors in the step's logger.
+      if (this.obj.entries) {
+        for (var iEntry = 0; iEntry < this.obj.entries.length; iEntry++) {
+          if (this.obj.entries[iEntry] instanceof $logmodel.ErrorEntry) {
+            this.collapsed = false;
+            break;
+          }
+        }
+      }
+
       // set it on all these directly because of webkit's selector deficiencies
       this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.headerRow_element.setAttribute("collapsed", this.collapsed);

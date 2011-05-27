@@ -60,6 +60,7 @@ function StateChangeEntry(timestamp, relstamp, seq, name, value) {
 StateChangeEntry.prototype = {
   type: "state",
 };
+exports.StateChangeEntry = StateChangeEntry;
 
 function EventEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
@@ -71,6 +72,7 @@ function EventEntry(timestamp, relstamp, seq, name, args) {
 EventEntry.prototype = {
   type: "event",
 };
+exports.EventEntry = EventEntry;
 
 function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
@@ -82,6 +84,7 @@ function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
 AsyncJobBeginEntry.prototype = {
   type: "async-begin",
 };
+exports.AsyncJobBeginEntry = AsyncJobBeginEntry;
 
 function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
@@ -93,6 +96,7 @@ function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
 AsyncJobEndEntry.prototype = {
   type: "async-end",
 };
+exports.AsyncJobEndEntry = AsyncJobEndEntry;
 
 function CallEntry(startTimestamp, startRelstamp, startSeq,
                    endTimestamp, endSeq,
@@ -109,6 +113,7 @@ function CallEntry(startTimestamp, startRelstamp, startSeq,
 CallEntry.prototype = {
   type: "call",
 };
+exports.CallEntry = CallEntry;
 
 function ErrorEntry(timestamp, relstamp, seq, name, args) {
   this.timestamp = timestamp;
@@ -120,6 +125,7 @@ function ErrorEntry(timestamp, relstamp, seq, name, args) {
 ErrorEntry.prototype = {
   type: "error",
 };
+exports.ErrorEntry = ErrorEntry;
 
 function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
   this.timestamp = timestamp;
@@ -132,6 +138,7 @@ function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
 FailedExpectationEntry.prototype = {
   type: "failed-expectation",
 };
+exports.FailedExpectationEntry = FailedExpectationEntry;
 
 function UnexpectedEntry(unexpEntry) {
   this.timestamp = unexpEntry.timestamp;
@@ -142,6 +149,7 @@ function UnexpectedEntry(unexpEntry) {
 UnexpectedEntry.prototype = {
   type: "unexpected"
 };
+exports.UnexpectedEntry = UnexpectedEntry;
 
 function TestCaseLogBundle(fileName, raw) {
   this._raw = raw;
