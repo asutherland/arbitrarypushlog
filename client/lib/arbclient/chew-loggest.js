@@ -327,25 +327,43 @@ function LoggestLogTransformer() {
   this._uniqueNameMap = null;
 }
 LoggestLogTransformer.prototype = {
+  /**
+   * Helper function to perform any transformations on the wire-format object
+   *  representations to rich local representations.  This is pretty ad-hoc
+   *  right now and it can survive some growth, but eventually will need to
+   *  get fancier.
+   */
+  _transformArgs: function(metaArgs, entry) {
+    var numArgs = 0, args = [];
+    for (var key in metaArgs) {
+      var def = metaArgs[key];
+      var arg = entry[++numArgs];
+      args.push(((numArgs > 1) ? ", " : "") + key + ": ");
+      if (def === 'exception') {
+        args.push({type: "exception", message: arg.m, stack: arg.s});
+      }
+      else {
+        args.push(arg);
+      }
+    }
+    return args;
+  },
+
   _proc_stateVar: function(ignoredMeta, entry) {
     return new StateChangeEntry(entry[2], entry[2] - this._baseTime,
                                 entry[3], entry[0], entry[1]);
   },
 
   _proc_event: function(metaArgs, entry) {
-    var numArgs = 0, args = {};
-    for (var key in metaArgs) {
-      args[key] = entry[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = args.length / 2;
     return new EventEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
                           entry[numArgs+2], entry[0], args);
   },
 
   _proc_asyncJobBegin: function(metaArgs, name, entry) {
-    var numArgs = 0, args = {};
-    for (var key in metaArgs) {
-      args[key] = entry[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = args.length / 2;
     return new AsyncJobBeginEntry(entry[numArgs+1],
                                   entry[numArgs+1] - this._baseTime,
                                   entry[numArgs+2],
@@ -353,20 +371,16 @@ LoggestLogTransformer.prototype = {
   },
 
   _proc_asyncJobEnd: function(metaArgs, name, entry) {
-    var numArgs = 0, args = {};
-    for (var key in metaArgs) {
-      args[key] = entry[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = args.length / 2;
     return new AsyncJobEndEntry(entry[numArgs+1],
                                 entry[numArgs+1] - this._baseTime,
                                 entry[numArgs+2], name, args);
   },
 
   _proc_call: function(metaArgs, entry) {
-    var numArgs = 0, args = {}, ex = null;
-    for (var key in metaArgs) {
-      args[key] = entry[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = args.length / 2, ex = null;
     if (entry.length > numArgs + 5)
       ex = entry[numArgs + 5];
     return new CallEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
@@ -376,10 +390,8 @@ LoggestLogTransformer.prototype = {
   },
 
   _proc_error: function(metaArgs, entry) {
-    var numArgs = 0, args = {};
-    for (var key in metaArgs) {
-      args[key] = entry[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = args.length / 2;
     return new ErrorEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
                           entry[numArgs+2], entry[0], args);
   },
@@ -390,10 +402,7 @@ LoggestLogTransformer.prototype = {
     var schemaType = schemaSoup[expName][0];
     var schema = schemaSoup[expName][1];
 
-    var numArgs = 0, args = {};
-    for (var key in schema) {
-      args[key] = exp[++numArgs];
-    }
+    var args = this._transformArgs(metaArgs, entry);
     return new FailedExpectationEntry(entry[2], entry[2] - this._baseTime,
                                       entry[3], schemaType,
                                       expName, args);

@@ -19,7 +19,7 @@
   display: inline-block;
 }
 
-#loggest-test-perm {
+#test-perm {
   #whoBlock {
   }
 
@@ -51,17 +51,17 @@
   }
 }
 
-#loggest-test-actor {
+#test-actor {
   #root {
   }
 }
 
-#loggest-test-thing {
+#test-thing {
   #root {
   }
 }
 
-#loggest-sem-stream-actor {
+#sem-stream-actor {
   #root {
     .clickabub;
   }
@@ -70,7 +70,7 @@
   }
 }
 
-#loggest-sem-stream-thing {
+#sem-stream-thing {
   #root {
     .clickabub;
   }
@@ -84,7 +84,7 @@
 @skip-bg-color: #ffe;
 
 
-#loggest-test-step {
+#test-step {
   #root {
     margin: 4px;
     border: 1px solid gray;
@@ -135,7 +135,7 @@
   }
 }
 
-#loggest-case-entry-matrix {
+#case-entry-matrix {
   #headerCol {
     display: inline-block;
     border: 1px solid gray;
@@ -145,7 +145,29 @@
   }
 }
 
-#loggest-entry-with-timestamp {
+#popup-obj-detail {
+  #root {
+    background-color: white;
+  }
+}
+
+#arg-stream-ex {
+  #root {
+    .clickabub;
+  }
+}
+
+#obj-detail-ex {
+  #root {
+    background-color: white;
+  }
+  #stack {
+    display: block;
+    white-space: pre-wrap;
+  }
+}
+
+#entry-with-timestamp {
   #root {
     display: block;
     position: relative;
@@ -164,19 +186,19 @@
   }
 }
 
-#loggest-entry-state-change {
+#entry-state-change {
 }
 
-#loggest-entry-event {
+#entry-event {
 }
 
-#loggest-entry-async-job-begin {
+#entry-async-job-begin {
 }
-#loggest-entry-async-job-end {
+#entry-async-job-end {
 }
-#loggest-entry-call {
+#entry-call {
 }
-#loggest-entry-call-with-ex {
+#entry-call-with-ex {
   #stack {
     margin-left: 2em;
     white-space: pre-wrap;
@@ -184,16 +206,16 @@
 }
 
 
-#loggest-entry-error {
+#entry-error {
 }
 
-#loggest-entry-failed-expectation {
+#entry-failed-expectation {
   #errLabel {
     color: red;
   }
 }
 
-#loggest-entry-unexpected {
+#entry-unexpected {
   #errLabel {
     color: orange;
   }

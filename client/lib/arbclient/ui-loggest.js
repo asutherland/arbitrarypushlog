@@ -52,55 +52,90 @@ define(
     "wmsy/wmsy",
     "wmsy/wlib/objdict",
     "./chew-loggest",
-    "text!./ui-loggest.css"
+    "text!./ui-loggest.css",
+    "exports"
   ],
   function(
     $wmsy,
     $_wlib_objdict, // unused, just a dependency.
     $logmodel,
-    $_css
+    $_css,
+    exports
   ) {
 
-var wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "arbpl",
-                               css: $_css});
+// NOTE: we are not in the arbpl domain anymore!
+var wy = exports.wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "loggest",
+                                            css: $_css});
 
 wy.defineWidget({
-  name: "loggest-test-perm",
+  name: "test-perm",
   doc: "test case permutation results display",
   constraint: {
-    type: "loggest-test-perm",
+    type: "test-perm",
   },
   provideContext: {
     permutation: wy.SELF,
   },
   focus: wy.focus.container.vertical("steps"),
+  popups: {
+    details: {
+      constraint: {
+        type: "popup-obj-detail"
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({type: "popup"}),
+      position: {
+        above: "root",
+      }
+    }
+  },
   structure: {
     whoBlock: {
       actorsBlock: {
         actorsLabel: "Actors:",
-        actors: wy.vertList({type: "loggest-test-actor"}, "actors"),
+        actors: wy.vertList({type: "test-actor"}, "actors"),
       },
       thingsBlock: {
         thingsLabel: "Things:",
-        things: wy.vertList({type: "loggest-test-thing"}, "things"),
+        things: wy.vertList({type: "test-thing"}, "things"),
       },
       loggersBlock: {
         loggersLabel: "Loggers:",
-        loggers: wy.vertList({type: "loggest-test-logger"}, "loggers"),
+        loggers: wy.vertList({type: "test-logger"}, "loggers"),
       },
     },
     stepsLabel: "Steps:",
     stepsBlock: {
-      steps: wy.vertList({type: "loggest-test-step"}, "steps"),
+      steps: wy.vertList({type: "test-step"}, "steps"),
+    },
+  },
+  impl: {
+    /**
+     * Rather than have every log atom be able to trigger a popup or require
+     *  them to emit something on click, we just provide our own click handler
+     *  that checks if the bindings want to have their data shown in a pop-up
+     *  (which is generically parameterized anyways).
+     */
+    maybeShowDetailForBinding: function(binding) {
+      if ("SHOW_DETAIL" in binding && binding.SHOW_DETAIL) {
+        this.popup_details(binding.obj, binding);
+      }
+    },
+  },
+  events: {
+    root: {
+      click: function(binding) {
+        this.maybeShowDetailForBinding(binding);
+      }
     },
   },
 });
 
 wy.defineWidget({
-  name: "loggest-sem-stream-actor",
+  name: "sem-stream-actor",
   doc: "ActorMeta in a resolved semanticIdent stream",
   constraint: {
-    type: "loggest-sem-stream",
+    type: "sem-stream",
     obj: {
       type: "actor",
     }
@@ -113,10 +148,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-sem-stream-thing",
+  name: "sem-stream-thing",
   doc: "ThingMeta in a resolved semanticIdent stream",
   constraint: {
-    type: "loggest-sem-stream",
+    type: "sem-stream",
     obj: {
       type: "thing",
     }
@@ -129,10 +164,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-sem-stream-logger",
+  name: "sem-stream-logger",
   doc: "LoggerMeta in a semanticIdent-ish stream",
   constraint: {
-    type: "loggest-sem-stream",
+    type: "sem-stream",
     obj: {
       type: "logger",
     },
@@ -145,10 +180,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-test-logger",
+  name: "test-logger",
   doc: "LoggerMeta presentation",
   constraint: {
-    type: "loggest-test-logger",
+    type: "test-logger",
   },
   structure: wy.flow({
     loggerIdent: wy.bind(["raw", "loggerIdent"]),
@@ -158,10 +193,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-test-actor",
+  name: "test-actor",
   doc: "ActorMeta presentation",
   constraint: {
-    type: "loggest-test-actor",
+    type: "test-actor",
   },
   structure: wy.flow({
     actorIdent: wy.bind(["raw", "actorIdent"]),
@@ -171,10 +206,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-test-thing",
+  name: "test-thing",
   doc: "ThingMeta presentation",
   constraint: {
-    type: "loggest-test-thing",
+    type: "test-thing",
   },
   structure: wy.flow({
     type: wy.bind(["raw", "type"]),
@@ -184,24 +219,24 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-test-step",
+  name: "test-step",
   doc: "TestCaseStepMeta presentation",
   constraint: {
-    type: "loggest-test-step",
+    type: "test-step",
   },
   focus: wy.focus.item,
   structure: {
     headerRow: wy.block({
       twisty: {},
-      resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
+      resolvedIdent: wy.stream({type: "sem-stream"}, "resolvedIdent"),
     }, {result: "result"}),
     contentBlock: {
-      logEntries: wy.vertList({type: "loggest-entry-with-timestamp"}, wy.NONE),
+      logEntries: wy.vertList({type: "entry-with-timestamp"}, wy.NONE),
       entryMatrix: wy.widget(
         {
-          type: "loggest-case-entry-matrix",
-          headerConstraint: { type: "loggest-sem-stream" },
-          entryConstraint: { type: "loggest-entry-with-timestamp" },
+          type: "case-entry-matrix",
+          headerConstraint: { type: "sem-stream" },
+          entryConstraint: { type: "entry-with-timestamp" },
         }, wy.NONE),
     }
   },
@@ -260,9 +295,9 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-case-entry-matrix-empty",
+  name: "case-entry-matrix-empty",
   constraint: {
-    type: "loggest-case-entry-matrix",
+    type: "case-entry-matrix",
     headerConstraint: wy.PARAM,
     entryConstraint: wy.PARAM,
     obj: null,
@@ -272,9 +307,9 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-case-entry-matrix",
+  name: "case-entry-matrix",
   constraint: {
-    type: "loggest-case-entry-matrix",
+    type: "case-entry-matrix",
     headerConstraint: wy.PARAM,
     entryConstraint: wy.PARAM,
   },
@@ -464,6 +499,45 @@ wy.defineWidget({
   },
 });
 
+wy.defineWidget({
+  name: "popup-obj-detail",
+  doc: "popup wrapper for our detail view; simplifies obj-detail bindings",
+  constraint: {
+    type: "popup-obj-detail",
+  },
+  focus: wy.focus.domain.vertical("detail"),
+  structure: {
+    detail: wy.widget({type: "obj-detail"}, wy.SELF),
+  },
+});
+
+
+wy.defineWidget({
+  name: "arg-stream-ex",
+  doc: "rich exception display as a clickable exception message w/popup",
+  constraint: {
+    type: "arg-stream",
+    obj: { type: "exception" },
+  },
+  structure: wy.bind("message"),
+  impl: {
+    SHOW_DETAIL: true,
+  },
+});
+
+wy.defineWidget({
+  name: "obj-detail-ex",
+  constraint: {
+    type: "obj-detail",
+    obj: { type: "exception" },
+  },
+  // XXX THIS IS VERY DUMB; WE SHOULD AUTO STUB.
+  focus: wy.focus.item,
+  structure: {
+    message: wy.bind("message"),
+    stack: wy.bind("stack"),
+  },
+});
 
 function stringifyArgs(args) {
   var s = "";
@@ -483,20 +557,20 @@ function dotMilliTimeFormatter(t) {
 }
 
 wy.defineWidget({
-  name: "loggest-entry-with-timestamp",
+  name: "entry-with-timestamp",
   constraint: {
-    type: "loggest-entry-with-timestamp",
+    type: "entry-with-timestamp",
   },
   structure: {
     timestamp: wy.bind("relstamp", dotMilliTimeFormatter),
-    entry: wy.widget({type: "loggest-entry"}, wy.SELF),
+    entry: wy.widget({type: "entry"}, wy.SELF),
   }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-state-change",
+  name: "entry-state-change",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "state"},
   },
   structure: wy.flow({
@@ -507,93 +581,73 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "loggest-entry-event",
+  name: "entry-event",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "event"},
   },
   structure: wy.flow({
     name: wy.bind("name"),
     lParen: "! (",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-async-job-begin",
+  name: "entry-async-job-begin",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "async-begin"},
   },
   structure: wy.flow({
     name: wy.bind("name"),
     lParen: "(",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParenDots: ")...",
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-async-job-end",
+  name: "entry-async-job-end",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "async-end"},
   },
   structure: wy.flow({
     dots: "...",
     name: wy.bind("name"),
     lParen: "(",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-call",
+  name: "entry-call",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "call", ex: null},
   },
   structure: wy.flow({
     name: wy.bind("name"),
     lParen: "(",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-call-with-ex",
+  name: "entry-call-with-ex",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "call", ex: wy.WILD},
   },
   structure: {
     eventLine: wy.flow({
       name: wy.bind("name"),
       lParen: "(",
-      argsStr: "",
+      args: wy.stream({type: "arg-stream"}, "args"),
       rParen: ") => ",
       exMessage: wy.bind(["ex", "message"]),
     }),
@@ -601,37 +655,27 @@ wy.defineWidget({
       stack: wy.bind(["ex", "stack"]),
     },
   },
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 
 wy.defineWidget({
-  name: "loggest-entry-error",
+  name: "entry-error",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "error"},
   },
   structure: wy.flow({
     errLabel: "ERR! ",
     name: wy.bind("name"),
     colon: ": ",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-failed-expectation",
+  name: "entry-failed-expectation",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "failed-expectation"},
   },
   structure: wy.flow({
@@ -640,25 +684,20 @@ wy.defineWidget({
     colon: ": ",
     name: wy.bind("name"),
     lParen: "(",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
   }),
-  impl: {
-    postInitUpdate: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  }
 });
 
 wy.defineWidget({
-  name: "loggest-entry-unexpected",
+  name: "entry-unexpected",
   constraint: {
-    type: "loggest-entry",
+    type: "entry",
     obj: {type: "unexpected"},
   },
   structure: wy.flow({
     errLabel: "unexpected event: ",
-    subEntry: wy.widget({type: "loggest-entry"}, "entry"),
+    subEntry: wy.widget({type: "entry"}, "entry"),
   }),
 });
 

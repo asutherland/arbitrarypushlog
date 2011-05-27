@@ -38,10 +38,12 @@
 define(
   [
     "wmsy/wmsy",
+    "./ui-loggest",
     "text!./ui-page-testlog.css"
   ],
   function(
     $wmsy,
+    $ui_loggest,
     $_css
   ) {
 
@@ -148,7 +150,8 @@ wy.defineWidget({
       testName: wy.bind("testName"),
       fileName: wy.bind("fileName"),
     },
-    permutations: wy.vertList({type: "loggest-test-perm"}, "permutations"),
+    // NOTE: loggest lives in a separate domain now!
+    permutations: $ui_loggest.wy.vertList({type: "test-perm"}, "permutations"),
   },
 });
 
