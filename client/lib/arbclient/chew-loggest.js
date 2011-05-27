@@ -402,7 +402,10 @@ LoggestLogTransformer.prototype = {
     var schemaType = schemaSoup[expName][0];
     var schema = schemaSoup[expName][1];
 
-    var args = this._transformArgs(metaArgs, entry);
+    var numArgs = 0, args = {};
+    for (var key in schema) {
+      args[key] = exp[++numArgs];
+    }
     return new FailedExpectationEntry(entry[2], entry[2] - this._baseTime,
                                       entry[3], schemaType,
                                       expName, args);

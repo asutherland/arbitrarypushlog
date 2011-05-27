@@ -160,6 +160,7 @@
 #obj-detail-ex {
   #root {
     background-color: white;
+    padding: 6px;
   }
   #stack {
     display: block;
