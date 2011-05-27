@@ -133,6 +133,16 @@ FailedExpectationEntry.prototype = {
   type: "failed-expectation",
 };
 
+function UnexpectedEntry(unexpEntry) {
+  this.timestamp = unexpEntry.timestamp;
+  this.relstamp = unexpEntry.relstamp;
+  this.seq = unexpEntry.seq;
+  this.entry = unexpEntry;
+}
+UnexpectedEntry.prototype = {
+  type: "unexpected"
+};
+
 function TestCaseLogBundle(fileName, raw) {
   this._raw = raw;
 
@@ -381,6 +391,12 @@ LoggestLogTransformer.prototype = {
                                       expName, args);
   },
 
+  _proc_unexpectedEntry: function(handlers, entry) {
+    var subEntry = entry[1];
+    var subObj = handlers[subEntry[0]](subEntry);
+    return new UnexpectedEntry(subObj);
+  },
+
   /**
    * Tell us about the schemas used in one or more loggers before we process
    *  them.
@@ -398,6 +414,8 @@ LoggestLogTransformer.prototype = {
 
       handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
                                                                  schemaSoup);
+      handlers["!unexpected"] = this._proc_unexpectedEntry.bind(this,
+                                                                handlers);
 
       if ("stateVars" in schemaDef) {
         for (key in schemaDef.stateVars) {

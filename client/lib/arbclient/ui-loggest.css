@@ -145,12 +145,22 @@
   }
 }
 
-#loggest-entry-timestamp {
+#loggest-entry-with-timestamp {
   #root {
-    display: inline-block;
+    display: block;
+    position: relative;
+  }
+  #timestamp {
+    position: absolute;
+    top: 0;
+    left: 0;
     color: gray;
-    font-size: 75%;
-    min-width: 8em;
+    font-size: 9px;
+    min-width: 64px;
+    text-align: right;
+  }
+  #entry {
+    margin-left: 70px;
   }
 }
 
@@ -178,7 +188,13 @@
 }
 
 #loggest-entry-failed-expectation {
-  #root {
+  #errLabel {
     color: red;
+  }
+}
+
+#loggest-entry-unexpected {
+  #errLabel {
+    color: orange;
   }
 }

@@ -126,6 +126,21 @@ wy.defineWidget({
   }),
 });
 
+wy.defineWidget({
+  name: "loggest-sem-stream-logger",
+  doc: "LoggerMeta in a semanticIdent-ish stream",
+  constraint: {
+    type: "loggest-sem-stream",
+    obj: {
+      type: "logger",
+    },
+  },
+  structure: wy.flow({
+    loggerIdent: wy.bind(["raw", "loggerIdent"]),
+    loggerSemDelim: ": ",
+    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+  }),
+});
 
 wy.defineWidget({
   name: "loggest-test-logger",
@@ -179,12 +194,12 @@ wy.defineWidget({
       resolvedIdent: wy.stream({type: "loggest-sem-stream"}, "resolvedIdent"),
     }, {result: "result"}),
     contentBlock: {
-      logEntries: wy.vertList({type: "loggest-entry"}, wy.NONE),
+      logEntries: wy.vertList({type: "loggest-entry-with-timestamp"}, wy.NONE),
       entryMatrix: wy.widget(
         {
           type: "loggest-case-entry-matrix",
           headerConstraint: { type: "loggest-sem-stream" },
-          entryConstraint: { type: "loggest-entry" },
+          entryConstraint: { type: "loggest-entry-with-timestamp" },
         }, wy.NONE),
     }
   },
@@ -455,12 +470,14 @@ function dotMilliTimeFormatter(t) {
 }
 
 wy.defineWidget({
-  name: "loggest-entry-timestamp",
+  name: "loggest-entry-with-timestamp",
   constraint: {
-    type: "loggest-entry",
-    subwidget: "timestamp",
+    type: "loggest-entry-with-timestamp",
   },
-  structure: wy.bind("relstamp", dotMilliTimeFormatter),
+  structure: {
+    timestamp: wy.bind("relstamp", dotMilliTimeFormatter),
+    entry: wy.widget({type: "loggest-entry"}, wy.SELF),
+  }
 });
 
 wy.defineWidget({
@@ -470,7 +487,6 @@ wy.defineWidget({
     obj: {type: "state"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     arrow: " => ",
     value: wy.bind("value"),
@@ -484,7 +500,6 @@ wy.defineWidget({
     obj: {type: "event"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "! (",
     argsStr: "",
@@ -504,7 +519,6 @@ wy.defineWidget({
     obj: {type: "async-begin"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "(",
     argsStr: "",
@@ -524,7 +538,6 @@ wy.defineWidget({
     obj: {type: "async-end"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     dots: "...",
     name: wy.bind("name"),
     lParen: "(",
@@ -545,7 +558,6 @@ wy.defineWidget({
     obj: {type: "call", ex: null},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     name: wy.bind("name"),
     lParen: "(",
     argsStr: "",
@@ -566,7 +578,6 @@ wy.defineWidget({
   },
   structure: {
     eventLine: wy.flow({
-      timestamp: wy.subWidget({subwidget: "timestamp"}),
       name: wy.bind("name"),
       lParen: "(",
       argsStr: "",
@@ -592,7 +603,6 @@ wy.defineWidget({
     obj: {type: "error"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     errLabel: "ERR! ",
     name: wy.bind("name"),
     colon: ": ",
@@ -612,7 +622,6 @@ wy.defineWidget({
     obj: {type: "failed-expectation"},
   },
   structure: wy.flow({
-    timestamp: wy.subWidget({subwidget: "timestamp"}),
     errLabel: "failed expectation: ",
     expType: wy.bind("expType"),
     colon: ": ",
@@ -626,6 +635,18 @@ wy.defineWidget({
       this.argsStr_element.textContent = stringifyArgs(this.obj.args);
     }
   }
+});
+
+wy.defineWidget({
+  name: "loggest-entry-unexpected",
+  constraint: {
+    type: "loggest-entry",
+    obj: {type: "unexpected"},
+  },
+  structure: wy.flow({
+    errLabel: "unexpected event: ",
+    subEntry: wy.widget({type: "loggest-entry"}, "entry"),
+  }),
 });
 
 
