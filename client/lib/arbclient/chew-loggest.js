@@ -222,38 +222,13 @@ function TestCaseStepMeta(resolvedIdent, raw, entries) {
     this.result = 'skip';
 
   /**
-   * @listof[LoggerMeta]{
+   * @listof[ActorMeta]{
    *   The set of loggers officially labeled to be part of this test step.
    * }
    */
-  this.involvedLoggers = [];
+  this.involvedActors = [];
 }
 TestCaseStepMeta.prototype = {
-  /**
-   * @listof[@oneof[null @listof[TestEntry]]]{
-   *   For each decreed involved logger in `involvedLoggers`, provide the
-   *   entries cell for this step.
-   * }
-   */
-  get entriesForInvolvedLoggers() {
-  },
-
-  /**
-   * @listof[LoggerMeta]{
-   *   The loggers known to the test-case but not decreed involved in this step.
-   * }
-   */
-  get uninvolvedLoggers() {
-  },
-
-  /**
-   * @listof[@oneof[null @listof[TestEntry]]]{
-   *   For each logger in `uninvolvedLoggers`, provide the entries cell for this
-   *   step.
-   * }
-   */
-  get entriesForUninvolvedLoggers() {
-  },
 };
 
 
@@ -291,12 +266,22 @@ var UNRESOLVED_ACTOR_RAW = {};
  *  identifiers of test cases.  (Currently the theory is that loggers should
  *  not be name-checked in semantic identifiers which is significant because
  *  loggers and actors using the same numeric space for their unique names.)
+ *
+ * Actors are resolved to loggers on demand by way of a reference to the unique
+ *  name map established at creation time.
  */
-function ActorMeta(raw) {
+function ActorMeta(raw, uniqueNameMap) {
   this.raw = raw;
+  this._uniqueNameMap = uniqueNameMap;
 }
 ActorMeta.prototype = {
   type: "actor",
+  get logger() {
+    if (!this.raw ||
+        !this._uniqueNameMap.hasOwnProperty(this.raw.loggerUniqueName))
+      return null;
+    return this._uniqueNameMap[this.raw.loggerUniqueName];
+  },
 };
 
 
@@ -466,7 +451,7 @@ LoggestLogTransformer.prototype = {
     // - actor (loggers forbidden in this context)
     var obj;
     if (uniqueName > 0) {
-      obj = new ActorMeta(UNRESOLVED_ACTOR_RAW);
+      obj = new ActorMeta(UNRESOLVED_ACTOR_RAW, this._uniqueNameMap);
     }
     // - thing
     else {
@@ -572,7 +557,8 @@ LoggestLogTransformer.prototype = {
       return thing;
     }
 
-    actor = this._uniqueNameMap[uniqueNameStr] = new ActorMeta(raw);
+    actor = this._uniqueNameMap[uniqueNameStr] =
+              new ActorMeta(raw, this._uniqueNameMap);
     return actor;
   },
 
@@ -599,6 +585,15 @@ LoggestLogTransformer.prototype = {
   _makeStep: function(raw, entries) {
     var stepMeta = new TestCaseStepMeta(
       this._resolveSemanticIdent(raw.semanticIdent), raw, entries);
+
+    // pull the actors out of the resolved ident if reasonable
+    if (Array.isArray(stepMeta.resolvedIdent)) {
+      for (var i = 0; i < stepMeta.resolvedIdent.length; i++) {
+        var identBit = stepMeta.resolvedIdent[i];
+        if (identBit instanceof ActorMeta)
+          stepMeta.involvedActors.push(identBit);
+      }
+    }
 
     return stepMeta;
   },
@@ -691,6 +686,8 @@ LoggestLogTransformer.prototype = {
                                          rawLogger.entries);
       var loggerMeta = new LoggerMeta(rawLogger, entries);
       perm.loggers.push(loggerMeta);
+
+      this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
 
       var iRow;
       if (entries === null) {

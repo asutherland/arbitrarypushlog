@@ -183,7 +183,7 @@ wy.defineWidget({
       entryMatrix: wy.widget(
         {
           type: "loggest-case-entry-matrix",
-          headerConstraint: { type: "loggest-test-logger" },
+          headerConstraint: { type: "loggest-sem-stream" },
           entryConstraint: { type: "loggest-entry" },
         }, wy.NONE),
     }
@@ -218,7 +218,12 @@ wy.defineWidget({
   },
   events: {
     root: {
-      command: function() {
+      enter_key: function() {
+        this.toggleCollapsed();
+      }
+    },
+    headerRow: {
+      click: function() {
         this.toggleCollapsed();
       },
     },
@@ -269,7 +274,7 @@ wy.defineWidget({
           clsHeaderCol = this.__cssClassBaseName + "headerCol",
           clsDuringRow = this.__cssClassBaseName + "duringRow",
           clsOutsideRow = this.__cssClassBaseName + "outsideRow",
-          clsEntryRun = this._cssClassBaseName + "entryRun",
+          clsEntryRun = this.__cssClassBaseName + "entryRun",
           clsEntryItem = this.__cssClassBaseName + "entryItem";
 
       // columnMetas is the list of the columns we are using in the order we are
@@ -286,17 +291,20 @@ wy.defineWidget({
 
       // -- figure out the involved loggers from the step info
       var iLogger, logger, colMeta;
-      for (iLogger = 0; iLogger < step.involvedLoggers.length; iLogger++) {
-        logger = step.involvedLoggers[iLogger];
+      for (var iActor = 0; iActor < step.involvedActors.length; iActor++) {
+        var actor = step.involvedActors[iActor];
+        logger = actor.logger;
+        if (!logger)
+          continue;
         colMeta = {
-          logger: logger,
+          logger: actor,
           idxColumn: perm.loggers.indexOf(logger),
           // involved == officially part of the step
           involved: true,
           layout: null,
         };
         columnMetas.push(colMeta);
-        usingColumnMap[iLogger] = colMeta;
+        usingColumnMap[colMeta.idxColumn] = colMeta;
       }
 
       // -- figure out the uninvolved loggers from the cells of the rows
@@ -354,6 +362,10 @@ wy.defineWidget({
           headerCol.setAttribute(
             "style", "width: " + (nextColMeta.layout - colMeta.layout) + "em;");
         }
+        else {
+          headerCol.setAttribute(
+            "style", "width: " + gapEms + "em;");
+        }
       }
 
 
@@ -376,14 +388,14 @@ wy.defineWidget({
               entry = boxedEntries[iEntry].entry;
           colMeta = usingColumnMap[boxedEntry.column];
 
-          if (curCol !== entry.column) {
+          if (curCol !== boxedEntry.column) {
             curDiv = doc.createElement("div");
             curDiv.setAttribute("class", clsEntryRun);
             curDiv.setAttribute("style",
                                 "margin-left: " + colMeta.layout + "em; " +
                                 "max-width: " + widthEms + "em;");
             rowNode.appendChild(curDiv);
-            curCol = entry.column;
+            curCol = boxedEntry.column;
           }
           entryConstraint.obj = entry;
           var entryNode = doc.createElement("div");
