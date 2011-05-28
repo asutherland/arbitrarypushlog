@@ -62,12 +62,13 @@ StateChangeEntry.prototype = {
 };
 exports.StateChangeEntry = StateChangeEntry;
 
-function EventEntry(timestamp, relstamp, seq, name, args) {
+function EventEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
 }
 EventEntry.prototype = {
   type: "event",
@@ -363,11 +364,15 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name, ...args..., timestamp, seq]
-  _proc_event: function(metaArgs, entry) {
-    var args = this._transformArgs(metaArgs, entry);
+  _proc_event: function(metaArgs, metaTestOnlyArgs, entry) {
+    var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
     var numArgs = args.length / 2;
+    if (entry.length > numArgs + 3)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 3);
+
     return new EventEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
-                          entry[numArgs+2], entry[0], args);
+                          entry[numArgs+2], entry[0], args, testOnlyArgs);
   },
 
   // [name_begin, ...args..., timestamp, seq]
@@ -451,7 +456,7 @@ LoggestLogTransformer.prototype = {
     for (var schemaName in schemas) {
       var key, schemaDef = schemas[schemaName];
       var handlers = this._schemaHandlerMaps[schemaName] = {};
-      var schemaSoup = {};
+      var schemaSoup = {}, testOnlyMeta;
 
       handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
                                                                  schemaSoup);
@@ -466,9 +471,16 @@ LoggestLogTransformer.prototype = {
         }
       }
       if ("events" in schemaDef) {
+        var testOnlyEventsSchema = null;
+        if ("TEST_ONLY_events" in schemaDef)
+          testOnlyEventsSchema = schemaDef.TEST_ONLY_events;
         for (key in schemaDef.events) {
+          testOnlyMeta = null;
+          if (testOnlyEventsSchema && testOnlyEventsSchema.hasOwnProperty(key))
+            testOnlyMeta = testOnlyEventsSchema[key];
           schemaSoup[key] = ['event', schemaDef.events[key]];
-          handlers[key] = this._proc_event.bind(this, schemaDef.events[key]);
+          handlers[key] = this._proc_event.bind(this, schemaDef.events[key],
+                                                testOnlyMeta);
         }
       }
       if ("asyncJobs" in schemaDef) {
@@ -487,7 +499,7 @@ LoggestLogTransformer.prototype = {
         if ("TEST_ONLY_calls" in schemaDef)
           testOnlyCallsSchema = schemaDef.TEST_ONLY_calls;
         for (key in schemaDef.calls) {
-          var testOnlyMeta = null;
+          testOnlyMeta = null;
           schemaSoup[key] = ['call', schemaDef.calls[key]];
           if (testOnlyCallsSchema && testOnlyCallsSchema.hasOwnProperty(key))
             testOnlyMeta = testOnlyCallsSchema[key];

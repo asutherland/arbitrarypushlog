@@ -399,7 +399,7 @@ wy.defineWidget({
       // Although we are currently using a linear allocation that does not
       //  actually require its own iteration pass, I'm expecting we may need
       //  something slightly better in the near future.
-      var gapEms = 30, widthEms = 45, offEm = 0;
+      var gapEms = 30, widthEms = 50, offEm = 0;
       for (iCol = 0; iCol < columnMetas.length; iCol++) {
         colMeta = columnMetas[iCol];
 
@@ -647,7 +647,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "! (",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParen: ")",
+    rParen: ") ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
   }),
 });
 

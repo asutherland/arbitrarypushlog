@@ -216,6 +216,9 @@
 #entry-call {
 }
 #entry-call-with-ex {
+  #exMessage {
+    color: red;
+  }
   #stack {
     margin-left: 2em;
     white-space: pre-wrap;
