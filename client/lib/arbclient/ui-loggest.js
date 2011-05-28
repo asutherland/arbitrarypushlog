@@ -118,7 +118,12 @@ wy.defineWidget({
      */
     maybeShowDetailForBinding: function(binding) {
       if ("SHOW_DETAIL" in binding && binding.SHOW_DETAIL) {
-        this.popup_details(binding.obj, binding);
+        var detailAttr = binding.SHOW_DETAIL;
+        var obj = binding.obj;
+        // extremely simple traversal
+        if (detailAttr !== true)
+          obj = obj[detailAttr];
+        this.popup_details(obj, binding);
       }
     },
   },
@@ -560,6 +565,37 @@ wy.defineWidget({
   },
 });
 
+
+wy.defineWidget({
+  name: "arg-stream-full-obj",
+  doc: "rich exception display as a clickable exception message w/popup",
+  constraint: {
+    type: "arg-stream",
+    obj: { type: "full-obj" },
+  },
+  structure: "obj",
+  impl: {
+    SHOW_DETAIL: "obj",
+  },
+});
+
+wy.defineWidget({
+  name: "obj-detail-wild",
+  constraint: {
+    type: "obj-detail",
+    obj: { type: wy.WILD },
+  },
+  // XXX THIS IS VERY DUMB; WE SHOULD AUTO STUB.
+  focus: wy.focus.item,
+  structure: {
+    table: wy.libWidget({
+        type: "objdict",
+        valueConstraint: {type: "obj-detail"},
+      }, wy.SELF),
+  },
+});
+
+
 function stringifyArgs(args) {
   var s = "";
   for (var key in args) {
@@ -654,7 +690,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParen: ")",
+    rParen: ") ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
   }),
 });
 
@@ -669,7 +706,9 @@ wy.defineWidget({
       name: wy.bind("name"),
       lParen: "(",
       args: wy.stream({type: "arg-stream"}, "args"),
-      rParen: ") => ",
+      rParen: ") ",
+      testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
+      arrow: " => ",
       exMessage: wy.bind(["ex", "message"]),
     }),
     exBlock: {

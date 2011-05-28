@@ -100,7 +100,7 @@ exports.AsyncJobEndEntry = AsyncJobEndEntry;
 
 function CallEntry(startTimestamp, startRelstamp, startSeq,
                    endTimestamp, endSeq,
-                   name, args, ex) {
+                   name, args, testOnlyArgs, ex) {
   this.timestamp = startTimestamp;
   this.relstamp = startRelstamp;
   this.seq = startSeq;
@@ -108,6 +108,7 @@ function CallEntry(startTimestamp, startRelstamp, startSeq,
   this.endSeq = endSeq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
   this.ex = ex;
 }
 CallEntry.prototype = {
@@ -333,14 +334,20 @@ LoggestLogTransformer.prototype = {
    *  right now and it can survive some growth, but eventually will need to
    *  get fancier.
    */
-  _transformArgs: function(metaArgs, entry) {
-    var numArgs = 0, args = [];
+  _transformArgs: function(metaArgs, entry, startFrom) {
+    if (startFrom === undefined)
+      startFrom = 1;
+    var iEntry = startFrom;
+    var args = [];
     for (var key in metaArgs) {
       var def = metaArgs[key];
-      var arg = entry[++numArgs];
-      args.push(((numArgs > 1) ? ", " : "") + key + ": ");
+      args.push(((iEntry > startFrom) ? ", " : "") + key + ": ");
+      var arg = entry[iEntry++];
       if (def === 'exception') {
-        args.push({type: "exception", message: arg.m, stack: arg.s});
+        args.push({type: 'exception', message: arg.m, stack: arg.s});
+      }
+      else if (def === 'jsonable') {
+        args.push({type: 'full-obj', obj: arg});
       }
       else {
         args.push(arg);
@@ -349,11 +356,13 @@ LoggestLogTransformer.prototype = {
     return args;
   },
 
+  // [name, val, timestamp, seq]
   _proc_stateVar: function(ignoredMeta, entry) {
     return new StateChangeEntry(entry[2], entry[2] - this._baseTime,
                                 entry[3], entry[0], entry[1]);
   },
 
+  // [name, ...args..., timestamp, seq]
   _proc_event: function(metaArgs, entry) {
     var args = this._transformArgs(metaArgs, entry);
     var numArgs = args.length / 2;
@@ -361,6 +370,7 @@ LoggestLogTransformer.prototype = {
                           entry[numArgs+2], entry[0], args);
   },
 
+  // [name_begin, ...args..., timestamp, seq]
   _proc_asyncJobBegin: function(metaArgs, name, entry) {
     var args = this._transformArgs(metaArgs, entry);
     var numArgs = args.length / 2;
@@ -370,6 +380,7 @@ LoggestLogTransformer.prototype = {
                                   name, args);
   },
 
+  // [name_end, ...args..., timestamp, seq]
   _proc_asyncJobEnd: function(metaArgs, name, entry) {
     var args = this._transformArgs(metaArgs, entry);
     var numArgs = args.length / 2;
@@ -378,17 +389,24 @@ LoggestLogTransformer.prototype = {
                                 entry[numArgs+2], name, args);
   },
 
-  _proc_call: function(metaArgs, entry) {
-    var args = this._transformArgs(metaArgs, entry);
-    var numArgs = args.length / 2, ex = null;
-    if (entry.length > numArgs + 5)
-      ex = entry[numArgs + 5];
+  // [name, ...args..., startTimestamp, startSeq, endTimestamp, endSeq, ex]
+  _proc_call: function(metaArgs, metaTestOnlyArgs, entry) {
+    var args = this._transformArgs(metaArgs, entry),
+        numArgs = args.length / 2,
+        ex = entry[numArgs + 5],
+        testOnlyArgs = null;
+
+    if (entry.length > numArgs + 6)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 6);
+
     return new CallEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
                          entry[numArgs+2],
                          entry[numArgs+3], entry[numArgs+4],
-                         entry[0], args, ex);
+                         entry[0], args, testOnlyArgs, ex);
   },
 
+  // [name, ...args.., timestamp, seq]
   _proc_error: function(metaArgs, entry) {
     var args = this._transformArgs(metaArgs, entry);
     var numArgs = args.length / 2;
@@ -396,6 +414,8 @@ LoggestLogTransformer.prototype = {
                           entry[numArgs+2], entry[0], args);
   },
 
+  // ["!failedxp", EXPOBJ, timestamp, seq]
+  // where EXPOBJ is [name, ...args...]
   _proc_failedExpectation: function(schemaSoup, entry) {
     var exp = entry[1];
     var expName = exp[0];
@@ -411,6 +431,7 @@ LoggestLogTransformer.prototype = {
                                       expName, args);
   },
 
+  // ["!unexpected", a normal entry]
   _proc_unexpectedEntry: function(handlers, entry) {
     var subEntry = entry[1];
     var subObj = handlers[subEntry[0]](subEntry);
@@ -462,9 +483,17 @@ LoggestLogTransformer.prototype = {
         }
       }
       if ("calls" in schemaDef) {
+        var testOnlyCallsSchema = null;
+        if ("TEST_ONLY_calls" in schemaDef)
+          testOnlyCallsSchema = schemaDef.TEST_ONLY_calls;
         for (key in schemaDef.calls) {
+          var testOnlyMeta = null;
           schemaSoup[key] = ['call', schemaDef.calls[key]];
-          handlers[key] = this._proc_call.bind(this, schemaDef.calls[key]);
+          if (testOnlyCallsSchema && testOnlyCallsSchema.hasOwnProperty(key))
+            testOnlyMeta = testOnlyCallsSchema[key];
+          handlers[key] = this._proc_call.bind(this,
+                                               schemaDef.calls[key],
+                                               testOnlyMeta);
         }
       }
       if ("errors" in schemaDef) {
