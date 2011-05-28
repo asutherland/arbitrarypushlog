@@ -139,6 +139,8 @@
   #headerCol {
     display: inline-block;
     border: 1px solid gray;
+    padding: 0px 4px;
+    margin-left: -1px;
   }
   #entryItem {
     display: block;
@@ -195,6 +197,9 @@
 }
 
 #entry-event {
+  #name {
+    color: blue;
+  }
 }
 
 #entry-async-job-begin {
@@ -212,6 +217,9 @@
 
 
 #entry-error {
+  #errLabel {
+    color: maroon;
+  }
 }
 
 #entry-failed-expectation {
