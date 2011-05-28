@@ -337,6 +337,7 @@ wy.defineWidget({
           clsHeaderCol = this.__cssClassBaseName + "headerCol",
           clsDuringRow = this.__cssClassBaseName + "duringRow",
           clsOutsideRow = this.__cssClassBaseName + "outsideRow",
+          clsDivider = this.__cssClassBaseName + "divider",
           clsEntryRun = this.__cssClassBaseName + "entryRun",
           clsEntryItem = this.__cssClassBaseName + "entryItem";
 
@@ -452,6 +453,26 @@ wy.defineWidget({
           colMeta = usingColumnMap[boxedEntry.column];
 
           if (curCol !== boxedEntry.column) {
+            // insert pretty divider
+            if (curCol !== null) {
+              var lastMeta = usingColumnMap[curCol];
+              curDiv = doc.createElement("div");
+              curDiv.setAttribute("class", clsDivider);
+              var lefty, righty;
+              if (colMeta.layout < lastMeta.layout) {
+                lefty = colMeta.layout + 1;
+                righty = lastMeta.layout + 1;
+              }
+              else {
+                lefty = lastMeta.layout + gapEms - 1;
+                righty = colMeta.layout + 1;
+              }
+              curDiv.setAttribute("style",
+                "margin-left: " + lefty + "em; " +
+                "width: " + (righty - lefty) + "em;");
+              rowNode.appendChild(curDiv);
+            }
+
             curDiv = doc.createElement("div");
             curDiv.setAttribute("class", clsEntryRun);
             curDiv.setAttribute("style",

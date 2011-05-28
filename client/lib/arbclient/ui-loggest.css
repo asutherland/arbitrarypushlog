@@ -143,6 +143,10 @@
   #entryItem {
     display: block;
   }
+  #divider {
+    height: 1px;
+    border-bottom: 1px dashed gray;
+  }
 }
 
 #popup-obj-detail {

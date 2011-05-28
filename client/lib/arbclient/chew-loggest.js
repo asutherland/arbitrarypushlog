@@ -679,11 +679,22 @@ LoggestLogTransformer.prototype = {
         perm.things.push(this._makeThing(strName, rawNamed));
     }
 
+    function recursiveKidTraversal(logger) {
+      if (!logger.kids)
+        return;
+      for (var i = 0; i < logger.kids.length; i++) {
+        var kidLogger = logger.kids[i];
+        nonTestLoggers.push(kidLogger);
+        recursiveKidTraversal(kidLogger);
+      }
+    }
+
     // -- filter test step loggers, create their metas, find their time-spans
     for (var iKid = 0; iKid < rawPerm.kids.length; iKid++) {
       var rawKid = rawPerm.kids[iKid];
       if (rawKid.loggerIdent !== 'testStep') {
         nonTestLoggers.push(rawKid);
+        recursiveKidTraversal(rawKid);
         continue;
       }
 
