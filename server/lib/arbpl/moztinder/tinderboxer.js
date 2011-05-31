@@ -18,8 +18,8 @@ define(
   [
     "q",
     "url",
-    "./utils/reliahttp",
-    "./hackjobs",
+    "../utils/reliahttp",
+    "../hackjobs",
     "exports"
   ],
   function(

@@ -60,14 +60,14 @@
 define(
   [
     "q",
-    "./hstore",
-    "./databus",
+    "../hstore",
+    "../databus",
     "./tinderboxer",
     "./xpcshell-logfrob", "./mozmill-logfrob",
     "./mochitest-logfrob", "./reftest-logfrob",
     "arbcommon/repodefs",
-    "./utils/reliahttp",
-    "./hackjobs",
+    "../utils/reliahttp",
+    "../hackjobs",
     "exports"
   ],
   function(

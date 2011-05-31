@@ -44,13 +44,13 @@
 define(
   [
     "q",
-    "./overmind",
+    "./moztinder/overmind",
     "arbcommon/repodefs",
     "exports"
   ],
   function(
     $Q,
-    $overmind,
+    $moz_overmind,
     $repodefs,
     exports
   ) {
@@ -116,7 +116,7 @@ HiveMind.prototype = {
     }
 
     var treeDef = this._unprocessedTrees.pop();
-    this._curOvermind = new $overmind.Overmind(treeDef, this._config);
+    this._curOvermind = new $moz_overmind.Overmind(treeDef, this._config);
     var self = this;
     when(self._curOvermind.bootstrap(),
       function() {
@@ -172,8 +172,8 @@ HiveMind.prototype = {
       return;
     }
 
-    this._curOvermind = new $overmind.Overmind(this._unprocessedTrees.pop(),
-                                               this._config);
+    this._curOvermind = new $moz_overmind.Overmind(this._unprocessedTrees.pop(),
+                                                   this._config);
     var self = this, iRange = 0;
     function procNextRange() {
       if (iRange >= self._timeRanges.length) {
