@@ -88,7 +88,17 @@ var THISFILE_REPOS = {
 var REPOS = exports.REPOS = {};
 
 var THISFILE_BUILD_TREES = {
-
+  "Deuxdrop": new BuildTreeDef({
+    id: "dd",
+    name: "Deuxdrop",
+    desc: "Deuxdrop effective trunk",
+    product: "Deuxdrop",
+    repos: [THISFILE_REPOS["deuxdrop"]],
+    mount: {},
+    typeGroups: [
+      "loggest",
+    ],
+  }),
 };
 
 /**
@@ -100,7 +110,7 @@ var DUMMY_LOCAL_TREES = {
     name: "Local",
     desc: "Local logs you imported...",
     product: "Local",
-    repos: [REPOS["comm-central"]],
+    repos: [$mozrepos.REPOS["comm-central"]],
     mount: {},
     typeGroups: [
       "mozmill",
@@ -111,7 +121,7 @@ var DUMMY_LOCAL_TREES = {
     name: "Logal",
     desc: "Local loggest logs you imported...",
     product: "Local",
-    repos: [REPOS["deuxdrop"]],
+    repos: [THISFILE_REPOS["deuxdrop"]],
     mount: {},
     typeGroups: [
       "loggest",
