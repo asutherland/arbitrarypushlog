@@ -132,12 +132,8 @@ mix($mozrepos.TINDER_TREES, PUBLISHED_TREES);
 mix(THISFILE_BUILD_TREES, PUBLISHED_TREES);
 
 exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
-  if (BUILD_TREES.hasOwnProperty(treeName)) {
-    return BUILD_TREES[treeName];
-  }
-
-  if ($mozrepos.TINDER_TREES.hasOwnProperty(treeName)) {
-    return $mozrepos.TINDER_TREES[treeName];
+  if (PUBLISHED_TREES.hasOwnProperty(treeName)) {
+    return PUBLISHED_TREES[treeName];
   }
   if (DUMMY_LOCAL_TREES.hasOwnProperty(treeName)) {
     return DUMMY_LOCAL_TREES[treeName];
