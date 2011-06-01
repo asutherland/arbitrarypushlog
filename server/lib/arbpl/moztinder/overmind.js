@@ -36,10 +36,10 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- * Main processing pipeline logic.  We operate based on a time-window based
- *  mode of operation.  In steady state, the window is open-ended from the last
- *  grab time.  In backfill, it's a specific window based on our backfill chunk
- *  size.
+ * Mozilla Tinderbox processing pipeline logic.  We operate based on a
+ *  time-window based mode of operation.  In steady state, the window is
+ *  open-ended from the last grab time.  In backfill, it's a specific window
+ *  based on our backfill chunk size.
  *
  * General operation looks like this:
  * - Figure out the appropriate time window for a given Tinderbox tree.  This is
