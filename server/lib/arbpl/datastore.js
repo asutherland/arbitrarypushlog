@@ -121,7 +121,7 @@ function DataServer(ioSocky, bridgeSink, devMode) {
    *     it is not clear the user will return to the pushlog anytime soon, if
    *     ever.)
    *   }
-   *   @key[treeDef @oneof[null TinderTreeDef]] {
+   *   @key[treeDef @oneof[null BuildTreeDef]] {
    *     The tree the user is subscribed to; initially null and set to null if a
    *     gibberish subscription request is received.
    *   }

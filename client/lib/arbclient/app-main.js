@@ -113,7 +113,7 @@ function ArbApp(win) {
    */
   this.state = "picktree";
 
-  this.possibleTrees = $repodefs.TINDER_TREES;
+  this.possibleTrees = $repodefs.PUBLISHED_TREES;
 
   /**
    * The wmsy binding associated with us.  A related rule is that only a

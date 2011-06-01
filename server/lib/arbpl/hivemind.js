@@ -45,13 +45,13 @@ define(
   [
     "q",
     "./moztinder/overmind",
-    "arbcommon/repodefs",
+    "arbcommon/mozrepos",
     "exports"
   ],
   function(
     $Q,
     $moz_overmind,
-    $repodefs,
+    $mozrepos,
     exports
   ) {
 var when = $Q.when;
@@ -60,7 +60,7 @@ var when = $Q.when;
  * Perform operations on multiple overminds.
  *
  * @args[
- *   @param[treeDefs @dictof["ignored tree name" TinderTreeDef]]
+ *   @param[treeDefs @dictof["ignored tree name" BuildTreeDef]]
  * ]
  */
 function HiveMind(treeDefs) {
@@ -189,6 +189,10 @@ HiveMind.prototype = {
   },
 
 };
-exports.HIVE_MIND = new HiveMind($repodefs.TINDER_TREES);
+/**
+ * For now HiveMind is only for polling sweeps which implies moztinder-style
+ *  trees.
+ */
+exports.HIVE_MIND = new HiveMind($mozrepos.TINDER_TREES);
 
 }); // end define
