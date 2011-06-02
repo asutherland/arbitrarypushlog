@@ -43,9 +43,11 @@
  *    the pushlog hook because there is no pushlog.  Instead we approximate
  *    the pushlog based on the builds that Jenkins triggers.  Namely, all of
  *    the commits that happened since the last build are declared part of the
- *    same push.  One nice feature of this is that we should be able to
- *    reconstruct the data from our logs.
- * - We hear about and care about both successes and failures so we have more
+ *    same push.  Because it's only easy to get Jenkins to tell us the revision
+ *    we are building (rather than all 'new' revisions), we derive that
+ *    information from asking github because we don't want to have to check out
+ *    repositories locally.  We use the jenkins build id's as the push id's.
+ * - We hear and care about both successes and failures so we have more
  *    data and (more importantly) will definitely need an analytical pass that
  *    determines whether the success is interesting or not.  The analytical
  *    pass should not be coupled to this implementation, but we want it to run
@@ -69,11 +71,21 @@ define(
 
 /**
  * We are pointed at one or more log files, we process them.
+ *
+ * General notes:
+ * - Jenkins build id's are used as our push id's.  If/when we start performing
+ *    multiple builds per push we will likely model those as downstream builds
+ *    that use that contribute builds onto the root build's build id.
  */
 function JenkgitOvermind(buildTreeDef, config) {
 }
 JenkgitOvermind.prototype = {
   /**
+   * Given a specific commit being used in a build, find the list of commits
+   *  likely including the build commit itself that are new to the repository.
+   *
+   *
+   *
    * Retrieve all the currently unknown commits for a repository, linearize
    *  them, and persist them to our datastore.  The assumption is that we will
    *  be triggered in rough correspondence to when new builds are made and
@@ -91,7 +103,7 @@ JenkgitOvermind.prototype = {
    * The general algorith mis:
    * - Ask for the most recent page of commits.
    */
-  getAndLinearizeCommits: function() {
+  findCommitBatchForBuildCommit: function() {
   },
 };
 

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd server/lib
+node r.js arbpl/cmdline.js "$@"

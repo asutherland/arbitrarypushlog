@@ -83,48 +83,48 @@ function deathClock() {
   }, WATCHDOG_TIMEOUT);
 }
 
-var OPTS = [
-  {
-    name: "command",
-    position: 0,
-    help: "one of: sync, web, localchew, backfill",
-  },
-  {
-    name: "bridge-port",
-    string: "--bridge-port",
-    default: 8009,
-  },
-  {
-    name: "tree",
-    string: "--tree=TREE",
-  },
-  {
-    name: "days",
-    string: "--days=DAYS",
-    default: 5,
-    help: "for backfill, how many days to backfill",
-  },
-];
+var parser = $nomnom.globalOpts({
+});
 
-// We need to do our own argv slicing to compensate for RequireJS' r.js
-var options = $nomnom.opts(OPTS).parseArgs(process.argv.slice(3));
-switch (options.command) {
-  case "web":
+const OPT_BRIDGE_PORT = {
+  string: "--bridge-port",
+  default: 8009,
+};
+const OPT_TREE = {
+  string: "--tree=TREE",
+};
+const OPT_LOGFILE = {
+  position: 1,
+  help: "the log file to process",
+};
+
+
+parser.command('web')
+  .help("Run the user-facing web-server.")
+  .opts({
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/web/gogogo"],
       function($webgo) {
         // automatically goes, as it were.
       }
     );
-    break;
+  });
 
-  case "sync":
+parser.command('sync')
+  .help("Synchronize polling-based build trees.")
+  .opts({
+    bridgePort: OPT_BRIDGE_PORT,
+    tree: OPT_TREE,
+  })
+  .callback(function(options) {
     deathClock();
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
         $hivemind.HIVE_MIND.configure({
-          bridgePort: parseInt(options["bridge-port"]),
+          bridgePort: parseInt(options.bridgePort),
           tree: options.tree,
         });
         when($hivemind.HIVE_MIND.syncAll(),
@@ -137,14 +137,25 @@ switch (options.command) {
           });
       }
     );
-    break;
+  });
 
-  case "backfill":
+parser.command('backfill')
+  .help("Synchronize polling-based build trees.")
+  .opts({
+    bridgePort: OPT_BRIDGE_PORT,
+    tree: OPT_TREE,
+    days: {
+      string: "--days=DAYS",
+      default: 5,
+      help: "for backfill, how many days to backfill",
+    },
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/hivemind"],
       function($hivemind) {
         $hivemind.HIVE_MIND.configure({
-          bridgePort: parseInt(options["bridge-port"]),
+          bridgePort: parseInt(options.bridgePort),
           tree: options.tree,
         });
         when($hivemind.HIVE_MIND.backfillAll(options.days),
@@ -157,10 +168,58 @@ switch (options.command) {
           });
       }
     );
-    break;
+  });
 
-  // test function to push something to the clients using console.log.
-  case "testpush":
+const OPT_JOB = {
+  string: "--job",
+};
+const OPT_BUILD_NUM = {
+  string: "--build-num",
+};
+const OPT_BUILD_ID = {
+  string: "--build-id",
+};
+const OPT_COMMIT = {
+  string: "--commit",
+};
+const OPT_BRANCH = {
+  string: "--branch",
+};
+const OPT_LOGFILE_NAMED_ARG = {
+  string: "--logfile",
+};
+parser.command('jenkins-building')
+  .help("Jenkins automation: Report the start of a build job.")
+  .opts({
+    job: OPT_JOB,
+    buildNum: OPT_BUILD_NUM,
+    buildId: OPT_BUILD_ID,
+    commit: OPT_COMMIT,
+    branch: OPT_BRANCH,
+  })
+  .callback(function(options) {
+  });
+
+parser.command('jenkins-built')
+  .help("Jenkins automation: Report the completion of a build job.")
+  .opts({
+    job: OPT_JOB,
+    buildNum: OPT_BUILD_NUM,
+    buildId: OPT_BUILD_ID,
+    commit: OPT_COMMIT,
+    branch: OPT_BRANCH,
+    logfile: OPT_LOGFILE_NAMED_ARG,
+  })
+  .callback(function(options) {
+  });
+
+
+// test function to push something to the clients using console.log.
+parser.command('testpush')
+  .help("Debugging: hackjob to send a message to clients.")
+  .opts({
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/databus"],
       function($databus) {
@@ -178,88 +237,125 @@ switch (options.command) {
           });
       }
     );
-    break;
+  });
 
 
-  case "localchew":
+parser.command('localchew')
+  .help("Consume a local mozmill run's output, pushing to the 'Local' tree.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/localchew"],
       function($localchew) {
         var chewer = new $localchew.LocalChewer();
-        when(chewer.chew(options[1]),
+        when(chewer.chew(options.logfile),
           function(pushId) {
             console.log("chewed log as push id:", pushId);
             process.exit(0);
           });
       }
     );
-    break;
+  });
 
-  case "logalchew":
+parser.command('logalchew')
+  .help("Consume a local loggest run's output, pushing to the 'Logal' tree.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/loggestchew"],
       function($loggestchew) {
         var chewer = new $loggestchew.LocalLoggestChewer();
-        when(chewer.chew(options[1]),
+        when(chewer.chew(options.logfile),
           function(pushId) {
             console.log("chewed log as push id:", pushId);
             process.exit(0);
           });
       }
     );
-    break;
+  });
 
-  case "frob-xpcshell":
+parser.command('frob-xpcshell')
+  .help("Debugging: Process an xpcshell log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/xpcshell-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
-    break;
+  });
 
-  case "frob-mochitest":
+parser.command('frob-mochitest')
+  .help("Debugging: Process a mochitest log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/mochitest-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
-    break;
+  });
 
-  case "frob-reftest":
+parser.command('frob-reftest')
+  .help("Debugging: Process a reftest log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/reftest-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
-    break;
+  });
 
-  case "frob-mozmill":
+parser.command('frob-mozmill')
+  .help("Debugging: Process a mozmill log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/mozmill-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
-    break;
+  });
 
-  case "frob-loggest":
+parser.command('frob-loggest')
+  .help("Debugging: Process a loggest log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
     $require(
       ["arbpl/loggest-logfrob"],
       function($frobber) {
-        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options[1]));
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
-    break;
+  });
 
-  default:
-    console.error("unknown command: " + options.command + " (args were: '" +
-                  process.argv.slice(3).join("' '") + "')");
-    process.exit(-1);
-    break;
-}
+parser.scriptName('cmdline');
 
+// We need to do our own argv slicing to compensate for RequireJS' r.js.
+//  Because nomnom currently uses "passedInArgv || process.argv.slice(2)",
+//   passing in process.argv.slice(3) can screw us if there is no command because
+//   an empty list is falsey.  So we just chop off one of the first args so
+//   that the default slice(2) ends up effectively being slice(3).
+process.argv = process.argv.slice(1);
+parser.parseArgs();
 
 });
