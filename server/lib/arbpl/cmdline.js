@@ -172,21 +172,33 @@ parser.command('backfill')
 
 const OPT_JOB = {
   string: "--job",
+  required: true,
+  help: "Jenkins job name; should match the tree name",
 };
 const OPT_BUILD_NUM = {
   string: "--build-num",
+  required: true,
+  help: "Jenkins build number; we use it as the push id too",
 };
 const OPT_BUILD_ID = {
   string: "--build-id",
+  required: true,
+  help: "Jenkins build id; it's a timestamp (YYYY-MM-DD_hh-mm-ss)",
 };
 const OPT_COMMIT = {
   string: "--commit",
+  required: true,
+  help: "git commit id (hex hash gibberish)",
 };
 const OPT_BRANCH = {
   string: "--branch",
+  required: true,
+  help: "git branch, ex: develop, feature/blah"
 };
 const OPT_LOGFILE_NAMED_ARG = {
   string: "--logfile",
+  required: true,
+  help: "loggest log file to process",
 };
 parser.command('jenkins-building')
   .help("Jenkins automation: Report the start of a build job.")
@@ -198,6 +210,22 @@ parser.command('jenkins-building')
     branch: OPT_BRANCH,
   })
   .callback(function(options) {
+    $require(
+      ['arbpl/gitjenkins/overmind', 'arbcommon/repodefs'],
+      function($overmind, $repodefs) {
+        var buildTree = $repodefs.safeGetTreeByName(options.job);
+        var overmind = new $overmind.Overmind(buildTree, options);
+        when(overmind.processBuildStart(),
+          function() {
+            console.log("DONE. woo!");
+            process.exit(0);
+          },
+          function() {
+            console.error("FAILED. boo :(");
+            process.exit(1);
+          }
+        );
+      });
   });
 
 parser.command('jenkins-built')
@@ -211,6 +239,22 @@ parser.command('jenkins-built')
     logfile: OPT_LOGFILE_NAMED_ARG,
   })
   .callback(function(options) {
+    $require(
+      ['arbpl/gitjenkins/overmind', 'arbcommon/repodefs'],
+      function($overmind, $repodefs) {
+        var buildTree = $repodefs.safeGetTreeByName(options.job);
+        var overmind = new $overmind.Overmind(buildTree, options);
+        when(overmind.processBuildCompletedWithLog(),
+          function() {
+            console.log("DONE. woo!");
+            process.exit(0);
+          },
+          function() {
+            console.error("FAILED. boo :(");
+            process.exit(1);
+          }
+        );
+      });
   });
 
 

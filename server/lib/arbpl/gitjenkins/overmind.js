@@ -63,11 +63,26 @@
 
 define(
   [
+    'q',
+    '../hstore',
+    '../databus',
+    '../utils/reliahttp',
     'exports'
   ],
   function(
+    $Q,
+    $hstore,
+    $databus,
+    $reliahttp,
     exports
   ) {
+var when = $Q.when;
+
+var DB = new $hstore.HStore();
+
+const GITHUB_API_ROOT = "http://github.com/api/",
+      GITHUB_API_COMMITS = GITHUB_API_ROOT + "v2/json/commits/";
+
 
 /**
  * We are pointed at one or more log files, we process them.
@@ -77,34 +92,124 @@ define(
  *    multiple builds per push we will likely model those as downstream builds
  *    that use that contribute builds onto the root build's build id.
  */
-function JenkgitOvermind(buildTreeDef, config) {
+function JenkgitOvermind(buildTreeDef, options) {
+  this.buildTree = buildTreeDef;
+
+  options.buildNum = parseInt(options.buildNum);
+  this.options = options;
+
+  this.bridge = new $databus.ScraperBridgeSource(options.bridgePort);
+
+  this._procDeferred = null;
+  this._remainingSteps = null;
+
+  this._pendingSidebandState = null;
 }
 JenkgitOvermind.prototype = {
+  bootstrap: function() {
+    return DB.bootstrap();
+  },
+
   /**
-   * Given a specific commit being used in a build, find the list of commits
-   *  likely including the build commit itself that are new to the repository.
-   *
-   *
-   *
-   * Retrieve all the currently unknown commits for a repository, linearize
-   *  them, and persist them to our datastore.  The assumption is that we will
-   *  be triggered in rough correspondence to when new builds are made and
-   *  tests run and that this will roughly correspond with pushes made.  More
-   *  specifically, if hear about some commits that are older than recent
-   *  commits we have already fully processed, those older commits are still
-   *  going to get push id's that are more recent than the commits they
-   *  pre-date and this is believed desirable.  The perfection concern is that
-   *  if the
-   *
+   * Given a specific commit being used in a build find the list of commits,
+   *  likely including the build commit itself, that are new to the repository.
    *
    * The implementation is currently github specific, relying on its REST API
-   *  to get information about the commits.
+   *  to get information about the commits.  We use the "show the details for
+   *  a specific commit" API to get our info which means N requests for N
+   *  revisions.  We do this because the files modified are only available via
+   *  this mechanism and it avoids the complexity of the paging mechanism in
+   *  the commit listing requests.
    *
-   * The general algorith mis:
-   * - Ask for the most recent page of commits.
+   * We aren't directly inquiring from git because we 1) don't want to have to
+   *  have the repo available locally and 2) running some logic on the jenkins
+   *  machine to package up the results looks like it would require some
+   *  jenkins plugin hacking at this point.
    */
-  findCommitBatchForBuildCommit: function() {
+  _findCommitBatchForBuildCommit: function() {
+  },
+
+  /**
+   * Make sure the database knows about this build; if it does not, fetch
+   *  the required info and populate the database.  Subsequent work performed
+   *  by `_gotDbPushInfo`.
+   */
+  _ensurePush: function() {
+    var self = this;
+    return when(DB.getPushInfo(this.buildTree.id, this.options.buildNum),
+      function(rowResults) {
+        return self._gotDbPushInfo(DB.normalizeOneRow(rowResults));
+      },
+      function(err) {
+        console.error("DB problem that's poorly handled...", err);
+      });
+  },
+
+  /**
+   *
+   */
+  _gotDbPushInfo: function(dbstate) {
+    if (!dbstate.hasOwnProperty("s:r")) {
+      return when(this._findCommitBatchForBuildCommit(this.options.commit),
+        function(pushInfo) {
+        },
+        function(err) {
+        });
+    }
+  },
+
+  /**
+   * Run the loggest frobber
+   */
+  _processLog: function() {
+  },
+
+  _sendSideband: function() {
+  },
+
+  _runSteps: function(steps) {
+    this._procDeferred = $Q.defer();
+    this._remainingSteps = steps;
+
+    var self = this;
+    function failStep(err) {
+      self._procDeferred.reject(err);
+      self._procDeferred = null;
+    }
+    function runNextStep(val) {
+      if (!steps.length) {
+        self._procDeferred.resolve();
+        self._procDeferred = null;
+        return;
+      }
+
+      var stepFunc = steps.shift();
+      when(stepFunc.call(this, val), runNextStep, failStep);
+    }
+
+    runNextStep();
+    return this._procDeferred.promise;
+  },
+
+  processBuiltStart: function() {
+    return this._runSteps([
+      this.bootstrap,
+      this._findCommitBatchForBuildCommit,
+      this._ensurePush,
+      this._sendSideband,
+    ]);
+  },
+
+  processBuildCompletedWithLog: function() {
+    return this._runSteps([
+      this.bootstrap,
+      this._findCommitBatchForBuildCommit,
+      this._ensurePush,
+      this._processLog,
+      this._sendSideband,
+    ]);
   },
 };
+exports.Overmind = JenkgitOvermind;
 
 }); // end define

@@ -126,7 +126,7 @@ function Overmind(tinderTreeDef, config) {
   this._pendingPushFetches = 0;
 
   /**
-   * How many log processing jobs are active?  This is used
+   * How many log processing jobs are active?
    */
   this._activeLogFrobbers = [];
   /**
