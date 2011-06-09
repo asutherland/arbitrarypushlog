@@ -173,6 +173,7 @@ FailCluster.prototype = {
   pathBasedPlacement: function(pathParts, type, name, signature, uniqueName,
                                build) {
     var failGroup;
+    // -- If we are empty, just become what is passed in
     if (this.usingPath == null) {
       this.usingPath = pathParts;
       this.name = this.usingPath.join("/") || this.explicitName;
@@ -181,6 +182,7 @@ FailCluster.prototype = {
       this.kids.push(failGroup);
       return;
     }
+    // -- Check for similarity
     var similarity = similarPathComponents(this.usingPath, pathParts);
     // exact similarity match means just stick it in our list
     if (similarity === this.usingPath.length &&
@@ -188,24 +190,28 @@ FailCluster.prototype = {
       this.groupifyInKids(type, name, signature, uniqueName, build);
       return;
     }
-    // split if required
+    // - Too specific; split our current path on common overlap
+    // If we are currently ["same", "different"], then we become ["same"] and
+    //  create a kid whose path is ["different"]
     var subCluster;
     if (this.usingPath.length > similarity) {
+      // create the "different" cluster
       var subPath = this.usingPath.slice(similarity);
       var subName = subPath.join("/");
-      this.usingPath = this.usingPath.slice(0, similarity);
-      this.name = this.usingPath.join("/") || this.explicitName;
       subCluster = new FailCluster(subName);
       subCluster.usingPath = subPath;
-      // save off new array to avoid abandoning it as garbage
-      var nuevoKids = subCluster.kids;
-      subCluster.kids = this.kids;
-      nuevoKids.push(subCluster);
-      this.kids = nuevoKids;
+      subCluster.kids = this.kids; // (we are wasting a useful array for clarity)
+      // and have it be our first sub-cluster
+      this.kids = [subCluster];
+
+      // update us to be "same" or our explicit name
+      this.usingPath = this.usingPath.slice(0, similarity);
+      this.name = this.usingPath.join("/") || this.explicitName;
+
+      // and now normalize pathParts since we are now exactly specific enough
     }
-    else {
-      pathParts = pathParts.slice(similarity);
-    }
+    pathParts = pathParts.slice(similarity);
+    // -- Sub-clustering
     // - see if there is an appropriate sub-cluster (there will only be one)
     for (var i = 0; i < this.kids.length; i++) {
       var kid = this.kids[i];
