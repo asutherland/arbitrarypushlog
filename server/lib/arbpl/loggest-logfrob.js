@@ -134,8 +134,9 @@ Frobber.prototype = {
           testName: testCaseLog.semanticIdent,
           uniqueName: testUniqueName,
         };
-        if (testCaseLog.latched &&
-            (!testCaseLog.result || testCaseLog.result === 'fail')) {
+        if (!testCaseLog.latched ||
+            (!testCaseLog.latched.result ||
+             testCaseLog.latched.result !== 'pass')) {
           this.overview.failureIndicated = true;
           this.overview.failures.push(summaryObj);
         }
