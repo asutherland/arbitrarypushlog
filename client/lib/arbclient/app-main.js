@@ -269,7 +269,10 @@ ArbApp.prototype = {
   _setLocation: function(loc, alreadyInEffect) {
     this._loc = loc;
     var navUrl = this._urlMaker(loc);
-    this.history.pushState(null, "", navUrl);
+    if (alreadyInEffect)
+      this.history.replaceState(null, "", navUrl);
+    else
+      this.history.pushState(null, "", navUrl);
 
     if (!alreadyInEffect) {
       this._popLocation();

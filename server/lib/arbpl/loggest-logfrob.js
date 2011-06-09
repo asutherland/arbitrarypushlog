@@ -101,10 +101,30 @@ Frobber.prototype = {
       if (!bits[i])
         continue;
 
-      var rawObj = JSON.parse(bits[i]);
+      // it's possible for other lines to get mixed in, although it's not
+      //  preferred.  if it doesn't remotely look like JSON, don't mention it.
+      if (bits[i][0] !== "{")
+        continue;
+      var rawObj;
+      try {
+        rawObj = JSON.parse(bits[i]);
+      }
+      catch(ex) {
+        // die quickly in event of parse failure so we don't just sit around
+        //  like suckers.
+        // XXX once all test-driver bugs are ironed out, we want to stop doing
+        //  this and instead just propagate an annotation that there was
+        //  something corrupt about the log.
+        console.error("JSON PARSING PROBLEM! on...");
+        console.error(bits[i]);
+        process.exit(1);
+      }
       // top level is 'schema', 'log' whose 'kids' are testcase loggers
       var schema = rawObj.schema;
       var definerLog = rawObj.log;
+      // Empty / fully disabled test files will have no kids!
+      if (!definerLog.kids)
+        continue;
       for (var iKid = 0; iKid < definerLog.kids.length; iKid++) {
         var testCaseLog = definerLog.kids[iKid];
         var testUniqueName = definerLog.semanticIdent + "-" +
