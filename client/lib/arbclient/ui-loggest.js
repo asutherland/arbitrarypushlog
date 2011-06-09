@@ -560,8 +560,7 @@ wy.defineWidget({
   // XXX THIS IS VERY DUMB; WE SHOULD AUTO STUB.
   focus: wy.focus.item,
   structure: {
-    message: wy.bind("message"),
-    stack: wy.bind("stack"),
+    ex: wy.widget({type: "transformed-exception"}, wy.SELF),
   },
 });
 
@@ -713,7 +712,7 @@ wy.defineWidget({
       exMessage: wy.bind(["ex", "message"]),
     }),
     exBlock: {
-      stack: wy.bind(["ex", "stack"]),
+      stack: wy.widget({type: "transformed-exception"}, "ex"),
     },
   },
 });
@@ -765,6 +764,32 @@ wy.defineWidget({
     errLabel: "unexpected event: ",
     subEntry: wy.widget({type: "entry"}, "entry"),
   }),
+});
+
+
+wy.defineWidget({
+  name: "transformed-exception",
+  doc: "A single exception, transformed by extranform.js.",
+  constraint: {
+    type: "transformed-exception",
+  },
+  structure: {
+    message: wy.bind("message"),
+    frames: wy.vertList({type: "stack-frame"}, "frames"),
+  },
+});
+
+wy.defineWidget({
+  name: "stack-frame",
+  doc: "A stack frame from an exception",
+  constraint: {
+    type: "stack-frame",
+  },
+  structure: {
+    filename: wy.bind("filename"),
+    lineNo: wy.bind("lineNo"),
+    funcName: wy.bind("funcName"),
+  },
 });
 
 

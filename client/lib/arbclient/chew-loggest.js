@@ -329,6 +329,11 @@ function LoggestLogTransformer() {
   this._uniqueNameMap = null;
 }
 LoggestLogTransformer.prototype = {
+  _transformEx: function(rawEx) {
+    if (rawEx == null)
+      return null;
+    return {type: 'exception', message: rawEx.m, frames: rawEx.f};
+  },
   /**
    * Helper function to perform any transformations on the wire-format object
    *  representations to rich local representations.  This is pretty ad-hoc
@@ -345,7 +350,7 @@ LoggestLogTransformer.prototype = {
       args.push(((iEntry > startFrom) ? ", " : "") + key + ": ");
       var arg = entry[iEntry++];
       if (def === 'exception') {
-        args.push({type: 'exception', message: arg.m, stack: arg.s});
+        args.push(this._transformEx(arg));
       }
       else if (def === 'jsonable') {
         args.push({type: 'full-obj', obj: arg});
@@ -398,7 +403,7 @@ LoggestLogTransformer.prototype = {
   _proc_call: function(metaArgs, metaTestOnlyArgs, entry) {
     var args = this._transformArgs(metaArgs, entry),
         numArgs = args.length / 2,
-        ex = entry[numArgs + 5],
+        ex = this._transformEx(entry[numArgs + 5]),
         testOnlyArgs = null;
 
     if (entry.length > numArgs + 6)

@@ -243,3 +243,29 @@
     color: orange;
   }
 }
+
+#transformed-exception {
+  #frames {
+    margin-left: 1em;
+    display: table;
+    border-collapse: collapse;
+  }
+}
+
+#stack-frame {
+  #root {
+    display: table-row;
+  }
+  #filename {
+    display: table-cell;
+    padding: 0 4px;
+  }
+  #funcName {
+    display: table-cell;
+    padding: 0 4px;
+  }
+  #lineNo {
+    display: table-cell;
+    padding: 0 4px;
+  }
+}
