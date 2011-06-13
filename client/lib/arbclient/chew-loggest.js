@@ -227,6 +227,12 @@ function TestCasePermutationLogBundle(raw) {
    * }
    */
   this._perStepPerLoggerEntries = [[]];
+
+  /**
+   * Any entries from the permutation's own logger that should be made known,
+   *  namely an exception thrown in the setupFunc.
+   */
+  this._notableEntries = [];
 }
 TestCasePermutationLogBundle.prototype = {
 };
@@ -703,13 +709,30 @@ LoggestLogTransformer.prototype = {
    * @return[TestCasePermutationLogBundle]
    */
   _processPermutation: function(rawPerm) {
+    // normalize missing kids (=== no steps) into an empty list
+    if (!rawPerm.kids)
+      rawPerm.kids = [];
+
     var perm = new TestCasePermutationLogBundle(rawPerm);
     this._uniqueNameMap = perm._uniqueNameMap;
     this._baseTime = rawPerm.born;
 
-    var rows = perm._perStepPerLoggerEntries;
+    var rows = perm._perStepPerLoggerEntries, i;
 
     var nonTestLoggers = [], stepTimeSpans = [];
+
+    // -- skim the permutation's own entries for a setupFunc failure
+    if (rawPerm.entries) {
+      var setupEntries = this._processEntries('testCasePermutation',
+                                              rawPerm.entries);
+      for (i = 0; i < setupEntries.length; i++) {
+        // yup, failure; put it in the list of notable entries
+        if (setupEntries[i].name === "setupFunc" &&
+            setupEntries[i].ex) {
+          perm._notableEntries.push(setupEntries[i]);
+        }
+      }
+    }
 
     // -- process named things/actors
     // (Loggers share the same namespace (positive numbers) as actors but don't
@@ -728,7 +751,7 @@ LoggestLogTransformer.prototype = {
     function recursiveKidTraversal(logger) {
       if (!logger.kids)
         return;
-      for (var i = 0; i < logger.kids.length; i++) {
+      for (i = 0; i < logger.kids.length; i++) {
         var kidLogger = logger.kids[i];
         nonTestLoggers.push(kidLogger);
         recursiveKidTraversal(kidLogger);

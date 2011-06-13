@@ -104,6 +104,7 @@ wy.defineWidget({
         loggers: wy.vertList({type: "test-logger"}, "loggers"),
       },
     },
+    notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),
     stepsLabel: "Steps:",
     stepsBlock: {
       steps: wy.vertList({type: "test-step"}, "steps"),
