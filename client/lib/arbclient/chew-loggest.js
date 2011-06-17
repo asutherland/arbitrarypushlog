@@ -51,6 +51,7 @@ define(
   ) {
 
 function StateChangeEntry(timestamp, relstamp, seq, name, value) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -63,6 +64,7 @@ StateChangeEntry.prototype = {
 exports.StateChangeEntry = StateChangeEntry;
 
 function EventEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -76,6 +78,7 @@ EventEntry.prototype = {
 exports.EventEntry = EventEntry;
 
 function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -88,6 +91,7 @@ AsyncJobBeginEntry.prototype = {
 exports.AsyncJobBeginEntry = AsyncJobBeginEntry;
 
 function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -102,6 +106,7 @@ exports.AsyncJobEndEntry = AsyncJobEndEntry;
 function CallEntry(startTimestamp, startRelstamp, startSeq,
                    endTimestamp, endSeq,
                    name, args, testOnlyArgs, ex) {
+  this.layer = null;
   this.timestamp = startTimestamp;
   this.relstamp = startRelstamp;
   this.seq = startSeq;
@@ -118,6 +123,7 @@ CallEntry.prototype = {
 exports.CallEntry = CallEntry;
 
 function ErrorEntry(timestamp, relstamp, seq, name, args) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -130,6 +136,7 @@ ErrorEntry.prototype = {
 exports.ErrorEntry = ErrorEntry;
 
 function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
+  this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
@@ -143,6 +150,7 @@ FailedExpectationEntry.prototype = {
 exports.FailedExpectationEntry = FailedExpectationEntry;
 
 function UnexpectedEntry(unexpEntry) {
+  this.layer = null;
   this.timestamp = unexpEntry.timestamp;
   this.relstamp = unexpEntry.relstamp;
   this.seq = unexpEntry.seq;
@@ -262,12 +270,51 @@ TestCaseStepMeta.prototype = {
  * Provides distilled information about a logger from its raw loggest JSON
  *  transport data, as well as access to the raw data.
  */
-function LoggerMeta(raw, entries) {
+function LoggerMeta(raw, entries, layerMapping) {
   this.raw = raw;
   this.entries = entries;
+  this._layerMapping = layerMapping;
+  if (this.entries)
+    this._tagEntriesWithLayers();
 }
 LoggerMeta.prototype = {
   type: "logger",
+
+  /**
+   * Process our entries in order to assign layers to the entries.  This is
+   *  performed as a post-processing pass because this is a stateful analysis
+   *  and not all entries for a logger may be available at once, so we need
+   *  to run the analysis someplace that can be stateful.  Also the bulk
+   *  conversion logic would not benefit from extra complexity.
+   */
+  _tagEntriesWithLayers: function() {
+    if (!this._layerMapping)
+      return;
+    var entries = this.entries, layerMapping = this._layerMapping;
+
+    var layer = layerMapping.layer;
+    // XXX we are hard-coded to state transitions, and just one, for now.
+    var checkName = null, checkVal = null, become = null;
+    if ("transitions" in layerMapping) {
+      var transition = layerMapping.transitions[0];
+      for (var key in transition.after) {
+        checkName = key;
+        checkVal = transition.after[key];
+        break;
+      }
+      become = transition.become;
+    }
+
+    for (var iEntry = 0; iEntry < entries.length; iEntry++) {
+      var entry = entries[iEntry];
+
+      entry.layer = layer;
+      if (checkName && entry.name === checkName && entry.value === checkVal) {
+        layer = become;
+        checkName = null;
+      }
+    }
+  },
 };
 
 var UNRESOLVED_THING_RAW = {};
@@ -336,9 +383,18 @@ function LoggestLogTransformer() {
    * ]
    */
   this._schemaHandlerMaps = {};
+  /**
+   * @dictof[
+   *   @key[schemaName String]
+   *   @value[layerMapping LayerMapping]
+   * ]
+   */
+  this._schemaToLayerMapping = {};
 
   /** An alias to the _uniqueNameMap on the permutation. */
   this._uniqueNameMap = null;
+
+  this._layers = ["protocol", "app"];
 }
 LoggestLogTransformer.prototype = {
   _transformEx: untransformEx,
@@ -528,6 +584,12 @@ LoggestLogTransformer.prototype = {
           schemaSoup[key] = ['error', schemaDef.errors[key]];
           handlers[key] = this._proc_error.bind(this, schemaDef.errors[key]);
         }
+      }
+      if ("LAYER_MAPPING" in schemaDef) {
+        this._schemaToLayerMapping[schemaName] = schemaDef.LAYER_MAPPING;
+      }
+      else {
+        this._schemaToLayerMapping[schemaName] = {layer: "app"};
       }
     }
   },
@@ -807,7 +869,9 @@ LoggestLogTransformer.prototype = {
       var rawLogger = nonTestLoggers[iLogger];
       var entries = this._processEntries(rawLogger.loggerIdent,
                                          rawLogger.entries);
-      var loggerMeta = new LoggerMeta(rawLogger, entries);
+      var loggerMeta = new LoggerMeta(
+                         rawLogger, entries,
+                         this._schemaToLayerMapping[rawLogger.loggerIdent]);
       perm.loggers.push(loggerMeta);
 
       this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;

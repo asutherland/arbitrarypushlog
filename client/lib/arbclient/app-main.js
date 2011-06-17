@@ -515,6 +515,8 @@ TestLogPage.prototype = {
                     build.processedLog.failures);
       for (var iTest = 0; iTest < tests.length; iTest++) {
         var test = tests[iTest];
+        //console.log("considering", test.fileName, test.testName, "versus",
+        //            this.fileName, this.testName);
 
         // - general test run failure?
         if (test.fileName === this.fileName &&
