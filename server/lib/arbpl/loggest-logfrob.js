@@ -121,6 +121,23 @@ Frobber.prototype = {
       }
       // top level is 'schema', 'log' whose 'kids' are testcase loggers
       var schema = rawObj.schema;
+      // -- file require() failure
+      if (rawObj.hasOwnProperty("fileFailure")) {
+        var fileFailure = rawObj.fileFailure;
+        var summaryObj = {
+          fileName: fileFailure.fileName,
+          testName: '$FILE',
+          uniqueName: fileFailure.fileName + '-$FILE',
+        };
+        this.overview.failures.push(summaryObj);
+        this.writeCells[this.detailKeyPrefix + ":" + summaryObj.uniqueName] = {
+          type: "filefail",
+          fileName: summaryObj.fileName,
+          exceptions: fileFailure.exceptions,
+        };
+        continue;
+      }
+
       var definerLog = rawObj.log;
       // Empty / fully disabled test files will have no kids!
       if (!definerLog.kids)

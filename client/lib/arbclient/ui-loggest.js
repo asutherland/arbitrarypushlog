@@ -68,6 +68,18 @@ var wy = exports.wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "loggest",
                                             css: $_css});
 
 wy.defineWidget({
+  name: "file-failure",
+  doc: "display the exception related to a test file failure",
+  constraint: {
+    type: "file-failure",
+  },
+  focus: wy.focus.item,
+  structure: {
+    exceptions: wy.vertList({type: "transformed-exception"}, "exceptions"),
+  }
+});
+
+wy.defineWidget({
   name: "test-perm",
   doc: "test case permutation results display",
   constraint: {

@@ -310,6 +310,12 @@ ActorMeta.prototype = {
   },
 };
 
+function untransformEx(rawEx) {
+  if (rawEx == null)
+    return null;
+  return {type: 'exception', message: rawEx.m, frames: rawEx.f};
+}
+exports.untransformEx = untransformEx;
 
 /**
  * Feed it some schemas then feed it logs derived from those schemas and it will
@@ -335,11 +341,7 @@ function LoggestLogTransformer() {
   this._uniqueNameMap = null;
 }
 LoggestLogTransformer.prototype = {
-  _transformEx: function(rawEx) {
-    if (rawEx == null)
-      return null;
-    return {type: 'exception', message: rawEx.m, frames: rawEx.f};
-  },
+  _transformEx: untransformEx,
   /**
    * Helper function to perform any transformations on the wire-format object
    *  representations to rich local representations.  This is pretty ad-hoc
@@ -362,6 +364,8 @@ LoggestLogTransformer.prototype = {
         args.push({type: 'full-obj', obj: arg});
       }
       else {
+        if (typeof(arg) === 'object')
+          console.warn("Identity transforming dubious argument", arg);
         args.push(arg);
       }
     }
@@ -701,6 +705,7 @@ LoggestLogTransformer.prototype = {
     return entries;
   },
 
+  INTERESTING_PERMUTATION_ENTRIES: ["setupFunc", "actorConstructor"],
   /**
    * Process the permutation's logger for the test-cases and the testing
    *  loggers to build the super-friendly `TestCasePermutationLogBundle`
@@ -727,8 +732,8 @@ LoggestLogTransformer.prototype = {
                                               rawPerm.entries);
       for (i = 0; i < setupEntries.length; i++) {
         // yup, failure; put it in the list of notable entries
-        if (setupEntries[i].name === "setupFunc" &&
-            setupEntries[i].ex) {
+        if (this.INTERESTING_PERMUTATION_ENTRIES.indexOf(setupEntries[i].name)
+              !== -1 && setupEntries[i].ex) {
           perm._notableEntries.push(setupEntries[i]);
         }
       }

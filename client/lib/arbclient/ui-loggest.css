@@ -19,6 +19,15 @@
   display: inline-block;
 }
 
+#file-failure {
+  #root {
+    margin: 8px;
+  }
+  #exceptions-item {
+    margin-bottom: 1em;
+  }
+}
+
 #test-perm {
   #whoBlock {
   }

@@ -174,8 +174,8 @@ ArbApp.prototype = {
       this.binding.update();
   },
 
-  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "autonew"],
-  NON_PATHNODE_KEYS: ["autonew"],
+  ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "autonew", "divertedfrom"],
+  NON_PATHNODE_KEYS: ["autonew", "divertedfrom"],
   /**
    * Infer current application state from our current URL state and make it so.
    *  This is the only code path for changing meaningful application state for
@@ -222,11 +222,14 @@ ArbApp.prototype = {
       return;
     }
 
+    // XXX default to true for autonew because I pretty much always want it on,
+    //  although it really should be based on a local sticky preference...
     var autonew = (typeof(loc.autonew) === "string") ? (loc.autonew === "true")
-                    : Boolean(loc.autonew);
+                    : true;
 
     // yes log, request it
-    this._getLog(parseInt(loc.pushid), loc.log, pathNodes, autonew);
+    this._getLog(parseInt(loc.pushid), loc.log, pathNodes, autonew,
+                 loc.divertedfrom);
   },
 
   /**
@@ -336,9 +339,11 @@ ArbApp.prototype = {
    *     in question and the specific test from that run we are interested in.
    *   }
    *   @param[pathNodes]
+   *   @param[autoNew]
+   *   @param[divertedFrom]
    * ]
    */
-  _getLog: function(pushId, buildId, pathNodes, autoNew) {
+  _getLog: function(pushId, buildId, pathNodes, autoNew, divertedFrom) {
     this._updateState("connecting");
 
     // XXX actually, we probably still want a sub, just no watched pushes.
@@ -357,6 +362,18 @@ ArbApp.prototype = {
             chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
             break;
 
+          case "filefail":
+            chewedDetails = {
+              failures: [{
+                type: 'filefail',
+                testName: '$FILE',
+                fileName: logDetail.fileName,
+                exceptions:
+                    logDetail.exceptions.map($chew_loggest.untransformEx),
+              }]
+            };
+            break;
+
           default:
             chewedDetails = {
               failures: [logDetail],
@@ -365,7 +382,7 @@ ArbApp.prototype = {
         }
 
         self.page = new TestLogPage(pushId, chewedDetails, autoNew,
-                                    pathNodes, self.rstore);
+                                    pathNodes, self.rstore, divertedFrom);
         self._updateState("good");
       },
       function fetchProblem(err) {
@@ -433,9 +450,17 @@ PushesPage.prototype = {
   },
 };
 
-function TestLogPage(pushId, chewedDetails, autoNew, pathNodes, rstore) {
+/**
+ * Displaying test results, possibly auto-updating to newer results as they come
+ *  in.  We are always focused on a specific test from a specific file, but when
+ *  a test file failure occurs, we will divert to the file failure notification
+ *  but retain the specific test name so we can divert back.
+ */
+function TestLogPage(pushId, chewedDetails, autoNew, pathNodes, rstore,
+                     divertedFrom) {
   this.pushId = pushId;
-  this.testName = chewedDetails.failures[0].testName;
+  this.fileName = chewedDetails.failures[0].fileName;
+  this.testName = divertedFrom || chewedDetails.failures[0].testName;
 
   this.failures = chewedDetails.failures;
   this.pathNodes = pathNodes;
@@ -478,20 +503,35 @@ TestLogPage.prototype = {
     // This does not work with composite repo's like comm-central, but
     //  since comm-central does't produce loggest runs, that doesn't really
     //  matter.
+    // -- scan the builds
     for (var iBuild = 0; iBuild < buildPush.builds.length; iBuild++) {
       var build = buildPush.builds[iBuild];
-//console.log("considering build", build, build.type, build.processedLog);
+      //console.log("considering build", build, build.type, build.processedLog);
       if (!build.processedLog || (build.processedLog.type !== "loggest"))
         continue;
 
+      // -- scan for this test again or a general file run failure for our file
       var tests = build.processedLog.successes.concat(
                     build.processedLog.failures);
       for (var iTest = 0; iTest < tests.length; iTest++) {
         var test = tests[iTest];
-        // found a more recent one! go to it!
+
+        // - general test run failure?
+        if (test.fileName === this.fileName &&
+            test.testName === '$FILE') {
+          APP.navigate({
+            pushid: buildPush.push.id,
+            log: build.id + ":" + test.uniqueName,
+            autonew: true,
+            divertedfrom: this.testName,
+          });
+          return;
+        }
+
+        // - updated run for this specific test?
         if (test.testName === this.testName) {
-          console.log("FOUND NEWER, NAVIGATING", test, buildPush.push.id,
-                     build.id + ":" + test.uniqueName);
+          //console.log("FOUND NEWER, NAVIGATING", test, buildPush.push.id,
+          //           build.id + ":" + test.uniqueName);
           APP.navigate({
             pushid: buildPush.push.id,
             log: build.id + ":" + test.uniqueName,

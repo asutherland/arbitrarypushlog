@@ -140,6 +140,22 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "build-test-failure-file",
+  constraint: {
+    type: "build-test-failure",
+    obj: { type: "filefail" },
+  },
+  focus: wy.focus.container.vertical("failure"),
+  structure: {
+    testHeader: {
+      fileName: wy.bind("fileName"),
+    },
+    // NOTE: loggest lives in a separate domain now!
+    failure: $ui_loggest.wy.widget({type: "file-failure"}, wy.SELF),
+  },
+});
+
+wy.defineWidget({
   name: "build-test-failure-xpcshell",
   constraint: {
     type: "build-test-failure",
