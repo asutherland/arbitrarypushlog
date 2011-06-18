@@ -646,7 +646,7 @@ wy.defineWidget({
     name: wy.bind("name"),
     arrow: " => ",
     value: wy.bind("value"),
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -661,7 +661,7 @@ wy.defineWidget({
     args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ") ",
     testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -675,7 +675,7 @@ wy.defineWidget({
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
     rParenDots: ")...",
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -690,7 +690,7 @@ wy.defineWidget({
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -705,7 +705,7 @@ wy.defineWidget({
     args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ") ",
     testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -714,7 +714,7 @@ wy.defineWidget({
     type: "entry",
     obj: {type: "call", ex: wy.WILD},
   },
-  structure: {
+  structure: wy.block({
     eventLine: wy.flow({
       name: wy.bind("name"),
       lParen: "(",
@@ -727,7 +727,7 @@ wy.defineWidget({
     exBlock: {
       stack: wy.widget({type: "transformed-exception"}, "ex"),
     },
-  },
+  }, {layer: "layer"}),
 });
 
 
@@ -742,7 +742,7 @@ wy.defineWidget({
     name: wy.bind("name"),
     colon: ": ",
     args: wy.stream({type: "arg-stream"}, "args"),
-  }),
+  }, {layer: "layer"}),
 });
 
 wy.defineWidget({
@@ -759,7 +759,7 @@ wy.defineWidget({
     lParen: "(",
     argsStr: "",
     rParen: ")",
-  }),
+  }, {layer: "layer"}),
   impl: {
     postInit: function() {
       this.argsStr_element.textContent = stringifyArgs(this.obj.args);
@@ -776,7 +776,7 @@ wy.defineWidget({
   structure: wy.flow({
     errLabel: "unexpected event: ",
     subEntry: wy.widget({type: "entry"}, "entry"),
-  }),
+  }, {layer: "layer"}),
 });
 
 

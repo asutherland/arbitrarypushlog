@@ -209,22 +209,34 @@
   }
 }
 
+.entryLayerColorization {
+  #root[layer="protocol"] {
+    opacity: 0.4;
+  }
+}
+
 #entry-state-change {
+  .entryLayerColorization;
 }
 
 #entry-event {
+  .entryLayerColorization;
   #name {
     color: blue;
   }
 }
 
 #entry-async-job-begin {
+  .entryLayerColorization;
 }
 #entry-async-job-end {
+  .entryLayerColorization;
 }
 #entry-call {
+  .entryLayerColorization;
 }
 #entry-call-with-ex {
+  .entryLayerColorization;
   #exMessage {
     color: red;
   }
@@ -236,18 +248,21 @@
 
 
 #entry-error {
+  .entryLayerColorization;
   #errLabel {
     color: maroon;
   }
 }
 
 #entry-failed-expectation {
+  .entryLayerColorization;
   #errLabel {
     color: red;
   }
 }
 
 #entry-unexpected {
+  .entryLayerColorization;
   #errLabel {
     color: orange;
   }
