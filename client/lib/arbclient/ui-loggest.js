@@ -787,7 +787,10 @@ wy.defineWidget({
     type: "transformed-exception",
   },
   structure: {
-    message: wy.bind("message"),
+    descBlock: wy.flow({
+      name: wy.bind("name"),
+      message: wy.bind("message"),
+    }),
     frames: wy.vertList({type: "stack-frame"}, "frames"),
   },
 });

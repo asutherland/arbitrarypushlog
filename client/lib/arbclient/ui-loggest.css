@@ -274,6 +274,9 @@
     display: table;
     border-collapse: collapse;
   }
+  #name {
+    color: maroon;
+  }
 }
 
 #stack-frame {

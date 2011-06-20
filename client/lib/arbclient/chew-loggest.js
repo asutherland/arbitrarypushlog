@@ -360,7 +360,7 @@ ActorMeta.prototype = {
 function untransformEx(rawEx) {
   if (rawEx == null)
     return null;
-  return {type: 'exception', message: rawEx.m, frames: rawEx.f};
+  return {type: 'exception', name: rawEx.n, message: rawEx.m, frames: rawEx.f};
 }
 exports.untransformEx = untransformEx;
 
