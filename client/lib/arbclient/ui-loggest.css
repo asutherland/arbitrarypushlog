@@ -189,6 +189,13 @@
   }
 }
 
+#arg-stream-thing {
+  #root {
+    font-style: italic;
+    border-bottom: 1px dotted gray;
+    display: inline-block;
+  }
+}
 
 #entry-with-timestamp {
   #root {

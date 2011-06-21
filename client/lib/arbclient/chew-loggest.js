@@ -191,6 +191,16 @@ function TestCasePermutationLogBundle(raw) {
   this._raw = raw;
 
   this._uniqueNameMap = {};
+  /**
+   * @dictof[
+   *   @key[alias String]
+   *   @value[thing ThingMeta]
+   * ]{
+   *   Maps unique id-esque things to the `ThingMeta` instances that provide
+   *   meaningful human names for otherwise gibberish public keys, etc.
+   * }
+   */
+  this._thingAliasMap = {};
 
   /**
    * @listof[ActorMeta]{
@@ -284,8 +294,9 @@ TestCaseStepMeta.prototype = {
  * Provides distilled information about a logger from its raw loggest JSON
  *  transport data, as well as access to the raw data.
  */
-function LoggerMeta(raw, entries, layerMapping) {
+function LoggerMeta(raw, semanticIdent, entries, layerMapping) {
   this.raw = raw;
+  this.semanticIdent = semanticIdent;
   this.entries = entries;
   this.kids = [];
   this._layerMapping = layerMapping;
@@ -341,6 +352,10 @@ var UNRESOLVED_THING_RAW = {};
  */
 function ThingMeta(raw) {
   this.raw = raw;
+  this.name = raw.name;
+  this.distinctAliases = [];
+  if (raw.dname)
+    this.distinctAliases.push(raw.dname);
 }
 ThingMeta.prototype = {
   type: "thing",
@@ -411,6 +426,8 @@ function LoggestLogTransformer() {
   this._uniqueNameMap = null;
 
   this._layers = ["protocol", "app"];
+
+  this._usingAliasMap = {};
 }
 LoggestLogTransformer.prototype = {
   _transformEx: untransformEx,
@@ -438,6 +455,10 @@ LoggestLogTransformer.prototype = {
       else {
         if (typeof(arg) === 'object')
           console.warn("Identity transforming dubious argument", arg);
+        if (typeof(arg) === 'string') {
+          if (this._usingAliasMap.hasOwnProperty(arg))
+            arg = this._usingAliasMap[arg];
+        }
         args.push(arg);
       }
     }
@@ -747,6 +768,9 @@ LoggestLogTransformer.prototype = {
     }
 
     thing = this._uniqueNameMap[uniqueNameStr] = new ThingMeta(raw);
+    for (var iAlias = 0; iAlias < thing.distinctAliases.length; iAlias++) {
+      this._usingAliasMap[thing.distinctAliases[iAlias]] = thing;
+    }
     return thing;
   },
 
@@ -783,6 +807,20 @@ LoggestLogTransformer.prototype = {
     return entries;
   },
 
+  _normalizeLoggerSemanticIdent: function(rawSemIdent) {
+    if (!Array.isArray(rawSemIdent))
+      rawSemIdent = [rawSemIdent];
+    var outIdent = [];
+    for (var i = 0; i < rawSemIdent.length; i++) {
+      var bit = rawSemIdent[i];
+      if (this._usingAliasMap.hasOwnProperty(bit))
+        outIdent.push(this._usingAliasMap[bit]);
+      else
+        outIdent.push(bit);
+    }
+    return outIdent;
+  },
+
   /**
    * Convert a non-test logger and all its kids into a `LoggerMeta` instance.
    *  This is intended to be called as part of the _processPermutation logic,
@@ -791,8 +829,10 @@ LoggestLogTransformer.prototype = {
   _processNonTestLogger: function(rawLogger, rows, stepTimeSpans, allLoggers) {
     var entries = this._processEntries(rawLogger.loggerIdent,
                                        rawLogger.entries);
+
+    var semIdent =  this._normalizeLoggerSemanticIdent(rawLogger.semanticIdent);
     var loggerMeta = new LoggerMeta(
-                       rawLogger, entries,
+                       rawLogger, semIdent, entries,
                        this._schemaToLayerMapping[rawLogger.loggerIdent]);
     allLoggers.push(loggerMeta);
     this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
@@ -880,6 +920,7 @@ LoggestLogTransformer.prototype = {
 
     var perm = new TestCasePermutationLogBundle(rawPerm);
     this._uniqueNameMap = perm._uniqueNameMap;
+    this._usingAliasMap = perm._thingAliasMap;
     this._baseTime = rawPerm.born;
 
     var rows = perm._perStepPerLoggerEntries, i;

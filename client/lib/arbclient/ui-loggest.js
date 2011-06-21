@@ -223,7 +223,8 @@ wy.defineWidget({
   structure: wy.flow({
     loggerIdent: wy.bind(["raw", "loggerIdent"]),
     loggerSemDelim: ": ",
-    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+    semanticIdent: wy.stream({type: "arg-stream"},
+                             wy.normalizedWhitespaceStream("semanticIdent")),
   }),
 });
 
@@ -639,6 +640,16 @@ wy.defineWidget({
         valueConstraint: {type: "obj-detail"},
       }, wy.SELF),
   },
+});
+
+wy.defineWidget({
+  name: "arg-stream-thing",
+  doc: "a ThingMeta in a stream",
+  constraint: {
+    type: "arg-stream",
+    obj: { type: "thing" },
+  },
+  structure: wy.bind("name"),
 });
 
 
