@@ -531,7 +531,8 @@ TestLogPage.prototype = {
         }
 
         // - updated run for this specific test?
-        if (test.testName === this.testName) {
+        if (test.fileName === this.fileName &&
+            test.testName === this.testName) {
           //console.log("FOUND NEWER, NAVIGATING", test, buildPush.push.id,
           //           build.id + ":" + test.uniqueName);
           APP.navigate({
