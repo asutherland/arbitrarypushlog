@@ -442,7 +442,7 @@ PushesPage.prototype = {
    *  been unsubscribed.
    */
   onUnsubscribedPush: function(buildPush) {
-    var slist = this._slice_pushes._list;
+    var slist = this.pushes._list;
     // no antics for now, it doesn't know what to do for adds anyways.
     //this.binding.ANTICS.prepare("buildpush");
     this.pushes.mutateSplice(slist.indexOf(buildPush), 1);
