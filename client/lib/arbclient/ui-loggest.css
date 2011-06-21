@@ -116,6 +116,9 @@
   #headerRow[result="skip"] {
     background-color: @skip-bg-color;
   }
+  #headerRow[boring="true"] {
+    opacity: 0.4;
+  }
 
   #twisty {
     display: inline-block;

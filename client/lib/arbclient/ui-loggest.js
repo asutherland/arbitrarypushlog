@@ -281,7 +281,7 @@ wy.defineWidget({
     headerRow: wy.block({
       twisty: {},
       resolvedIdent: wy.stream({type: "sem-stream"}, "resolvedIdent"),
-    }, {result: "result"}),
+    }, {result: "result", boring: "boring"}),
     contentBlock: {
       logEntries: wy.vertList({type: "entry-with-timestamp"}, wy.NONE),
       entryMatrix: wy.widget(
