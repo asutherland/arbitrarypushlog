@@ -371,11 +371,13 @@ wy.defineWidget({
     //  a constraint!
     this._headerPartial = wy.domain.dtree.partialEvaluate(
                             aConstraint.headerConstraint);
-    this._headerConstraint = aConstraint.headerConstraint;
+    this._headerConstraint =
+      JSON.parse(JSON.stringify(aConstraint.headerConstraint));
 
     this._entryPartial = wy.domain.dtree.partialEvaluate(
                            aConstraint.entryConstraint);
-    this._entryConstraint = aConstraint.entryConstraint;
+    this._entryConstraint =
+      JSON.parse(JSON.stringify(aConstraint.entryConstraint));
   },
   impl: {
     postInit: function() {
