@@ -706,7 +706,10 @@ DataServer.prototype = {
    */
   reqAssertSub: function(client, sub, msg) {
     if (sub.activeSub)
-      throw new Error("assertsub's resub logic assumes no active sub!");
+      // XXX it appears this can happen during debugging, and it kills us, which
+      //  is not a great thing...
+      // throw new Error("assertsub's resub logic assumes no active sub!");
+      return;
 
     // - find the push sub range
     var minPush = null, maxPush = null;

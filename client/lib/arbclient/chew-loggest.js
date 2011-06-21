@@ -198,6 +198,13 @@ function TestCasePermutationLogBundle(raw) {
    * }
    */
   this.actors = [];
+  /**
+   * @listof[ActorMeta]{
+   *   The actors in `actors` that are not the children of other actors in
+   *   `actors`.
+   * }
+   */
+  this.rootActors = [];
 
   /**
    * @listof[ThingMeta]{
@@ -214,6 +221,13 @@ function TestCasePermutationLogBundle(raw) {
    * @listof[LoggerMeta]
    */
   this.loggers = [];
+  /**
+   * @listof[LoggerMeta]{
+   *   The loggers in `loggers` that are not children of other loggers in
+   *   `loggers`.
+   * }
+   */
+  this.rootLoggers = [];
   /**
    * @listof[
    *   @listof[
@@ -273,6 +287,7 @@ TestCaseStepMeta.prototype = {
 function LoggerMeta(raw, entries, layerMapping) {
   this.raw = raw;
   this.entries = entries;
+  this.kids = [];
   this._layerMapping = layerMapping;
   if (this.entries)
     this._tagEntriesWithLayers();
@@ -345,6 +360,7 @@ var UNRESOLVED_ACTOR_RAW = {};
  */
 function ActorMeta(raw, uniqueNameMap) {
   this.raw = raw;
+  this.kids = [];
   this._uniqueNameMap = uniqueNameMap;
 }
 ActorMeta.prototype = {
@@ -767,6 +783,88 @@ LoggestLogTransformer.prototype = {
     return entries;
   },
 
+  /**
+   * Convert a non-test logger and all its kids into a `LoggerMeta` instance.
+   *  This is intended to be called as part of the _processPermutation logic,
+   *  as it deals intimately with the row/entry matrix representation.
+   */
+  _processNonTestLogger: function(rawLogger, rows, stepTimeSpans, allLoggers) {
+    var entries = this._processEntries(rawLogger.loggerIdent,
+                                       rawLogger.entries);
+    var loggerMeta = new LoggerMeta(
+                       rawLogger, entries,
+                       this._schemaToLayerMapping[rawLogger.loggerIdent]);
+    allLoggers.push(loggerMeta);
+    this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
+
+    // - matrix building
+    var iRow;
+    if (entries === null) {
+      for (iRow = 0; iRow < rows.length; iRow++) {
+        rows[iRow].push(null);
+      }
+    }
+    else {
+      var iSpan, iEntry = 0, markEntry;
+      // keep in mind that a failed test may not have run all the way and so
+      //  we may not have all the spans.
+      for (iSpan = 0, iRow = 0; iSpan < stepTimeSpans.length; iSpan++) {
+        var timeStart = stepTimeSpans[iSpan][0];
+
+        // - before step
+        markEntry = iEntry;
+        while (iEntry < entries.length &&
+               entries[iEntry].timestamp < timeStart) {
+          iEntry++;
+        }
+        if (iEntry > markEntry)
+          rows[iRow++].push(entries.slice(markEntry, iEntry));
+        else
+          rows[iRow++].push(null);
+
+        // - in step
+        markEntry = iEntry;
+        var timeEnd = stepTimeSpans[iSpan][1];
+        // unbounded timeEnd means everything goes in there!
+        if (timeEnd === null) {
+          iEntry = entries.length;
+        }
+        else {
+          while (iEntry < entries.length &&
+                 entries[iEntry].timestamp <= timeEnd) {
+            iEntry++;
+          }
+        }
+        if (iEntry > markEntry)
+          rows[iRow++].push(entries.slice(markEntry, iEntry));
+        else
+          rows[iRow++].push(null);
+      }
+      // - leftovers
+      // if we have any entries that did not fall inside a step, push them
+      //  into their own row.
+      if (iEntry < entries.length) {
+        rows[iRow++].push(entries.slice(iEntry));
+      }
+      // - blanks
+      // fill in any un-filled rows in this column with nulls.
+      while (iRow < rows.length) {
+        rows[iRow++].push(null);
+      }
+    }
+
+    // -- kids!
+    if (rawLogger.kids) {
+      for (var iKid = 0; iKid < rawLogger.kids.length; iKid++) {
+        var kidMeta = this._processNonTestLogger(rawLogger.kids[iKid], rows,
+                                                 stepTimeSpans, allLoggers);
+        loggerMeta.kids.push(kidMeta);
+      }
+    }
+
+    return loggerMeta;
+  },
+
   INTERESTING_PERMUTATION_ENTRIES: ["setupFunc", "actorConstructor"],
   /**
    * Process the permutation's logger for the test-cases and the testing
@@ -815,13 +913,19 @@ LoggestLogTransformer.prototype = {
         perm.things.push(this._makeThing(strName, rawNamed));
     }
 
-    function recursiveKidTraversal(logger) {
-      if (!logger.kids)
-        return;
-      for (i = 0; i < logger.kids.length; i++) {
-        var kidLogger = logger.kids[i];
-        nonTestLoggers.push(kidLogger);
-        recursiveKidTraversal(kidLogger);
+    // - hierarchical actor assembly
+    for (var iActor = 0; iActor < perm.actors.length; iActor++) {
+      var actor = perm.actors[iActor];
+      if (actor.raw.parentUniqueName) {
+        var parentActor = this._resolveUniqueNameInSemanticIdent(
+                            actor.raw.parentUniqueName);
+        parentActor.kids.push(actor);
+        if (parentActor.raw === UNRESOLVED_ACTOR_RAW)
+          console.warn("Unresolved parent for", actor,
+                       "synthetic parent:", parentActor);
+      }
+      else {
+        perm.rootActors.push(actor);
       }
     }
 
@@ -830,7 +934,6 @@ LoggestLogTransformer.prototype = {
       var rawKid = rawPerm.kids[iKid];
       if (rawKid.loggerIdent !== 'testStep') {
         nonTestLoggers.push(rawKid);
-        recursiveKidTraversal(rawKid);
         continue;
       }
 
@@ -866,70 +969,10 @@ LoggestLogTransformer.prototype = {
 
     // -- process filtered non-step loggers, time-slice their entries
     for (var iLogger = 0; iLogger < nonTestLoggers.length; iLogger++) {
-      var rawLogger = nonTestLoggers[iLogger];
-      var entries = this._processEntries(rawLogger.loggerIdent,
-                                         rawLogger.entries);
-      var loggerMeta = new LoggerMeta(
-                         rawLogger, entries,
-                         this._schemaToLayerMapping[rawLogger.loggerIdent]);
-      perm.loggers.push(loggerMeta);
-
-      this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
-
-      var iRow;
-      if (entries === null) {
-        for (iRow = 0; iRow < rows.length; iRow++) {
-          rows[iRow].push(null);
-        }
-        continue;
-      }
-
-      var iSpan, iEntry = 0, markEntry;
-      // keep in mind that a failed test may not have run all the way and so
-      //  we may not have all the spans.
-      for (iSpan = 0, iRow = 0; iSpan < stepTimeSpans.length; iSpan++) {
-        var timeStart = stepTimeSpans[iSpan][0];
-
-        // - before step
-        markEntry = iEntry;
-        while (iEntry < entries.length &&
-               entries[iEntry].timestamp < timeStart) {
-          iEntry++;
-        }
-        if (iEntry > markEntry)
-          rows[iRow++].push(entries.slice(markEntry, iEntry));
-        else
-          rows[iRow++].push(null);
-
-        // - in step
-        markEntry = iEntry;
-        var timeEnd = stepTimeSpans[iSpan][1];
-        // unbounded timeEnd means everything goes in there!
-        if (timeEnd === null) {
-          iEntry = entries.length;
-        }
-        else {
-          while (iEntry < entries.length &&
-                 entries[iEntry].timestamp <= timeEnd) {
-            iEntry++;
-          }
-        }
-        if (iEntry > markEntry)
-          rows[iRow++].push(entries.slice(markEntry, iEntry));
-        else
-          rows[iRow++].push(null);
-      }
-      // - leftovers
-      // if we have any entries that did not fall inside a step, push them
-      //  into their own row.
-      if (iEntry < entries.length) {
-        rows[iRow++].push(entries.slice(iEntry));
-      }
-      // - blanks
-      // fill in any un-filled rows in this column with nulls.
-      while (iRow < rows.length) {
-        rows[iRow++].push(null);
-      }
+      var loggerMeta = this._processNonTestLogger(nonTestLoggers[iLogger],
+                                                  rows, stepTimeSpans,
+                                                  perm.loggers);
+      perm.rootLoggers.push(loggerMeta);
     }
 
     return perm;

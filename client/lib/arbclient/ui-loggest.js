@@ -50,6 +50,7 @@
 define(
   [
     "wmsy/wmsy",
+    'wmsy/wlib/hier',
     "wmsy/wlib/objdict",
     "./chew-loggest",
     "text!./ui-loggest.css",
@@ -57,6 +58,7 @@ define(
   ],
   function(
     $wmsy,
+    $_wlib_hier, // unused, just a dependency.
     $_wlib_objdict, // unused, just a dependency.
     $logmodel,
     $_css,
@@ -105,7 +107,7 @@ wy.defineWidget({
     whoBlock: {
       actorsBlock: {
         actorsLabel: "Actors:",
-        actors: wy.vertList({type: "test-actor"}, "actors"),
+        actors: wy.vertList({type: "hier-actor"}, "rootActors"),
       },
       thingsBlock: {
         thingsLabel: "Things:",
@@ -113,7 +115,7 @@ wy.defineWidget({
       },
       loggersBlock: {
         loggersLabel: "Loggers:",
-        loggers: wy.vertList({type: "test-logger"}, "loggers"),
+        loggers: wy.vertList({type: "hier-logger"}, "rootLoggers"),
       },
     },
     notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),
@@ -198,6 +200,21 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "hier-logger",
+  doc: "Hierarhical LoggerMeta presentation",
+  constraint: {
+    type: "hier-logger",
+  },
+  structure: {
+    tree: wy.libWidget({
+      type: "hier",
+      constraint: {type: "test-logger"},
+      kidsAttr: "kids",
+    }, wy.SELF),
+  },
+});
+
+wy.defineWidget({
   name: "test-logger",
   doc: "LoggerMeta presentation",
   constraint: {
@@ -208,6 +225,21 @@ wy.defineWidget({
     loggerSemDelim: ": ",
     semanticIdent: wy.bind(["raw", "semanticIdent"]),
   }),
+});
+
+wy.defineWidget({
+  name: "hier-actor",
+  doc: "Hierarhical ActorMeta presentation",
+  constraint: {
+    type: "hier-actor",
+  },
+  structure: {
+    tree: wy.libWidget({
+      type: "hier",
+      constraint: {type: "test-actor"},
+      kidsAttr: "kids",
+    }, wy.SELF),
+  },
 });
 
 wy.defineWidget({
@@ -789,6 +821,7 @@ wy.defineWidget({
   structure: {
     descBlock: wy.flow({
       name: wy.bind("name"),
+      nameDelim: ": ",
       message: wy.bind("message"),
     }),
     frames: wy.vertList({type: "stack-frame"}, "frames"),
