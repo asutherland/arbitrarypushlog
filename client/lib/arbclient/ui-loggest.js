@@ -195,7 +195,8 @@ wy.defineWidget({
   structure: wy.flow({
     loggerIdent: wy.bind(["raw", "loggerIdent"]),
     loggerSemDelim: ": ",
-    semanticIdent: wy.bind(["raw", "semanticIdent"]),
+    semanticIdent: wy.stream({type: "arg-stream"},
+                             wy.normalizedWhitespaceStream("semanticIdent")),
   }),
 });
 
