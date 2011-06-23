@@ -80,8 +80,8 @@ wy.defineWidget({
       changesets: wy.widget({type: "push-changeset-list"}, wy.SELF),
 
       // build failures
-      buildFailGroups: wy.widget({type: "build-fail-thing"},
-                                 ["buildSummary", "rootFailCluster"]),
+      buildFailGroups: wy.widget({type: "build-result-thing"},
+                                 ["buildSummary", "rootResultCluster"]),
       subPushes: wy.vertList({type: "push"}, "subPushes"),
     }
   }, {leaf: "isLeafPush"}),
@@ -117,7 +117,7 @@ wy.defineWidget({
 
 wy.defineWidget({
   name: "push-changeset-list-insane",
-  doc: "A changeset list that shows all (sane number of) changesets.",
+  doc: "A changeset list that shows some of the (insane number of) changesets.",
   constraint: {
     type: "push-changeset-list",
     obj: {insaneChangesets: true},
@@ -435,10 +435,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "build-fail-empty",
-  doc: "null build-fail-thing",
+  name: "build-result-empty",
+  doc: "null build-result-thing",
   constraint: {
-    type: "build-fail-thing",
+    type: "build-result-thing",
     obj: wy.WILD,
   },
   structure: {
@@ -446,41 +446,42 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "build-fail-cluster",
-  doc: "hierarchical clustering whose leaf nodes are build-fail-groups",
+  name: "build-result-cluster",
+  doc: "hierarchical clustering whose leaf nodes are build-result-groups",
   constraint: {
-    type: "build-fail-thing",
+    type: "build-result-thing",
     obj: {kind: "cluster"},
   },
   structure: {
     name: wy.bind("name"),
-    kids: wy.vertList({type: "build-fail-thing"}, "kids"),
+    kids: wy.vertList({type: "build-result-thing"}, "kids"),
   },
 });
 
 wy.defineWidget({
-  name: "build-fail-group",
-  doc: "failure group binds a specific failure breakout with builder list",
+  name: "build-result-group",
+  doc: "failure group binds a specific result breakout with builder list",
   constraint: {
-    type: "build-fail-thing",
+    type: "build-result-thing",
     obj: {kind: "group"},
   },
   emit: ["navigate"],
   structure: wy.flow({
-    testDetail: wy.widget({type: "build-fail-summary"}, wy.SELF),
-    types: wy.widgetFlow({type: "build-info"}, "inBuilds",
+    testDetail: wy.widget({type: "build-result-summary"}, wy.SELF),
+    types: wy.widgetFlow({type: "build-result-info"}, "resultInfoTuples",
                          {separator: ", "}),
   }),
   events: {
     types: {
-      click: function(buildBinding) {
+      click: function(buildResultBinding) {
         // bail if it's a reftest
-        if (buildBinding.obj.builder.type.subtype === "reftest")
+        var build = buildResultBinding.obj.build;
+        if (build.builder.type.subtype === "reftest")
           return;
-        console.log("context", this.__context, "obj", this.obj);
+        //console.log("context", this.__context, "obj", this.obj);
         var log = (this.__context.subPushId ?
                      (this.__context.subPushId + ":") : "") +
-                  buildBinding.obj.id + ":" +
+                  build.id + ":" +
                   this.obj.uniqueName;
         this.emit_navigate({pushid: this.__context.pushId,
                             log: log});
@@ -491,10 +492,10 @@ wy.defineWidget({
 
 // create specialized variants as-needed.
 wy.defineWidget({
-  name: "generic-build-fail-summary",
+  name: "generic-build-result-summary",
   doc: "unspecialized build failure display",
   constraint: {
-    type: "build-fail-summary",
+    type: "build-result-summary",
     obj: { type: wy.WILD },
   },
   structure: {
@@ -503,10 +504,10 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "xpcshell-build-fail-summary",
+  name: "xpcshell-build-result-summary",
   doc: "characterize xpcshell failures",
   constraint: {
-    type: "build-fail-summary",
+    type: "build-result-summary",
     obj: { type: "xpcshell" },
   },
   structure: wy.flow({
@@ -528,23 +529,26 @@ wy.defineWidget({
 
 
 wy.defineWidget({
-  name: "build-info",
+  name: "build-result-info",
   doc: "summarize the build information concisely",
   constraint: {
-    type: "build-info",
+    type: "build-result-info",
   },
   structure: "",
   impl: {
     postInitUpdate: function() {
-      var platform = this.obj.builder.os;
-      var type = this.obj.builder.type;
+      var builder = this.obj.build.builder;
+      var result = this.obj.result;
+
+      var platform = builder.os;
+      var type = builder.type;
       var buildStr = platform.platform;
       if (platform.ver)
         buildStr += " " + platform.ver;
       if (platform.arch)
         buildStr += " " + platform.arch;
 
-      if (this.obj.builder.isDebug)
+      if (builder.isDebug)
         buildStr += " debug";
 
       // tests will generally imply a specific subtype and capture, so don't
@@ -559,8 +563,13 @@ wy.defineWidget({
 
       this.domNode.textContent = buildStr;
 
-      if (this.obj.richNotes.length)
-        this.domNode.setAttribute("starred", "true");
+      var passed = Boolean(result.passed);
+      var state;
+      if (passed)
+        state = 'success';
+      else
+        state = this.obj.build.extendedState;
+      this.domNode.setAttribute("state", state);
     },
   },
 });
@@ -690,8 +699,8 @@ wy.defineWidget({
 
     failBlock: {
       failHeaderLabel: "Failures:",
-      failures: wy.vertList({type: "build-fail-thing"},
-                            wy.computed("failClusters")),
+      failures: wy.vertList({type: "build-result-thing"},
+                            wy.computed("resultClusters")),
     },
   },
   impl: {
@@ -704,17 +713,17 @@ wy.defineWidget({
      *  it's not particularly expensive.
      * XXX The end goal here is to be using this to break out failures by
      *  the subsystem they belong to.  This will require a sorta parallel
-     *  structure to build-fail-group and the new widgets used to do that
+     *  structure to build-result-group and the new widgets used to do that
      *  since it would be dumb to show a list of builders and just show us
      *  again...
      */
-    failClusters: function() {
+    resultClusters: function() {
       if (this._failAggr)
-        return this._failAggr.rootFailCluster.kids;
+        return this._failAggr.rootResultCluster.kids;
 
       this._failAggr = $buildAggr.aggregateBuilds(this.__context.tinderTree,
                                                   [this.obj]);
-      return this._failAggr.rootFailCluster.kids;
+      return this._failAggr.rootResultCluster.kids;
     },
     stateExplanation: function() {
       return BUILDSTATUS_STRINGS.lookup(this.obj.extendedState);

@@ -171,6 +171,8 @@ function BuildTreeDef(def) {
   this.product = def.product;
   this.repos = def.repos;
   this.mount = def.mount;
+  this.failuresOnly = def.hasOwnProperty("failuresOnly") ?
+                        def.failuresOnly : true;
   if (def.hasOwnProperty("typeGroups")) {
     this.typeGroupBundles = [
       {

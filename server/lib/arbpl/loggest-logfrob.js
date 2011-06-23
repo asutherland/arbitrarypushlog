@@ -150,6 +150,7 @@ Frobber.prototype = {
           fileName: definerLog.semanticIdent,
           testName: testCaseLog.semanticIdent,
           uniqueName: testUniqueName,
+          passed: testCaseLog.latched.result === 'pass',
         };
         if (!testCaseLog.latched ||
             (!testCaseLog.latched.result ||

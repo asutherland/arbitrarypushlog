@@ -170,8 +170,14 @@ ArbApp.prototype = {
 
   _updateState: function(newState) {
     this.state = newState;
-    if (this.binding)
+    if (this.binding) {
       this.binding.update();
+      // XXX we are screwing up the state somehow; possibly because we have no
+      //  children when this change is (immediately) made.
+      // ideally we would use the persistFocus/restorePersistedFocus mechanism.
+      //self.binding.FOCUS.ensureDomainFocused(this.binding.__focusDomain);
+      //this.binding.FOCUS.updateFocusRing();
+    }
   },
 
   ORDERED_LOCATION_KEYS: ["tree", "pushid", "log", "autonew", "divertedfrom"],

@@ -178,6 +178,41 @@
   }
 }
 
+.commonStateBrightBgMixin {
+  /* base tinderbox build states */
+  [state="building"] {
+    background-color: #999;
+  }
+  [state="building*"] {
+    background-color: #ccc;
+  }
+  [state="success"] {
+    background-color: #9f9;
+  }
+  [state="success*"] {
+    background-color: #cfc;
+  }
+  [state="exception"] {
+    background-color: #f9f;
+  }
+  [state="exception*"] {
+    background-color: #fcf;
+  }
+  [state="testfailed"] {
+    background-color: #fc9;
+  }
+  [state="testfailed*"] {
+    background-color: #f4f4f4;
+  }
+  [state="busted"] {
+    background-color: #f99;
+  }
+  [state="busted*"] {
+    background-color: #fcc;
+  }
+}
+
+
 #aggr-build-summary {
   @longestLabel: 5.5em;
   @buildMatrixInertBG: gray;
@@ -285,7 +320,7 @@
   }
 }
 
-#build-fail-cluster {
+#build-result-cluster {
   #name {
     font-weight: 600;
     color: #444;
@@ -295,7 +330,7 @@
   }
 }
 
-#build-fail-group {
+#build-result-group {
   #root {
   }
   #testDetail {
@@ -305,29 +340,22 @@
 }
 
 
-#generic-build-fail-summary {
+#generic-build-result-summary {
   #name {
     font-weight: 600;
   }
 }
 
-#xpcshell-build-fail-summary {
+#xpcshell-build-result-summary {
   #name {
     font-weight: 600;
   }
 }
 
-
-#build-info {
+#build-result-info {
   #root {
     .clickable;
-
-    /* be orange unless starred */
-    background-color: #ffcc99;
-
-    [starred="true"] {
-      background-color: #f4f4f4;
-    }
+    .commonStateBrightBgMixin;
 
     :hover {
       outline: 2px solid black;

@@ -126,6 +126,7 @@ var DUMMY_LOCAL_TREES = {
     typeGroups: [
       "loggest",
     ],
+    failuresOnly: false,
   })
 };
 
