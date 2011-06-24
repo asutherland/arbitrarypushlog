@@ -306,13 +306,14 @@ parser.command('localchew')
 parser.command('logalchew')
   .help("Consume a local loggest run's output, pushing to the 'Logal' tree.")
   .opts({
+    bridgePort: OPT_BRIDGE_PORT,
     logfile: OPT_LOGFILE,
   })
   .callback(function(options) {
     $require(
       ["arbpl/loggestchew"],
       function($loggestchew) {
-        var chewer = new $loggestchew.LocalLoggestChewer();
+        var chewer = new $loggestchew.LocalLoggestChewer(options.bridgePort);
         when(chewer.chew(options.logfile),
           function(pushId) {
             console.log("chewed log as push id:", pushId);

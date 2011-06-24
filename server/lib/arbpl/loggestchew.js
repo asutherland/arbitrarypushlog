@@ -76,10 +76,11 @@ var LOCAL_TREE_NAME = "Logal";
  * There is no concurrency control and this is obviously not an idempotent sort
  *  of thing.
  */
-function LocalLoggestChewer() {
+function LocalLoggestChewer(bridgePort) {
   this._chewDeferred = null;
   this._db = new $hstore.HStore();
   this._usePushId = null;
+  this._bridgePort = bridgePort;
 }
 LocalLoggestChewer.prototype = {
   /**
@@ -178,7 +179,7 @@ LocalLoggestChewer.prototype = {
     });
 
     // XXX dev mode port only...
-    var bridge = new $databus.ScraperBridgeSource(8009);
+    var bridge = new $databus.ScraperBridgeSource(this._bridgePort);
     var sideband = {};
     sideband["s:r"] = setstate["s:r"];
     sideband["s:b:" + this._path] = setstate["s:b:" + this._path];
