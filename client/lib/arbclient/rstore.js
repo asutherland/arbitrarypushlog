@@ -212,9 +212,14 @@ RemoteStore.prototype = {
           this._modeAcked = true;
       }
       else {
+        // XXX this is actually fairly expected at this point, but it would be
+        //  a very nice thing for me to explain why this is expected and fine,
+        //  etc.
+        /*
         console.warn("Unexpected message seq; expected",
                      this._pendingSeq, "got", msg.seqId,
                      "message:", msg);
+        */
       }
     }
 
