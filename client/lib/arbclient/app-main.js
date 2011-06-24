@@ -275,10 +275,10 @@ ArbApp.prototype = {
    *   }
    * ]
    */
-  _setLocation: function(loc, alreadyInEffect) {
+  _setLocation: function(loc, alreadyInEffect, replace) {
     this._loc = loc;
     var navUrl = this._urlMaker(loc);
-    if (alreadyInEffect)
+    if (alreadyInEffect || replace)
       this.history.replaceState(null, "", navUrl);
     else
       this.history.pushState(null, "", navUrl);
@@ -301,12 +301,12 @@ ArbApp.prototype = {
    *   }
    * ]
    */
-  navigate: function(keyDeltas, alreadyInEffect) {
+  navigate: function(keyDeltas, alreadyInEffect, replace) {
     for (var key in keyDeltas) {
       this._loc[key] = keyDeltas[key];
     }
     //console.log("trying to navigate to", this._loc);
-    this._setLocation(this._loc, alreadyInEffect);
+    this._setLocation(this._loc, alreadyInEffect, replace);
   },
 
   /**
@@ -532,7 +532,7 @@ TestLogPage.prototype = {
             log: build.id + ":" + test.uniqueName,
             autonew: true,
             divertedfrom: this.testName,
-          });
+          }, false, true);
           return;
         }
 
@@ -545,7 +545,7 @@ TestLogPage.prototype = {
             pushid: buildPush.push.id,
             log: build.id + ":" + test.uniqueName,
             autonew: true,
-          });
+          }, false, true);
           return;
         }
       }
