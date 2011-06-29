@@ -176,6 +176,7 @@ wy.defineWidget({
   focus: wy.focus.container.vertical("page"),
   provideContext: {
     urlMaker: "boundUrlMaker",
+    pathnodeUrlMaker: "pathnodeUrlMaker",
   },
   emit: ["navigate"],
   structure: {
@@ -188,17 +189,26 @@ wy.defineWidget({
   },
   events: {
     pathNodes: {
-      command: function pathNodes_command(binding) {
+      command: function pathNodes_command(binding, event) {
+        // XXX Thanks to the href logic, this may be fairly redundant.  the
+        //  question is really whether letting the href handle things will
+        //  just trigger popstate... do we need a hashchange method? XXX
+        if (event.button !== 0)
+          return true;
+
         var domNode = binding.domNode;
         domNode = domNode.nextSibling;
         // nothing to do if there is nothing to null
         if (!domNode)
-          return;
+          return true;
+
         var navDelta = {};
         for (; domNode; domNode = domNode.nextSibling) {
           navDelta[domNode.binding.obj.type] = null;
         }
         this.emit_navigate(navDelta);
+        event.preventDefault();
+        return false;
       },
     },
   },
@@ -211,11 +221,16 @@ wy.defineWidget({
     type: "header-pathnode",
     obj: {type: wy.WILD},
   },
-  structure: {
+  structure: wy.hyperlink({
     label: wy.bind("value"),
     arrowOutline: {},
     arrow: {},
-  },
+  }, {href: wy.computed("link")}),
+  impl: {
+    link: function() {
+      return this.__context.pathnodeUrlMaker(this.obj);
+    },
+  }
 });
 
 wy.defineWidget({

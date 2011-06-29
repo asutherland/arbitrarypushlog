@@ -466,11 +466,11 @@ wy.defineWidget({
     obj: {kind: "group"},
   },
   emit: ["navigate"],
-  structure: wy.flow({
+  structure: {
     testDetail: wy.widget({type: "build-result-summary"}, wy.SELF),
     types: wy.widgetFlow({type: "build-result-info"}, "resultInfoTuples",
                          {separator: ", "}),
-  }),
+  },
   events: {
     types: {
       click: function(buildResultBinding) {

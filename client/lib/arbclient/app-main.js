@@ -159,6 +159,20 @@ function ArbApp(win) {
     }
     return self._urlMaker(cloney);
   };
+  this.pathnodeUrlMaker = function(pathItem) {
+    // use the "type" to nuke all values to the "right" of us in the clone of
+    //  the current state
+    var key, cloney = {}, loc = self._loc;
+    for (key in loc)
+      cloney[key] = loc[key];
+
+    var iOrdered = self.ORDERED_LOCATION_KEYS.indexOf(pathItem.type);
+    while (++iOrdered < self.ORDERED_LOCATION_KEYS.length) {
+      cloney[self.ORDERED_LOCATION_KEYS[iOrdered]] = null;
+    }
+
+    return self._urlMaker(cloney);
+  };
 }
 ArbApp.prototype = {
   _useTree: function(tinderTree) {
