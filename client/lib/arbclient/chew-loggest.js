@@ -149,6 +149,20 @@ FailedExpectationEntry.prototype = {
 };
 exports.FailedExpectationEntry = FailedExpectationEntry;
 
+function MismatchedExpectationEntry(timestamp, relstamp, seq,
+                                    expName, expArgs, actualEntry) {
+  this.layer = null;
+  this.timestamp = timestamp;
+  this.relstamp = relstamp;
+  this.seq = seq;
+  this.expName = expName;
+  this.expArgs = expArgs;
+  this.actualEntry = actualEntry;
+};
+MismatchedExpectationEntry.prototype = {
+  type: "mismatched-expectation",
+};
+
 function UnexpectedEntry(unexpEntry) {
   this.layer = null;
   this.timestamp = unexpEntry.timestamp;
@@ -547,6 +561,22 @@ LoggestLogTransformer.prototype = {
                                       expName, args);
   },
 
+  _proc_mismatchedExpectation: function(handlers, schemaSoup, aggr) {
+    var exp = aggr[1], actual = aggr[2];
+
+    var expName = exp[0];
+    var schemaType = schemaSoup[expName][0];
+    var schema = schemaSoup[expName][1];
+    var args = this._transformArgs(schema, exp);
+
+    var actualEntry = handlers[actual[0]](actual);
+
+    return new MismatchedExpectationEntry(actualEntry.timestamp,
+                                          actualEntry.relstamp,
+                                          actualEntry.seq,
+                                          expName, args, actualEntry);
+  },
+
   // ["!unexpected", a normal entry]
   _proc_unexpectedEntry: function(handlers, entry) {
     var subEntry = entry[1];
@@ -571,6 +601,9 @@ LoggestLogTransformer.prototype = {
 
       handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
                                                                  schemaSoup);
+      handlers["!mismatch"] = this._proc_mismatchedExpectation.bind(this,
+                                                                    handlers,
+                                                                    schemaSoup);
       handlers["!unexpected"] = this._proc_unexpectedEntry.bind(this,
                                                                 handlers);
 

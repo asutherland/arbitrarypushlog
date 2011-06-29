@@ -271,6 +271,20 @@
   }
 }
 
+#entry-mismatched-expectation {
+  .entryLayerColorization;
+  #errLabel {
+    color: red;
+  }
+  #expLine {
+    display: block;
+  }
+  #actualEntry {
+    display: block;
+  }
+}
+
+
 #entry-unexpected {
   .entryLayerColorization;
   #errLabel {

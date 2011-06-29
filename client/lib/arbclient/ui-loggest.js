@@ -814,6 +814,26 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "entry-mismatched-expectation",
+  constraint: {
+    type: "entry",
+    obj: {type: "mismatched-expectation"},
+  },
+  structure: wy.flow({
+    errLabel: "mismatched expectation:",
+    expLine: wy.flow({
+      expName: wy.bind("expName"),
+      lParen: "! (",
+      args: wy.stream({type: "arg-stream"}, "expArgs"),
+      rParenVersus: ") vs.",
+    }),
+    actualEntry: wy.widget({type: "entry"}, "actualEntry"),
+  }, {layer: "layer"}),
+});
+
+
+
+wy.defineWidget({
   name: "entry-unexpected",
   constraint: {
     type: "entry",
