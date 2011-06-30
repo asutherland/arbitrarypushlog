@@ -1,4 +1,2 @@
 #!/bin/sh
-
-cd server/lib
-node r.js arbpl/cmdline.js --bridge-port=2081 sync
+./cmdline sync --bridge-port=2081
