@@ -263,11 +263,11 @@ wy.defineWidget({
   constraint: {
     type: "test-thing",
   },
-  structure: wy.flow({
+  structure: {
     type: wy.bind(["raw", "type"]),
     ws: " ",
     name: wy.bind(["raw", "name"]),
-  }),
+  },
 });
 
 wy.defineWidget({
