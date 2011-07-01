@@ -155,6 +155,7 @@
 
 #case-entry-matrix {
   #headerCol {
+    box-sizing: border-box;
     display: inline-block;
     border: 1px solid gray;
     padding: 0px 4px;
