@@ -506,6 +506,9 @@ LoggestLogTransformer.prototype = {
               args.push(arg);
           }
         }
+        else {
+          args.push(arg);
+        }
       }
     }
     return args;
