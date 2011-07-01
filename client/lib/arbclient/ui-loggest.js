@@ -81,6 +81,17 @@ wy.defineWidget({
   }
 });
 
+var groupInterposer = wy.defineInterposingViewSlice({
+  classifier: function groupClassifier(step) {
+    return step.group;
+  },
+  maker: function groupMaker(pre, post) {
+    return {
+      name: post.group,
+    };
+  }
+});
+
 wy.defineWidget({
   name: "test-perm",
   doc: "test case permutation results display",
@@ -121,7 +132,10 @@ wy.defineWidget({
     notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),
     stepsLabel: "Steps:",
     stepsBlock: {
-      steps: wy.vertList({type: "test-step"}, "steps"),
+      steps: wy.vertList(
+               groupInterposer({type: "test-step-group"},
+                               {type: "test-step"}),
+               "steps"),
     },
   },
   impl: {
@@ -148,6 +162,16 @@ wy.defineWidget({
         this.maybeShowDetailForBinding(binding);
       }
     },
+  },
+});
+
+wy.defineWidget({
+  name: "test-step-group",
+  constraint: {
+    type: "test-step-group",
+  },
+  structure: {
+    name: wy.bind("name"),
   },
 });
 

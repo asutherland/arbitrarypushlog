@@ -295,6 +295,10 @@ function TestCaseStepMeta(resolvedIdent, raw, entries) {
     this.result = 'skip';
   // but boring should always be there; it is latched in the constructor
   this.boring = raw.latched.boring;
+  if (raw.latched && ("group" in raw.latched))
+    this.group = raw.latched.group;
+  else
+    this.group = null;
 
   /**
    * @listof[ActorMeta]{

@@ -60,6 +60,12 @@
   }
 }
 
+#test-step-group {
+  #name {
+    font-size: 150%;
+  }
+}
+
 #test-actor {
   #root {
   }
