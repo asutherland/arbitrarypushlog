@@ -321,6 +321,7 @@ function LoggerMeta(raw, semanticIdent, entries, layerMapping) {
   this.entries = entries;
   this.kids = [];
   this._layerMapping = layerMapping;
+  this.family = "";
   if (this.entries)
     this._tagEntriesWithLayers();
 }
@@ -360,6 +361,13 @@ LoggerMeta.prototype = {
         layer = become;
         checkName = null;
       }
+    }
+  },
+
+  brandFamily: function(name) {
+    this.family = name;
+    for (var i = 0; i < this.kids.length; i++) {
+      this.kids[i].brandFamily(name);
     }
   },
 };
@@ -1095,6 +1103,7 @@ LoggestLogTransformer.prototype = {
       var loggerMeta = this._processNonTestLogger(nonTestLoggers[iLogger],
                                                   rows, stepTimeSpans,
                                                   perm.loggers);
+      loggerMeta.brandFamily(String.fromCharCode(97 + iLogger));
       perm.rootLoggers.push(loggerMeta);
     }
 

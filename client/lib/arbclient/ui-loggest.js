@@ -499,6 +499,7 @@ wy.defineWidget({
         headerConstraint.obj = colMeta.logger;
         var headerCol = doc.createElement("div");
         headerCol.className = clsHeaderCol;
+        headerCol.setAttribute("loggerfamily", colMeta.logger.family);
         headerDiv.appendChild(headerCol);
 
         var headerFab = headerPartial.evaluate(headerConstraint);
