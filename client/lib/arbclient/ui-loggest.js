@@ -204,7 +204,7 @@ wy.defineWidget({
     loggerIdent: wy.bind("loggerIdent"),
     loggerSemDelim: ": ",
     semanticIdent: wy.bind("semanticIdent"),
-  }),
+  }, {loggerfamily: "family"}),
 });
 
 wy.defineWidget({
@@ -679,7 +679,7 @@ wy.defineWidget({
     type: "arg-stream",
     obj: { type: "thing" },
   },
-  structure: wy.bind("name"),
+  structure: wy.bind("name", {loggerfamily: "family"}),
 });
 
 

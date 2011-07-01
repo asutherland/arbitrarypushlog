@@ -19,6 +19,27 @@
   display: inline-block;
 }
 
+/* melting puppies by skyblue2u
+   http://www.colourlovers.com/palette/396247/Melting_Puppies
+ */
+.loggerFamilyUniqueBgColors {
+  [loggerfamily=a] {
+    background-color: #93dfb8;
+  }
+  [loggerfamily=b] {
+    background-color: #ffc8ba;
+  }
+  [loggerfamily=c] {
+    background-color: #e3aad6;
+  }
+  [loggerfamily=d] {
+    background-color: #b5d8eb;
+  }
+  [loggerfamily=e] {
+    background-color: #ffbdd8;
+  }
+}
+
 #file-failure {
   #root {
     margin: 8px;
@@ -94,6 +115,12 @@
   }
 }
 
+#sem-stream-logger {
+  #root {
+    .loggerFamilyUniqueBgColors;
+  }
+}
+
 @pass-bg-color: #efe;
 @fail-bg-color: #fee;
 @skip-bg-color: #ffe;
@@ -153,27 +180,6 @@
   }
 }
 
-/* melting puppies by skyblue2u
-   http://www.colourlovers.com/palette/396247/Melting_Puppies
- */
-.loggerFamilyUniqueBgColors {
-  [loggerfamily=a] {
-    background-color: #93dfb8;
-  }
-  [loggerfamily=b] {
-    background-color: #ffc8ba;
-  }
-  [loggerfamily=c] {
-    background-color: #e3aad6;
-  }
-  [loggerfamily=d] {
-    background-color: #b5d8eb;
-  }
-  [loggerfamily=e] {
-    background-color: #ffbdd8;
-  }
-}
-
 #case-entry-matrix {
   #headerCol {
     box-sizing: border-box;
@@ -227,6 +233,8 @@
     font-style: italic;
     border-bottom: 1px dotted gray;
     display: inline-block;
+
+    .loggerFamilyUniqueBgColors;
   }
 }
 

@@ -320,6 +320,7 @@ function LoggerMeta(raw, semanticIdent, entries, layerMapping) {
   this.semanticIdent = semanticIdent;
   this.entries = entries;
   this.kids = [];
+  this.things = [];
   this._layerMapping = layerMapping;
   this.family = "";
   if (this.entries)
@@ -365,9 +366,13 @@ LoggerMeta.prototype = {
   },
 
   brandFamily: function(name) {
+    var i;
     this.family = name;
-    for (var i = 0; i < this.kids.length; i++) {
+    for (i = 0; i < this.kids.length; i++) {
       this.kids[i].brandFamily(name);
+    }
+    for (i = 0; i < this.things.length; i++) {
+      this.things[i].family = name;
     }
   },
 };
@@ -382,6 +387,7 @@ var UNRESOLVED_THING_RAW = {};
 function ThingMeta(raw) {
   this.raw = raw;
   this.name = raw.name;
+  this.family = "";
   this.distinctAliases = [];
   if (raw.dname)
     this.distinctAliases.push(raw.dname);
@@ -405,6 +411,7 @@ var UNRESOLVED_ACTOR_RAW = {};
 function ActorMeta(raw, uniqueNameMap) {
   this.raw = raw;
   this.kids = [];
+  this.family = "";
   this._uniqueNameMap = uniqueNameMap;
 }
 ActorMeta.prototype = {
@@ -916,7 +923,8 @@ LoggestLogTransformer.prototype = {
    *  This is intended to be called as part of the _processPermutation logic,
    *  as it deals intimately with the row/entry matrix representation.
    */
-  _processNonTestLogger: function(rawLogger, rows, stepTimeSpans, allLoggers) {
+  _processNonTestLogger: function(rawLogger, rows, stepTimeSpans, allLoggers,
+                                  rawPerm) {
     var entries = this._processEntries(rawLogger.loggerIdent,
                                        rawLogger.entries);
 
@@ -983,11 +991,29 @@ LoggestLogTransformer.prototype = {
       }
     }
 
+    // -- owned things
+    if (rawLogger.named) {
+      for (var strName in rawLogger.named) {
+        var numName = parseInt(strName);
+        if (numName > 0) {
+          console.error("Non-test loggers should not own/name actors.",
+                        rawLogger);
+        }
+        else {
+          var thing = this._makeThing(strName, rawLogger.named[strName]);
+          loggerMeta.things.push(thing);
+          // (flatten out things)
+          rawPerm.things.push(thing);
+        }
+      }
+    }
+
     // -- kids!
     if (rawLogger.kids) {
       for (var iKid = 0; iKid < rawLogger.kids.length; iKid++) {
         var kidMeta = this._processNonTestLogger(rawLogger.kids[iKid], rows,
-                                                 stepTimeSpans, allLoggers);
+                                                 stepTimeSpans, allLoggers,
+                                                 rawPerm);
         loggerMeta.kids.push(kidMeta);
       }
     }
@@ -1102,7 +1128,8 @@ LoggestLogTransformer.prototype = {
     for (var iLogger = 0; iLogger < nonTestLoggers.length; iLogger++) {
       var loggerMeta = this._processNonTestLogger(nonTestLoggers[iLogger],
                                                   rows, stepTimeSpans,
-                                                  perm.loggers);
+                                                  perm.loggers, perm);
+      // ('a').charCodeAt(0) === 97
       loggerMeta.brandFamily(String.fromCharCode(97 + iLogger));
       perm.rootLoggers.push(loggerMeta);
     }
