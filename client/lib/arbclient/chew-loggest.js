@@ -472,11 +472,36 @@ LoggestLogTransformer.prototype = {
       else {
         if (typeof(arg) === 'object')
           console.warn("Identity transforming dubious argument", arg);
-        if (typeof(arg) === 'string') {
-          if (this._usingAliasMap.hasOwnProperty(arg))
-            arg = this._usingAliasMap[arg];
+        else if (typeof(arg) === 'string') {
+          // - direct alias
+          if (this._usingAliasMap.hasOwnProperty(arg)) {
+            args.push(this._usingAliasMap[arg]);
+          }
+          // - check for compound alias
+          // check if the string is long enough to have a crypto key in it
+          //  and the first thing is a crypto key...
+          else {
+            while (arg.length >= 32) {
+              var firstBit = arg.substring(0, 32);
+              if (this._usingAliasMap.hasOwnProperty(firstBit)) {
+                args.push(this._usingAliasMap[firstBit]);
+                if (arg[32] === ":") {
+                  args.push(":");
+                  arg = arg.substring(33);
+                }
+                else {
+                  arg = arg.substring(32);
+                }
+              }
+              else {
+                // it did not match, no need to keep looking
+                break;
+              }
+            }
+            if (arg.length)
+              args.push(arg);
+          }
         }
-        args.push(arg);
       }
     }
     return args;
@@ -489,9 +514,8 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name, ...args..., timestamp, seq]
-  _proc_event: function(metaArgs, metaTestOnlyArgs, entry) {
+  _proc_event: function(metaArgs, numArgs, metaTestOnlyArgs, entry) {
     var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
-    var numArgs = args.length / 2;
     if (entry.length > numArgs + 3)
       testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
                                          numArgs + 3);
@@ -501,9 +525,8 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name_begin, ...args..., timestamp, seq]
-  _proc_asyncJobBegin: function(metaArgs, name, entry) {
+  _proc_asyncJobBegin: function(metaArgs, numArgs, name, entry) {
     var args = this._transformArgs(metaArgs, entry);
-    var numArgs = args.length / 2;
     return new AsyncJobBeginEntry(entry[numArgs+1],
                                   entry[numArgs+1] - this._baseTime,
                                   entry[numArgs+2],
@@ -511,18 +534,16 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name_end, ...args..., timestamp, seq]
-  _proc_asyncJobEnd: function(metaArgs, name, entry) {
+  _proc_asyncJobEnd: function(metaArgs, numArgs, name, entry) {
     var args = this._transformArgs(metaArgs, entry);
-    var numArgs = args.length / 2;
     return new AsyncJobEndEntry(entry[numArgs+1],
                                 entry[numArgs+1] - this._baseTime,
                                 entry[numArgs+2], name, args);
   },
 
   // [name, ...args..., startTimestamp, startSeq, endTimestamp, endSeq, ex]
-  _proc_call: function(metaArgs, metaTestOnlyArgs, entry) {
+  _proc_call: function(metaArgs, numArgs, metaTestOnlyArgs, entry) {
     var args = this._transformArgs(metaArgs, entry),
-        numArgs = args.length / 2,
         ex = this._transformEx(entry[numArgs + 5]),
         testOnlyArgs = null;
 
@@ -537,9 +558,8 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name, ...args.., timestamp, seq]
-  _proc_error: function(metaArgs, entry) {
+  _proc_error: function(metaArgs, numArgs, entry) {
     var args = this._transformArgs(metaArgs, entry);
-    var numArgs = args.length / 2;
     return new ErrorEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
                           entry[numArgs+2], entry[0], args);
   },
@@ -594,6 +614,14 @@ LoggestLogTransformer.prototype = {
    *  to call in the map...
    */
   processSchemas: function(schemas) {
+    function countArgsInSchema(schemaArgs) {
+      var numArgs = 0;
+      for (var key in schemaArgs) {
+        numArgs++;
+      }
+      return numArgs;
+    }
+
     for (var schemaName in schemas) {
       var key, schemaDef = schemas[schemaName];
       var handlers = this._schemaHandlerMaps[schemaName] = {};
@@ -623,8 +651,10 @@ LoggestLogTransformer.prototype = {
           if (testOnlyEventsSchema && testOnlyEventsSchema.hasOwnProperty(key))
             testOnlyMeta = testOnlyEventsSchema[key];
           schemaSoup[key] = ['event', schemaDef.events[key]];
-          handlers[key] = this._proc_event.bind(this, schemaDef.events[key],
-                                                testOnlyMeta);
+          handlers[key] = this._proc_event.bind(this,
+                            schemaDef.events[key],
+                            countArgsInSchema(schemaDef.events[key]),
+                            testOnlyMeta);
         }
       }
       if ("asyncJobs" in schemaDef) {
@@ -632,10 +662,16 @@ LoggestLogTransformer.prototype = {
           schemaSoup[key + '_begin'] = ['async job begin',
                                         schemaDef.asyncJobs[key]];
           handlers[key + '_begin'] = this._proc_asyncJobBegin.bind(
-                                       this, schemaDef.asyncJobs[key], key);
+              this,
+              schemaDef.asyncJobs[key],
+              countArgsInSchema(schemaDef.asyncJobs[key]),
+              key);
           schemaSoup[key + '_end'] = ['async job end', schemaDef.asyncJobs[key]];
           handlers[key + '_end'] = this._proc_asyncJobEnd.bind(
-                                     this, schemaDef.asyncJobs[key], key);
+              this,
+              schemaDef.asyncJobs[key],
+              countArgsInSchema(schemaDef.asyncJobs[key]),
+              key);
         }
       }
       if ("calls" in schemaDef) {
@@ -648,14 +684,17 @@ LoggestLogTransformer.prototype = {
           if (testOnlyCallsSchema && testOnlyCallsSchema.hasOwnProperty(key))
             testOnlyMeta = testOnlyCallsSchema[key];
           handlers[key] = this._proc_call.bind(this,
-                                               schemaDef.calls[key],
-                                               testOnlyMeta);
+                            schemaDef.calls[key],
+                            countArgsInSchema(schemaDef.calls[key]),
+                            testOnlyMeta);
         }
       }
       if ("errors" in schemaDef) {
         for (key in schemaDef.errors) {
           schemaSoup[key] = ['error', schemaDef.errors[key]];
-          handlers[key] = this._proc_error.bind(this, schemaDef.errors[key]);
+          handlers[key] = this._proc_error.bind(this,
+                            schemaDef.errors[key],
+                            countArgsInSchema(schemaDef.errors[key]));
         }
       }
       if ("LAYER_MAPPING" in schemaDef) {

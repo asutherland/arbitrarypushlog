@@ -409,6 +409,9 @@ wy.defineWidget({
 
       // -- figure out the involved loggers from the step info
       var iLogger, logger, colMeta;
+      // XXX because of our use of helpers, we frequently end up including
+      //  actors that aren't actually used in the step...
+      /*
       for (var iActor = 0; iActor < step.involvedActors.length; iActor++) {
         var actor = step.involvedActors[iActor];
         logger = actor.logger;
@@ -424,6 +427,7 @@ wy.defineWidget({
         columnMetas.push(colMeta);
         usingColumnMap[colMeta.idxColumn] = colMeta;
       }
+      */
 
       // -- figure out the uninvolved loggers from the cells of the rows
       var iRow, row, iCol, entries;
