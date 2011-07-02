@@ -375,6 +375,30 @@ LoggerMeta.prototype = {
       this.things[i].family = name;
     }
   },
+
+  /**
+   * Resolve our semantic ident and our childrens' too using the given alias
+   *  map.
+   */
+  resolveSemanticIdentDeep: function(aliasMap) {
+    var rawSemIdent = this.raw.semanticIdent;
+    if (!Array.isArray(rawSemIdent))
+      rawSemIdent = [rawSemIdent];
+
+    var outIdent = [];
+    for (var i = 0; i < rawSemIdent.length; i++) {
+      var bit = rawSemIdent[i];
+      if (aliasMap.hasOwnProperty(bit))
+        outIdent.push(aliasMap[bit]);
+      else
+        outIdent.push(bit);
+    }
+    this.semanticIdent = outIdent;
+
+    for (var iKid = 0; iKid < this.kids.length; iKid++) {
+      this.kids[iKid].resolveSemanticIdentDeep(aliasMap);
+    }
+  },
 };
 
 var UNRESOLVED_THING_RAW = {};
@@ -489,8 +513,10 @@ LoggestLogTransformer.prototype = {
         args.push({type: 'full-obj', obj: arg});
       }
       else {
-        if (typeof(arg) === 'object')
+        if (typeof(arg) === 'object') {
           console.warn("Identity transforming dubious argument", arg);
+          args.push(arg);
+        }
         else if (typeof(arg) === 'string') {
           // - direct alias
           if (this._usingAliasMap.hasOwnProperty(arg)) {
@@ -904,38 +930,57 @@ LoggestLogTransformer.prototype = {
     return entries;
   },
 
-  _normalizeLoggerSemanticIdent: function(rawSemIdent) {
-    if (!Array.isArray(rawSemIdent))
-      rawSemIdent = [rawSemIdent];
-    var outIdent = [];
-    for (var i = 0; i < rawSemIdent.length; i++) {
-      var bit = rawSemIdent[i];
-      if (this._usingAliasMap.hasOwnProperty(bit))
-        outIdent.push(this._usingAliasMap[bit]);
-      else
-        outIdent.push(bit);
-    }
-    return outIdent;
-  },
-
   /**
    * Convert a non-test logger and all its kids into a `LoggerMeta` instance.
    *  This is intended to be called as part of the _processPermutation logic,
    *  as it deals intimately with the row/entry matrix representation.
    */
-  _processNonTestLogger: function(rawLogger, rows, stepTimeSpans, allLoggers,
-                                  rawPerm) {
-    var entries = this._processEntries(rawLogger.loggerIdent,
-                                       rawLogger.entries);
-
-    var semIdent =  this._normalizeLoggerSemanticIdent(rawLogger.semanticIdent);
+  _createNonTestLogger: function(rawLogger, allLoggers, rawPerm) {
     var loggerMeta = new LoggerMeta(
-                       rawLogger, semIdent, entries,
+                       rawLogger,
+                       /* semantic ident resolution deferred */ null,
+                       /* entries deferred */ null,
                        this._schemaToLayerMapping[rawLogger.loggerIdent]);
     allLoggers.push(loggerMeta);
     this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
 
-    // - matrix building
+    // -- owned things
+    if (rawLogger.named) {
+      for (var strName in rawLogger.named) {
+        var numName = parseInt(strName);
+        if (numName > 0) {
+          console.error("Non-test loggers should not own/name actors.",
+                        rawLogger);
+        }
+        else {
+          var thing = this._makeThing(strName, rawLogger.named[strName]);
+          loggerMeta.things.push(thing);
+          // (flatten out things)
+          rawPerm.things.push(thing);
+        }
+      }
+    }
+
+    // -- kids!
+    if (rawLogger.kids) {
+      for (var iKid = 0; iKid < rawLogger.kids.length; iKid++) {
+        var kidMeta = this._createNonTestLogger(rawLogger.kids[iKid],
+                                                allLoggers, rawPerm);
+        loggerMeta.kids.push(kidMeta);
+      }
+    }
+
+    return loggerMeta;
+  },
+
+  _processNonTestLogger: function(loggerMeta, rows, stepTimeSpans) {
+    var rawLogger = loggerMeta.raw;
+    var entries = loggerMeta.entries =
+      this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
+
+    loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
+
+    // -- matrix building
     var iRow;
     if (entries === null) {
       for (iRow = 0; iRow < rows.length; iRow++) {
@@ -991,34 +1036,10 @@ LoggestLogTransformer.prototype = {
       }
     }
 
-    // -- owned things
-    if (rawLogger.named) {
-      for (var strName in rawLogger.named) {
-        var numName = parseInt(strName);
-        if (numName > 0) {
-          console.error("Non-test loggers should not own/name actors.",
-                        rawLogger);
-        }
-        else {
-          var thing = this._makeThing(strName, rawLogger.named[strName]);
-          loggerMeta.things.push(thing);
-          // (flatten out things)
-          rawPerm.things.push(thing);
-        }
-      }
+    for (var iKid = 0; iKid < loggerMeta.kids.length; iKid++) {
+      var kidMeta = loggerMeta.kids[iKid];
+      this._processNonTestLogger(kidMeta, rows, stepTimeSpans);
     }
-
-    // -- kids!
-    if (rawLogger.kids) {
-      for (var iKid = 0; iKid < rawLogger.kids.length; iKid++) {
-        var kidMeta = this._processNonTestLogger(rawLogger.kids[iKid], rows,
-                                                 stepTimeSpans, allLoggers,
-                                                 rawPerm);
-        loggerMeta.kids.push(kidMeta);
-      }
-    }
-
-    return loggerMeta;
   },
 
   INTERESTING_PERMUTATION_ENTRIES: ["setupFunc", "actorConstructor"],
@@ -1124,14 +1145,23 @@ LoggestLogTransformer.prototype = {
       stepTimeSpans.push([timeStart, timeEnd]);
     }
 
-    // -- process filtered non-step loggers, time-slice their entries
-    for (var iLogger = 0; iLogger < nonTestLoggers.length; iLogger++) {
-      var loggerMeta = this._processNonTestLogger(nonTestLoggers[iLogger],
-                                                  rows, stepTimeSpans,
-                                                  perm.loggers, perm);
+    // -- create filtered non-step loggers,
+    var iLogger, loggerMeta;
+    for (iLogger = 0; iLogger < nonTestLoggers.length; iLogger++) {
+      loggerMeta = this._createNonTestLogger(nonTestLoggers[iLogger],
+                                             perm.loggers, perm);
       // ('a').charCodeAt(0) === 97
       loggerMeta.brandFamily(String.fromCharCode(97 + iLogger));
       perm.rootLoggers.push(loggerMeta);
+    }
+
+    // -- resolve semantic idents, time-slice their entries
+    // Previously we resolved logger semantic idents and transformed entries
+    //  as we were creating them, but that was before things were named and
+    //  thus stashed inside loggers.
+    for (iLogger = 0; iLogger < perm.rootLoggers.length; iLogger++) {
+      this._processNonTestLogger(perm.rootLoggers[iLogger],
+                                 rows, stepTimeSpans);
     }
 
     return perm;
