@@ -79,16 +79,13 @@
   }
 
   #header {
-    display: box;
   }
   #pathNodes {
-    box-flex: 0;
-  }
-  #flexSoak {
-    box-flex: 1;
+    display: inline-block;
   }
   #pageHeader {
-    box-flex: 0;
+    display: inline-block;
+    float: right;
   }
 }
 

@@ -182,7 +182,6 @@ wy.defineWidget({
   structure: {
     header: {
       pathNodes: wy.horizList({type: "header-pathnode"}, ["page", "pathNodes"]),
-      flexSoak: {},
       pageHeader: wy.widget({type: "page-header"}, "page"),
     },
     page: wy.widget({type: "page"}, "page"),
