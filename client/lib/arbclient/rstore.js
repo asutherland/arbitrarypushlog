@@ -208,8 +208,11 @@ RemoteStore.prototype = {
     if (msg.seqId !== -1) {
       if (msg.seqId === this._pendingSeq) {
         this._pendingSeq = 0;
-        if (msg.type !== "error" && this._subMode)
+        if (msg.type !== "error" && this._subMode && !this._modeAcked) {
           this._modeAcked = true;
+          // need to generate an update so the acked state can be reflected
+          this._connListener.onConnectionStateChange();
+        }
       }
       else {
         // XXX this is actually fairly expected at this point, but it would be
