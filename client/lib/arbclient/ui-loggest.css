@@ -108,6 +108,21 @@
   }
 }
 
+#hier-actor {
+  #root {
+    border-bottom: 1px #ddd solid;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+  }
+}
+#hier-logger {
+  #root {
+    border-bottom: 1px #ddd solid;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+  }
+}
+
 #test-actor {
   #root {
   }
