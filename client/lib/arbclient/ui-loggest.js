@@ -200,11 +200,7 @@ wy.defineWidget({
       type: "thing",
     }
   },
-  structure: wy.flow({
-    loggerIdent: wy.bind("loggerIdent"),
-    loggerSemDelim: ": ",
-    semanticIdent: wy.bind("semanticIdent"),
-  }, {loggerfamily: "family"}),
+  structure: wy.bind("name", {loggerfamily: "family"}),
 });
 
 wy.defineWidget({
@@ -290,7 +286,7 @@ wy.defineWidget({
   structure: {
     type: wy.bind(["raw", "type"]),
     ws: " ",
-    name: wy.bind(["raw", "name"]),
+    name: wy.bind("name"),
   },
 });
 
