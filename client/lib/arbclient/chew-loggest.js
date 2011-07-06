@@ -526,22 +526,30 @@ LoggestLogTransformer.prototype = {
           // check if the string is long enough to have a crypto key in it
           //  and the first thing is a crypto key...
           else {
+            outerloopy:
             while (arg.length >= 32) {
-              var firstBit = arg.substring(0, 32);
-              if (this._usingAliasMap.hasOwnProperty(firstBit)) {
-                args.push(this._usingAliasMap[firstBit]);
-                if (arg[32] === ":") {
-                  args.push(":");
-                  arg = arg.substring(33);
-                }
-                else {
-                  arg = arg.substring(32);
+              // be willing to try offsetting by up to 4 bytes
+              var maxSlip = Math.min(4, (arg.length % 32));
+              // first thing is a crypto key
+              for (var off=0; off <= maxSlip; off++) {
+                var candAlias = arg.substring(off, off + 32);
+                if (this._usingAliasMap.hasOwnProperty(candAlias)) {
+                  if (off)
+                    args.push(arg.substring(0, off));
+                  args.push(this._usingAliasMap[candAlias]);
+                  // (gobble obvious delimeter)
+                  if ((arg.length - off) > 32 &&
+                      arg[off + 32] === ":") {
+                    args.push(":");
+                    arg = arg.substring(off + 33);
+                  }
+                  else {
+                    arg = arg.substring(off + 32);
+                  }
+                  continue outerloopy;
                 }
               }
-              else {
-                // it did not match, no need to keep looking
-                break;
-              }
+              break;
             }
             if (arg.length)
               args.push(arg);
