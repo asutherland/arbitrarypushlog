@@ -510,10 +510,23 @@ LoggestLogTransformer.prototype = {
         args.push(this._transformEx(arg));
       }
       else if (def === 'jsonable') {
-        args.push({type: 'full-obj', obj: arg});
+        // although we want to try and force a full-obj quickly, let's not
+        //  force it on things that are not actually objects!
+        if (arg == null) {
+          args.push("null");
+        }
+        else if (typeof(arg) === 'object') {
+          args.push({type: 'full-obj', obj: arg});
+        }
+        else {
+          args.push("" + arg);
+        }
       }
       else {
-        if (typeof(arg) === 'object') {
+        if (arg == null) {
+          args.push("null");
+        }
+        else if (typeof(arg) === 'object') {
           console.warn("Identity transforming dubious argument", arg);
           args.push(arg);
         }
@@ -556,7 +569,7 @@ LoggestLogTransformer.prototype = {
           }
         }
         else {
-          args.push(arg);
+          args.push("" + arg);
         }
       }
     }
