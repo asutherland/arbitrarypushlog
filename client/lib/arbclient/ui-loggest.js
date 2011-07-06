@@ -450,7 +450,7 @@ wy.defineWidget({
       */
 
       // -- figure out the uninvolved loggers from the cells of the rows
-      var iRow, row, iCol, entries;
+      var iRow, row, iCol, entries, i;
       for (iRow = 0; iRow < rows.length; iRow++) {
         row = rows[iRow];
         for (iCol = 0; iCol < row.length; iCol++) {
@@ -468,70 +468,111 @@ wy.defineWidget({
         }
       }
 
-      // -- compute layout
-      // Although we are currently using a linear allocation that does not
-      //  actually require its own iteration pass, I'm expecting we may need
-      //  something slightly better in the near future.
-      var gapEms = 16, widthEms = 50, offEm = 0;
-      for (iCol = 0; iCol < columnMetas.length; iCol++) {
-        colMeta = columnMetas[iCol];
+      /*
+       * Layout Strategy (rev 2): Incremental column addition with resets on
+       *  horizontal overflow.
+       *
+       * The Problem:
+       *
+       * It's possible to quickly end up with too many columns.  Forcing the
+       *  test definition to slice things into additional steps to avoid this
+       *  is neither appealing nor especially tractable.
+       *
+       * The Solution:
+       *
+       * At start/reset, add a div for column headers.  Then just process
+       *  entries, adding (and positioning) columns as encountered.  When we
+       *  need to place a column that there's no space for, we do a reset and
+       *  restart the process.
+       *
+       * Fancier alternatives not taken:
+       *
+       * We could attempt to end up with some kind of clever clustering
+       *  analysis and break things into separate displays.  This would be a
+       *  risky solution because it could hide important time orderings.  This
+       *  does seem beneficial as a filtering/faceting mechanism.  Namely, if
+       *  we could just mark certain loggers as boring and take them out of
+       *  the equation, that seems useful.
+       */
 
-        colMeta.layout = offEm;
-        offEm += gapEms;
-      }
+      // layout knobs
+      var gapEms = 16, widthEms = 50,
+          maxCols = Math.floor((window.innerWidth - 250) / 200);
+
+      // current column state
+      var activeColAbsIndices = [], activeOffEms = 0;
 
       var rowHolderNode = this.domNode, doc = rowHolderNode.ownerDocument;
-      // -- generate the column header.
+      var rowNode = null, headerDiv = null;
+      function makeHeaderRow(container) {
+        headerDiv = doc.createElement("div");
+        headerDiv.setAttribute("class", clsHeaderRow);
+        container.appendChild(headerDiv);
+      }
+
+      // --- header generation logic
       var headerPartial = this._headerPartial,
           headerConstraint = this._headerConstraint;
-      var headerDiv = doc.createElement("div");
-      headerDiv.setAttribute("class", clsHeaderRow);
-      rowHolderNode.appendChild(headerDiv);
-      for (iCol = 0; iCol < columnMetas.length; iCol++) {
-        colMeta = columnMetas[iCol];
-        var nextColMeta = (iCol + 1 < columnMetas.length) ?
-                            columnMetas[iCol + 1] : null;
-
+      function addHeaderNode(colMeta) {
         headerConstraint.obj = colMeta.logger;
         var headerCol = doc.createElement("div");
         headerCol.className = clsHeaderCol;
         headerCol.setAttribute("loggerfamily", colMeta.logger.family);
-        headerDiv.appendChild(headerCol);
+        headerDiv.appendChild(headerCol); // need to append before bindOnto
 
         var headerFab = headerPartial.evaluate(headerConstraint);
         var headerWidget = headerFab.bindOnto(headerConstraint, headerCol);
-
-        if (nextColMeta) {
-          headerCol.setAttribute(
-            "style", "width: " + (nextColMeta.layout - colMeta.layout) + "em;");
-        }
-        else {
-          headerCol.setAttribute(
-            "style", "width: " + gapEms + "em;");
-        }
+        headerCol.setAttribute("style", "width: " + gapEms + "em;");
       }
 
-
-      // -- process the rows, generating DOM nodes
+      // --- process the rows, generating DOM nodes and headers
+      makeHeaderRow(rowHolderNode);
       var entryPartial = this._entryPartial,
           entryConstraint = this._entryConstraint;
       for (iRow = 0; iRow < rows.length; iRow++) {
         row = rows[iRow];
         var isDuringStepRow = (iRow === 1);
 
-        var rowNode = doc.createElement("div");
+        rowNode = doc.createElement("div");
         rowNode.setAttribute("class",
                              isDuringStepRow ? clsDuringRow : clsOutsideRow);
 
-
         var boxedEntries = this._timeOrderedEntriesForRow(row);
         var curCol = null, curDiv = null;
+        // -- entry processing loop
         for (var iEntry = 0; iEntry < boxedEntries.length; iEntry++) {
           var boxedEntry = boxedEntries[iEntry],
               entry = boxedEntries[iEntry].entry;
           colMeta = usingColumnMap[boxedEntry.column];
 
+          // -- column change?
           if (curCol !== boxedEntry.column) {
+            var newCol = boxedEntry.column;
+            // - handle it not yet being in the active set
+            if (activeColAbsIndices.indexOf(newCol) === -1) {
+              // - issue a reset if we are at our limit...
+              if (activeColAbsIndices.length === maxCols) {
+                curCol = null;
+                // null out the layout offsets
+                for (i = 0; i < activeColAbsIndices.length; i++) {
+                  usingColumnMap[activeColAbsIndices[i]].layout = null;
+                }
+                // clear the list
+                activeColAbsIndices.splice(0, activeColAbsIndices.length);
+                // reset the layout state
+                activeOffEms = 0;
+                // create the new header row
+                makeHeaderRow(rowNode);
+              }
+
+              // - add the column
+              activeColAbsIndices.push(newCol);
+              colMeta.layout = activeOffEms;
+              activeOffEms += gapEms;
+
+              addHeaderNode(colMeta);
+            }
+
             // insert pretty divider
             if (curCol !== null) {
               var lastMeta = usingColumnMap[curCol];
@@ -560,6 +601,8 @@ wy.defineWidget({
             rowNode.appendChild(curDiv);
             curCol = boxedEntry.column;
           }
+
+          // -- generate the entry
           entryConstraint.obj = entry;
           var entryNode = doc.createElement("div");
           entryNode.className = clsEntryItem;
