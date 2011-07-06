@@ -19,8 +19,11 @@
   display: inline-block;
 }
 
-/* melting puppies by skyblue2u
+/* a-e: melting puppies by skyblue2u
    http://www.colourlovers.com/palette/396247/Melting_Puppies
+
+   f-j: dreams bring... by skyblue2u
+   http://www.colourlovers.com/palette/621028/dreams_bring_._._.
  */
 .loggerFamilyUniqueBgColors {
   [loggerfamily=a] {
@@ -37,6 +40,24 @@
   }
   [loggerfamily=e] {
     background-color: #ffbdd8;
+  }
+  [loggerfamily=e] {
+    background-color: #ffbdd8;
+  }
+  [loggerfamily=f] {
+    background-color: #f8dafb;
+  }
+  [loggerfamily=g] {
+    background-color: #e8dafb;
+  }
+  [loggerfamily=h] {
+    background-color: #daddfb;
+  }
+  [loggerfamily=i] {
+    background-color: #daedfb;
+  }
+  [loggerfamily=i] {
+    background-color: #dafbf8;
   }
 }
 
