@@ -327,6 +327,9 @@ wy.defineWidget({
       }
 
       // set it on all these directly because of webkit's selector deficiencies
+      // XXX I believe the webkit bug has been fixed, so wen can probably stop
+      //  doing this soon.
+      this.domNode.setAttribute("collapsed", this.collapsed);
       this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.headerRow_element.setAttribute("collapsed", this.collapsed);
       this.contentBlock_element.setAttribute("collapsed", this.collapsed);
@@ -345,6 +348,7 @@ wy.defineWidget({
         this.logEntries_set(this.obj.entries);
         this.entryMatrix_set(this.obj);
       }
+      this.domNode.setAttribute("collapsed", this.collapsed);
       this.twisty_element.setAttribute("collapsed", this.collapsed);
       this.headerRow_element.setAttribute("collapsed", this.collapsed);
       this.contentBlock_element.setAttribute("collapsed", this.collapsed);

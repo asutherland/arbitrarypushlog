@@ -152,6 +152,10 @@
     margin: 4px;
     border: 1px solid gray;
     border-radius: 4px;
+
+    [collapsed="true"] {
+      display: inline-block;
+    }
   }
   #headerRow {
     border-top-left-radius: 4px;
