@@ -509,26 +509,13 @@ LoggestLogTransformer.prototype = {
       if (def === 'exception') {
         args.push(this._transformEx(arg));
       }
-      else if (def === 'jsonable') {
-        // although we want to try and force a full-obj quickly, let's not
-        //  force it on things that are not actually objects!
-        if (arg == null) {
-          args.push("null");
-        }
-        else if (typeof(arg) === 'object') {
-          args.push({type: 'full-obj', obj: arg});
-        }
-        else {
-          args.push("" + arg);
-        }
-      }
       else {
         if (arg == null) {
           args.push("null");
         }
         else if (typeof(arg) === 'object') {
-          console.warn("Identity transforming dubious argument", arg);
-          args.push(arg);
+          // this used to only happen for 'jsonable'...
+          args.push({type: 'full-obj', obj: arg});
         }
         else if (typeof(arg) === 'string') {
           // - direct alias
