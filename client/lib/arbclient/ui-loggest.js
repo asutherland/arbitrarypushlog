@@ -875,14 +875,9 @@ wy.defineWidget({
     colon: ": ",
     name: wy.bind("name"),
     lParen: "(",
-    argsStr: "",
+    args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
   }, {layer: "layer"}),
-  impl: {
-    postInit: function() {
-      this.argsStr_element.textContent = stringifyArgs(this.obj.args);
-    }
-  },
 });
 
 wy.defineWidget({

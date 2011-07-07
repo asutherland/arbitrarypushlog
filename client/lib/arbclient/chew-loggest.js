@@ -638,11 +638,7 @@ LoggestLogTransformer.prototype = {
       schema = DIED_SCHEMA;
     }
 
-
-    var numArgs = 0, args = {};
-    for (var key in schema) {
-      args[key] = exp[++numArgs];
-    }
+    var args = this._transformArgs(schema, exp, 1);
     return new FailedExpectationEntry(entry[2], entry[2] - this._baseTime,
                                       entry[3], schemaType,
                                       expName, args);
