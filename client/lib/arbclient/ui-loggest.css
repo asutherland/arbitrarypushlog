@@ -338,7 +338,8 @@
 #entry-error {
   .entryLayerColorization;
   #errLabel {
-    color: maroon;
+    color: red;
+    font-weight: bold;
   }
 }
 
