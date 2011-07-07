@@ -726,16 +726,6 @@ wy.defineWidget({
 });
 
 
-function stringifyArgs(args) {
-  var s = "";
-  for (var key in args) {
-    if (s)
-      s += ", ";
-    s += key + ": " + args[key];
-  }
-  return s;
-}
-
 function dotMilliTimeFormatter(t) {
   var wholish = Math.floor(t / 100).toString();
   var len = wholish.length;

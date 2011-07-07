@@ -553,7 +553,18 @@ HStore.prototype = {
           deferred.reject(err);
         }
         else {
-          deferred.resolve(JSON.parse(cells[0].value));
+          try {
+            deferred.resolve(JSON.parse(cells[0].value));
+          }
+          catch(ex) {
+            var cval = cells[0].value;
+            console.error("Unhappy JSON data, first few chars: " +
+                          cval.substring(0, 16) +
+                          " last few chars: " +
+                          cval.substring(cval.length - 16));
+            console.error(ex);
+            deferred.reject(ex);
+          }
         }
       });
     return deferred.promise;

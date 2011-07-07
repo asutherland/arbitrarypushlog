@@ -170,6 +170,9 @@ RemoteStore.prototype = {
    *  available to us.
    */
   hookupSocket: function() {
+    if (this._sock)
+      this._sock.disconnect();
+
     //console.log("establishing socket");
     this._sock = new io.Socket();
     this._sock.on("connect", this.onConnect.bind(this));
