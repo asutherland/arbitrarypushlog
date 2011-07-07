@@ -115,7 +115,10 @@ LocalLoggestChewer.prototype = {
   },
 
   _goParse: function() {
-    var stream = $fs.createReadStream(this._path);
+    // IMPORTANTE! the use of binary here needs to match whatever is happening
+    //  on the other side.  We are using console.error which apparently
+    //  must be binary...
+    var stream = $fs.createReadStream(this._path, {encoding: 'binary'});
     var loggestFrobber =
       new $loggestFrobber.LoggestFrobber(stream,
                                          "s:l:" + this._path,

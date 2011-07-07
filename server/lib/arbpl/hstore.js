@@ -42,11 +42,13 @@
 define(
   [
     "thrift", "hbase-thrift/Hbase", "hbase-thrift/Hbase_types",
+    //"jsonlint",
     "q",
     "exports"
   ],
   function(
     $thrift, $thriftHbase, $baseTypes,
+    //$jsonlint,
     $Q,
     exports
   ) {
@@ -563,6 +565,16 @@ HStore.prototype = {
                           " last few chars: " +
                           cval.substring(cval.length - 16));
             console.error(ex);
+            /*
+            try {
+              console.error("trying jsonlint");
+              $jsonlint.parse(cval);
+              console.error("jsonlint did not explode on our data!");
+            }
+            catch(ex) {
+              console.error("jsonlint says:", ex);
+            }
+            */
             deferred.reject(ex);
           }
         }
