@@ -997,9 +997,14 @@ LoggestLogTransformer.prototype = {
     var entries = loggerMeta.entries =
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
     if (rawLogger.died) {
+      // This is okay because this is a fallback comparator, but it would be
+      //  nice if we didn't need to fall back to this.
+      var useSeq = 999999999;
+      if (entries.length)
+        useSeq = entries[entries.length - 1].seq;
       entries.push(
         new EventEntry(rawLogger.died, rawLogger.died - this._baseTime,
-                       null, "(died)", null, null));
+                       useSeq, "(died)", null, null));
     }
 
     loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
