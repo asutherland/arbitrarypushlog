@@ -422,6 +422,9 @@ ThingMeta.prototype = {
 
 var UNRESOLVED_ACTOR_RAW = {};
 
+const DIED_EVENTNAME = '(died)';
+const DIED_SCHEMA = {};
+
 /**
  * Info about an actor as declared by a unit-test.  This mainly serves as an
  *  alias to a logger that can be referenced on its own by the semantic
@@ -625,8 +628,16 @@ LoggestLogTransformer.prototype = {
   _proc_failedExpectation: function(schemaSoup, entry) {
     var exp = entry[1];
     var expName = exp[0];
-    var schemaType = schemaSoup[expName][0];
-    var schema = schemaSoup[expName][1];
+    var schemaType, schema;
+    if (expName !== DIED_EVENTNAME) {
+      schemaType = schemaSoup[expName][0];
+      schema = schemaSoup[expName][1];
+    }
+    else {
+      schemaType = 'event';
+      schema = DIED_SCHEMA;
+    }
+
 
     var numArgs = 0, args = {};
     for (var key in schema) {
@@ -985,6 +996,11 @@ LoggestLogTransformer.prototype = {
     var rawLogger = loggerMeta.raw;
     var entries = loggerMeta.entries =
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
+    if (rawLogger.died) {
+      entries.push(
+        new EventEntry(rawLogger.died, rawLogger.died - this._baseTime,
+                       null, "(died)", null, null));
+    }
 
     loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
 
