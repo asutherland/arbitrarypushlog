@@ -111,6 +111,10 @@ wy.defineWidget({
       popupWidget: wy.libWidget({type: "popup"}),
       position: {
         above: "root",
+      },
+      size: {
+        maxWidth: 0.9,
+        maxHeight: 0.9,
       }
     }
   },

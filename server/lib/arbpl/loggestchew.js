@@ -115,10 +115,11 @@ LocalLoggestChewer.prototype = {
   },
 
   _goParse: function() {
-    // IMPORTANTE! the use of binary here needs to match whatever is happening
-    //  on the other side.  We are using console.error which apparently
-    //  must be binary...
-    var stream = $fs.createReadStream(this._path, {encoding: 'binary'});
+    // Right, so the encoding is utf8 because that's what console.error appears
+    //  to be using.  If we change it to binary we may sidestep some JSON
+    //  parsing failures, but it's because it breaks the data in such a way
+    //  that errors may be hidden.
+    var stream = $fs.createReadStream(this._path, {encoding: 'utf8'});
     var loggestFrobber =
       new $loggestFrobber.LoggestFrobber(stream,
                                          "s:l:" + this._path,
