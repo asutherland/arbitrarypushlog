@@ -703,20 +703,49 @@ wy.defineWidget({
   },
 });
 
+function aliasTransformer(val) {
+  if (typeof(val) !== "string")
+    return undefined;
+  var context = this.__context;
+  var aliasMap = context.permutation._thingAliasMap;
+  // for now, just to a straight-up alias transform.
+  if (aliasMap.hasOwnProperty(val)) {
+    return {
+      type: "alias-mapped",
+      items: [aliasMap[val]],
+    };
+  }
+  return undefined;
+}
+aliasTransformer.toString = function() {
+  return "[aliasTransformer]";
+};
+
 wy.defineWidget({
   name: "obj-detail-wild",
   constraint: {
     type: "obj-detail",
     obj: { type: wy.WILD },
   },
-  // XXX THIS IS VERY DUMB; WE SHOULD AUTO STUB.
+  // XXX THIS IS VERY DUMB; we should auto-stub the popup focus instead
   focus: wy.focus.item,
   structure: {
     table: wy.libWidget({
         type: "objdict",
         valueConstraint: {type: "obj-detail"},
+        // we want string values alias-transformed
+        valueTransformer: aliasTransformer,
       }, wy.SELF),
   },
+});
+
+wy.defineWidget({
+  name: "obj-detail-arg-stream",
+  constraint: {
+    type: "obj-detail",
+    obj: { type: "alias-mapped" },
+  },
+  structure: wy.stream({type: "arg-stream"}, "items"),
 });
 
 wy.defineWidget({

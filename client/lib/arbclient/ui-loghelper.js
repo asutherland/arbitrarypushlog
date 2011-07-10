@@ -237,6 +237,7 @@ wy.defineWidget({
     table: wy.libWidget({
         type: "objdict",
         valueConstraint: {type: "logdetail"},
+        valueTransformer: null,
       }, wy.SELF),
   },
 });
