@@ -77,6 +77,7 @@ function commonLoad(url, promiseName, promiseRef) {
   req.send(null);
   return deferred.promise;
 }
+exports.commonLoad = commonLoad;
 
 var CONNECT_RETRY_INTERVAL = 5000;
 

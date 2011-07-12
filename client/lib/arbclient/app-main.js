@@ -64,6 +64,10 @@ var when = $pwomise.when;
 
 var DESIRED_PUSHES = 6;
 
+var DummyRStore = {
+  unsubscribe: function() {},
+};
+
 /**
  * Responsible for tracking the general state of the application and handling
  *  navigation amongst various supported pages including web browser history
@@ -79,13 +83,15 @@ var DESIRED_PUSHES = 6;
  *   transition information relative to the current location.
  * }
  */
-function ArbApp(win) {
+function ArbApp(win, isStandalone) {
   this.tinderTree = null;
-  this.rstore = new $rstore.RemoteStore(this);
+  this.rstore = isStandalone ? DummyRStore : new $rstore.RemoteStore(this);
+  this.isStandalone = isStandalone;
 
   this.win = win;
   this._popLocationWrapped = this._popLocation.bind(this);
-  this.win.addEventListener("popstate", this._popLocationWrapped, false);
+  if (!isStandalone)
+    this.win.addEventListener("popstate", this._popLocationWrapped, false);
   this.history = win.history;
 
   /**
@@ -290,6 +296,10 @@ ArbApp.prototype = {
    * ]
    */
   _setLocation: function(loc, alreadyInEffect, replace) {
+    // don't muck with the URL if we are standalone
+    if (this.isStandalone)
+      return;
+
     this._loc = loc;
     var navUrl = this._urlMaker(loc);
     if (alreadyInEffect || replace)
@@ -372,44 +382,66 @@ ArbApp.prototype = {
     var self = this;
     when(this.rstore.getPushLogDetail(pushId, buildId),
       function gotLogDetail(logDetail) {
-        var chewedDetails;
-        switch (logDetail.type) {
-          case "mozmill":
-            chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
-            break;
-
-          case "loggest":
-            chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
-            break;
-
-          case "filefail":
-            chewedDetails = {
-              failures: [{
-                type: 'filefail',
-                testName: '$FILE',
-                fileName: logDetail.fileName,
-                exceptions:
-                    logDetail.exceptions.map($chew_loggest.untransformEx),
-              }]
-            };
-            break;
-
-          default:
-            chewedDetails = {
-              failures: [logDetail],
-            };
-            break;
-        }
-
-        self.page = new TestLogPage(pushId, chewedDetails, autoNew,
-                                    pathNodes, self.rstore, divertedFrom);
-        self._updateState("good");
+        self._showLogPageForData(pushId, logDetail, pathNodes, autoNew,
+                                 divertedFrom);
       },
       function fetchProblem(err) {
         console.error("No go on the data.");
         self.error = err;
         self._updateState("error");
       });
+  },
+
+  /**
+   * Load the contents of a log detail from
+   */
+  standaloneLoadLogFromUrl: function(url) {
+    var self = this;
+    when($rstore.commonLoad(url, "log-fetch", url),
+      function gotLogDetail(text) {
+        self._showLogPageForData(1, JSON.parse(text), [], false, null);
+      },
+      function fetchProblem(err) {
+        console.error("No go on the data.");
+        self.error = err;
+        self._updateState("error");
+      });
+  },
+
+  _showLogPageForData: function(pushId, logDetail, pathNodes, autoNew,
+                                divertedFrom) {
+    var chewedDetails;
+    switch (logDetail.type) {
+      case "mozmill":
+        chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
+        break;
+
+      case "loggest":
+        chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
+        break;
+
+      case "filefail":
+        chewedDetails = {
+          failures: [{
+            type: 'filefail',
+            testName: '$FILE',
+            fileName: logDetail.fileName,
+            exceptions:
+                logDetail.exceptions.map($chew_loggest.untransformEx),
+          }]
+        };
+        break;
+
+      default:
+        chewedDetails = {
+          failures: [logDetail],
+        };
+        break;
+    }
+
+    this.page = new TestLogPage(pushId, chewedDetails, autoNew,
+                                pathNodes, this.rstore, divertedFrom);
+    this._updateState("good");
   },
 };
 
@@ -581,8 +613,19 @@ var APP;
 exports.main = function main() {
   var env = $env.getEnv();
 
-  var app = APP = window.app = new ArbApp(window);
+  var app = APP = window.app = new ArbApp(window, false);
   $ui_main.bindApp(app);
+};
+
+/**
+ * Operate in standalone single test viewer mode; we fetch the data and cram it
+ */
+exports.mainStandalone = function(url) {
+  var env = $env.getEnv();
+
+  var app = APP = window.app = new ArbApp(window, true);
+  $ui_main.bindStandaloneApp(app);
+  app.standaloneLoadLogFromUrl(url);
 };
 
 }); // end define

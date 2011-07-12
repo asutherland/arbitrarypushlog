@@ -241,10 +241,44 @@ wy.defineWidget({
   structure: {},
 });
 
+wy.defineWidget({
+  name: "blank-page",
+  constraint: {
+    type: "page",
+    obj: null,
+  },
+  structure: {},
+});
+
+wy.defineWidget({
+  name: "app-just-the-page",
+  doc: "just display the page, no header / navigation support / etc.",
+  constraint: {
+    type: "app-page-only"
+  },
+  structure: {
+    page: wy.widget({type: "page"}, "page"),
+  },
+  impl: {
+    postInit: function() {
+      this.obj.binding = this;
+    }
+  },
+  // dummy out events normally provided by the app
+  receive: {
+    navigate: function(keyDeltas) {},
+    subDelta: function(delta) {},
+  }
+});
 
 exports.bindApp = function bindApp(appObj) {
   var emitter = wy.wrapElement(document.getElementById("body"));
   emitter.emit({type: "app-root", obj: appObj});
+};
+
+exports.bindStandaloneApp = function bindStandaloneApp(appObj) {
+  var emitter = wy.wrapElement(document.getElementById("body"));
+  emitter.emit({type: "app-page-only", obj: appObj});
 };
 
 }); // end define
