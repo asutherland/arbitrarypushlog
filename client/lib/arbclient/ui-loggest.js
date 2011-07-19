@@ -53,6 +53,7 @@ define(
     'wmsy/wlib/hier',
     "wmsy/wlib/objdict",
     "./chew-loggest",
+    "./vis-loggest",
     "text!./ui-loggest.css",
     "exports"
   ],
@@ -61,6 +62,7 @@ define(
     $_wlib_hier, // unused, just a dependency.
     $_wlib_objdict, // unused, just a dependency.
     $logmodel,
+    $_vis_loggest, // unused, just a dep
     $_css,
     exports
   ) {
@@ -124,6 +126,10 @@ wy.defineWidget({
       loggersBlock: {
         loggersLabel: "Top Billed Loggers:",
         loggers: wy.vertList({type: "hier-top-billed-logger"}, "rootLoggers"),
+      },
+      visBlock: {
+        visLabel: "Relationship Overview:",
+        vis: wy.widget({type: "topo-summary"}, "rootLoggers"),
       },
     },
     notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),

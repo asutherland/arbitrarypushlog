@@ -215,6 +215,23 @@ function TestCasePermutationLogBundle(raw) {
    * }
    */
   this._thingAliasMap = {};
+  /**
+   * @dictof[
+   *   @key["normalized conn name" String]{
+   *     A string consisting of the concatenated elements: [server id, "-",
+   *     client id, "-", type, "-", unique-ing value].
+   *   }
+   *   @value[pairs @listof[@dict[
+   *     @key[client LoggerMeta]
+   *     @key[server LoggerMeta]
+   *   ]]]{
+   *     Since the unique-ing value may not be globally unique, we stick things
+   *     in a list.  Each list entry is a pair of client and server `LoggerMeta`
+   *     instances.
+   *   }
+   * ]
+   */
+  this._connectionNameMap = {};
 
   /**
    * @listof[ActorMeta]{
@@ -315,17 +332,25 @@ TestCaseStepMeta.prototype = {
  * Provides distilled information about a logger from its raw loggest JSON
  *  transport data, as well as access to the raw data.
  */
-function LoggerMeta(raw, semanticIdent, entries, topBilled, layerMapping) {
+function LoggerMeta(raw, semanticIdent, entries, schemaNorm) {
   this.raw = raw;
+  this.schemaNorm = schemaNorm;
   this.semanticIdent = semanticIdent;
   this.entries = entries;
+
+  this.family = "";
+  this.parent = null;
+  /** If this is a connection type, the other side of the connection, if any. */
+  this.otherSide = null;
   this.kids = [];
+
   this.things = [];
-  this.topBilled = topBilled;
+
+  this.topBilled = schemaNorm.hasTopBilling;
   /** subset hierarchy of kids that only lists top-billed ones. */
   this.topBilledKids = [];
-  this._layerMapping = layerMapping;
-  this.family = "";
+
+  this._layerMapping = schemaNorm.layerMapping;
   if (this.entries)
     this._tagEntriesWithLayers();
 }
@@ -485,22 +510,20 @@ function LoggestLogTransformer() {
   /**
    * @dictof[
    *   @key[schemaName String]
-   *   @value[layerMapping LayerMapping]
+   *   @value[@dict[
+   *     @key[layerMapping LayerMapping]
+   *     @key[hasTopBilling Boolean]
+   *     @key[netMap]
    * ]{
    *   Map schema names to layer labeling mappings. (ex: app, protocol, crypto)
    * }
    */
-  this._schemaToLayerMapping = {};
-  /**
-   * @dictof[
-   *   @key[schemaName String]
-   *   @value[hasTopBilling Boolean]
-   * ]
-   */
-  this._schemaHasTopBilling = {};
+  this._schemaNormMap = {};
 
   /** An alias to the _uniqueNameMap on the permutation. */
   this._uniqueNameMap = null;
+  /** An alias to the _connectionNameMap on the permutation. */
+  this._connectionNameMap = null;
 
   this._layers = ["protocol", "app"];
 
@@ -699,9 +722,52 @@ LoggestLogTransformer.prototype = {
       return numArgs;
     }
 
+    function makeConnNameNormalizer(semanticIdentDef) {
+      var idxServer, idxClient, idxType, idxUnique;
+      var i = 0;
+      for (var key in semanticIdentDef) {
+        switch (semanticIdentDef[key]) {
+          case 'server':
+            idxServer = i;
+            break;
+          case 'client':
+            idxClient = i;
+            break;
+          case 'type':
+            idxType = i;
+            break;
+          case 'unique':
+            idxUnique = i;
+            break;
+        }
+        i++;
+      }
+      return function(identBits) {
+        if (identBits.length < i)
+          return null;
+        return identBits[idxServer] + '-' + identBits[idxClient] + '-' +
+               identBits[idxType] + '-' + identBits[idxUnique];
+      };
+    };
+    function makeConnCategorizer(semanticIdentDef) {
+      var idxType, i = 0;
+      for (var key in semanticIdentDef) {
+        var val = semanticIdentDef[key];
+        if (val === 'type')
+          idxType = i;
+        i++;
+      }
+      return function(identBits) {
+        if (identBits.length <= idxType)
+          return null;
+        return identBits[idxType];
+      };
+    }
+
     for (var schemaName in schemas) {
       var key, schemaDef = schemas[schemaName];
       var handlers = this._schemaHandlerMaps[schemaName] = {};
+      var schemaNorm = this._schemaNormMap[schemaName] = {};
       var schemaSoup = {}, testOnlyMeta;
 
       handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
@@ -712,7 +778,22 @@ LoggestLogTransformer.prototype = {
       handlers["!unexpected"] = this._proc_unexpectedEntry.bind(this,
                                                                 handlers);
 
-      this._schemaHasTopBilling[schemaName] =
+      schemaNorm.type = schemaDef.type;
+      schemaNorm.subtype = schemaDef.subtype;
+      // create a function to extract and normalize the connection name
+      if (schemaNorm.type === 'connection' &&
+          "semanticIdent" in schemaDef) {
+        schemaNorm.normalizeConnName = makeConnNameNormalizer(
+                                         schemaDef.semanticIdent);
+        schemaNorm.normalizeConnType = makeConnCategorizer(
+                                         schemaDef.semanticIdent);
+      }
+      else {
+        schemaNorm.normalizeConnName = null;
+        schemaNorm.normalizeConnType = null;
+      }
+
+      schemaNorm.hasTopBilling =
         ("topBilling" in schemaDef) ? schemaDef.topBilling : false;
 
       if ("stateVars" in schemaDef) {
@@ -777,12 +858,10 @@ LoggestLogTransformer.prototype = {
                             countArgsInSchema(schemaDef.errors[key]));
         }
       }
-      if ("LAYER_MAPPING" in schemaDef) {
-        this._schemaToLayerMapping[schemaName] = schemaDef.LAYER_MAPPING;
-      }
-      else {
-        this._schemaToLayerMapping[schemaName] = {layer: "app"};
-      }
+      if ("LAYER_MAPPING" in schemaDef)
+        schemaNorm.layerMapping = schemaDef.LAYER_MAPPING;
+      else
+        schemaNorm.layerMapping = {layer: "app"};
     }
   },
 
@@ -963,19 +1042,40 @@ LoggestLogTransformer.prototype = {
   },
 
   /**
-   * Convert a non-test logger and all its kids into a `LoggerMeta` instance.
-   *  This is intended to be called as part of the _processPermutation logic,
-   *  as it deals intimately with the row/entry matrix representation.
+   * Create `LoggerMeta` instances for a (non-test-infra) logger and its kids.
+   *  This is the first phase of full processing and is just concerned with
+   *  object creation and naming.  We defer all name resolution (or anything
+   *  that requires it) to the second phase so all names will be available.
    */
   _createNonTestLogger: function(rawLogger, allLoggers, rawPerm) {
+    var schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
     var loggerMeta = new LoggerMeta(
                        rawLogger,
                        /* semantic ident resolution deferred */ null,
                        /* entries deferred */ null,
-                       this._schemaHasTopBilling[rawLogger.loggerIdent],
-                       this._schemaToLayerMapping[rawLogger.loggerIdent]);
+                       schemaNorm);
     allLoggers.push(loggerMeta);
     this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
+
+    // -- connection naming
+    if (schemaNorm.type === 'connection') {
+      var normName = schemaNorm.normalizeConnName(rawLogger.semanticIdent),
+          connPairs, iPair;
+      if (normName) {
+        if (this._connectionNameMap.hasOwnProperty(normName))
+          connPairs = this._connectionNameMap[normName];
+        else
+          connPairs = this._connectionNameMap[normName] = [];
+        // find the first entry that does not already have our type in it
+        for (iPair = 0; iPair < connPairs.length; iPair++) {
+          if (!connPairs[iPair][schemaNorm.subtype])
+            break;
+        }
+        if (iPair >= connPairs.length)
+          connPairs.push({client: null, server: null});
+        connPairs[iPair][schemaNorm.subtype] = loggerMeta;
+      }
+    }
 
     // -- owned things
     if (rawLogger.named) {
@@ -1009,8 +1109,14 @@ LoggestLogTransformer.prototype = {
     return loggerMeta;
   },
 
+  /**
+   * Process a logger and all its children, transforming entries into object
+   *  representations, slicing the events for our logger/step matrix, and
+   *  establishing any linkage relationships.
+   */
   _processNonTestLogger: function(loggerMeta, rows, stepTimeSpans) {
-    var rawLogger = loggerMeta.raw;
+    var rawLogger = loggerMeta.raw,
+        schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
     var entries = loggerMeta.entries =
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
     if (rawLogger.died) {
@@ -1025,6 +1131,22 @@ LoggestLogTransformer.prototype = {
     }
 
     loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
+
+    // -- connection linkages
+    if (schemaNorm.type === 'connection') {
+      var normName = schemaNorm.normalizeConnName(rawLogger.semanticIdent);
+      if (normName) {
+        var connPairs = this._connectionNameMap[normName];
+        var otherType = (schemaNorm.subtype === 'client') ? 'server' : 'client';
+        // find the first entry that does not already have our type in it
+        for (var iPair = 0; iPair < connPairs.length; iPair++) {
+          if (connPairs[iPair][schemaNorm.subtype] === loggerMeta) {
+            loggerMeta.otherSide = connPairs[iPair][otherType];
+            break;
+          }
+        }
+      }
+    }
 
     // -- matrix building
     var iRow;
@@ -1104,6 +1226,7 @@ LoggestLogTransformer.prototype = {
     var perm = new TestCasePermutationLogBundle(rawPerm);
     this._uniqueNameMap = perm._uniqueNameMap;
     this._usingAliasMap = perm._thingAliasMap;
+    this._connectionNameMap = perm._connectionNameMap;
     this._baseTime = rawPerm.born;
 
     var rows = perm._perStepPerLoggerEntries, i;

@@ -1,0 +1,65 @@
+
+/* colors are from ui-loggest.css.
+
+   a-e: melting puppies by skyblue2u
+   http://www.colourlovers.com/palette/396247/Melting_Puppies
+
+   f-j: dreams bring... by skyblue2u
+   http://www.colourlovers.com/palette/621028/dreams_bring_._._.
+ */
+.loggerFamilyUniqueFillColors {
+  [loggerfamily=a] {
+    fill: #93dfb8;
+  }
+  [loggerfamily=b] {
+    fill: #ffc8ba;
+  }
+  [loggerfamily=c] {
+    fill: #e3aad6;
+  }
+  [loggerfamily=d] {
+    fill: #b5d8eb;
+  }
+  [loggerfamily=e] {
+    fill: #ffbdd8;
+  }
+  [loggerfamily=e] {
+    fill: #ffbdd8;
+  }
+  [loggerfamily=f] {
+    fill: #f8dafb;
+  }
+  [loggerfamily=g] {
+    fill: #e8dafb;
+  }
+  [loggerfamily=h] {
+    fill: #daddfb;
+  }
+  [loggerfamily=i] {
+    fill: #daedfb;
+  }
+  [loggerfamily=i] {
+    fill: #dafbf8;
+  }
+}
+
+#topo-summary {
+  #line {
+    stroke: #ccc;
+  }
+  #nodeCircle {
+    .loggerFamilyUniqueFillColors;
+    stroke: white;
+    stroke-width: 2px;
+  }
+  #nodeText {
+    pointer-events: none;
+    font: 10px sans-serif;
+    fill: #888;
+
+    [type="client"], [type="server"] {
+      font: 12px sans-serif;
+      fill: black;
+    }
+  }
+}

@@ -31,6 +31,7 @@
       baseUrl: "./",
       paths: {
         text: "deps/requirejs/text",
+        "d3": "deps/d3.min",
       },
       packages: [
         { name: "arbclient", location: "lib/arbclient" },
@@ -46,8 +47,7 @@
       // try and force these to start loading even before the DOM is ready...?
       deps: ["arbclient/app-main"],
       ready: function() {
-        require(["arbclient/app-main",
-                 "deps/d3.min.js"],
+        require(["arbclient/app-main"],
           function(mainModule) {
             mainModule.main();
         });
