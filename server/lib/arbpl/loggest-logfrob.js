@@ -126,6 +126,7 @@ Frobber.prototype = {
         var fileFailure = rawObj.fileFailure;
         var summaryObj = {
           fileName: fileFailure.fileName,
+          moduleName: fileFailure.moduleName,
           testName: '$FILE',
           uniqueName: fileFailure.fileName + '-$FILE',
         };
@@ -133,6 +134,7 @@ Frobber.prototype = {
         this.writeCells[this.detailKeyPrefix + ":" + summaryObj.uniqueName] = {
           type: "filefail",
           fileName: summaryObj.fileName,
+          moduleName: fileFailure.moduleName,
           exceptions: fileFailure.exceptions,
         };
         continue;

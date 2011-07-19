@@ -315,12 +315,15 @@ TestCaseStepMeta.prototype = {
  * Provides distilled information about a logger from its raw loggest JSON
  *  transport data, as well as access to the raw data.
  */
-function LoggerMeta(raw, semanticIdent, entries, layerMapping) {
+function LoggerMeta(raw, semanticIdent, entries, topBilled, layerMapping) {
   this.raw = raw;
   this.semanticIdent = semanticIdent;
   this.entries = entries;
   this.kids = [];
   this.things = [];
+  this.topBilled = topBilled;
+  /** subset hierarchy of kids that only lists top-billed ones. */
+  this.topBilledKids = [];
   this._layerMapping = layerMapping;
   this.family = "";
   if (this.entries)
@@ -474,16 +477,27 @@ function LoggestLogTransformer() {
    *     @key[eventName String]
    *     @value[eventProcessor Function]
    *   ]]
-   * ]
+   * ]{
+   *   Map schema names to a map of event names to processing functions.
+   * }
    */
   this._schemaHandlerMaps = {};
   /**
    * @dictof[
    *   @key[schemaName String]
    *   @value[layerMapping LayerMapping]
-   * ]
+   * ]{
+   *   Map schema names to layer labeling mappings. (ex: app, protocol, crypto)
+   * }
    */
   this._schemaToLayerMapping = {};
+  /**
+   * @dictof[
+   *   @key[schemaName String]
+   *   @value[hasTopBilling Boolean]
+   * ]
+   */
+  this._schemaHasTopBilling = {};
 
   /** An alias to the _uniqueNameMap on the permutation. */
   this._uniqueNameMap = null;
@@ -697,6 +711,9 @@ LoggestLogTransformer.prototype = {
                                                                     schemaSoup);
       handlers["!unexpected"] = this._proc_unexpectedEntry.bind(this,
                                                                 handlers);
+
+      this._schemaHasTopBilling[schemaName] =
+        ("topBilling" in schemaDef) ? schemaDef.topBilling : false;
 
       if ("stateVars" in schemaDef) {
         for (key in schemaDef.stateVars) {
@@ -955,6 +972,7 @@ LoggestLogTransformer.prototype = {
                        rawLogger,
                        /* semantic ident resolution deferred */ null,
                        /* entries deferred */ null,
+                       this._schemaHasTopBilling[rawLogger.loggerIdent],
                        this._schemaToLayerMapping[rawLogger.loggerIdent]);
     allLoggers.push(loggerMeta);
     this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
@@ -982,6 +1000,9 @@ LoggestLogTransformer.prototype = {
         var kidMeta = this._createNonTestLogger(rawLogger.kids[iKid],
                                                 allLoggers, rawPerm);
         loggerMeta.kids.push(kidMeta);
+        // nb: this does not allow for generation skipping, currently fine.
+        if (kidMeta.topBilled && loggerMeta.topBilled)
+          loggerMeta.topBilledKids.push(kidMeta);
       }
     }
 

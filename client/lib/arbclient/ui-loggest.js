@@ -77,6 +77,7 @@ wy.defineWidget({
   },
   focus: wy.focus.item,
   structure: {
+    moduleName: wy.bind("moduleName"),
     exceptions: wy.vertList({type: "transformed-exception"}, "exceptions"),
   }
 });
@@ -120,17 +121,9 @@ wy.defineWidget({
   },
   structure: {
     whoBlock: {
-      actorsBlock: {
-        actorsLabel: "Actors:",
-        actors: wy.vertList({type: "hier-actor"}, "rootActors"),
-      },
-      thingsBlock: {
-        thingsLabel: "Things:",
-        things: wy.vertList({type: "test-thing"}, "things"),
-      },
       loggersBlock: {
-        loggersLabel: "Loggers:",
-        loggers: wy.vertList({type: "hier-logger"}, "rootLoggers"),
+        loggersLabel: "Top Billed Loggers:",
+        loggers: wy.vertList({type: "hier-top-billed-logger"}, "rootLoggers"),
       },
     },
     notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),
@@ -225,16 +218,16 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
-  name: "hier-logger",
+  name: "hier-top-billed-logger",
   doc: "Hierarhical LoggerMeta presentation",
   constraint: {
-    type: "hier-logger",
+    type: "hier-top-billed-logger",
   },
   structure: {
     tree: wy.libWidget({
       type: "hier",
       constraint: {type: "test-logger"},
-      kidsAttr: "kids",
+      kidsAttr: "topBilledKids",
     }, wy.SELF),
   },
 });

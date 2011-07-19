@@ -426,6 +426,7 @@ ArbApp.prototype = {
             type: 'filefail',
             testName: '$FILE',
             fileName: logDetail.fileName,
+            moduleName: logDetail.moduleName,
             exceptions:
                 logDetail.exceptions.map($chew_loggest.untransformEx),
           }]
