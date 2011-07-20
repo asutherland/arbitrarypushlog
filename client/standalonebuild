@@ -1,0 +1,3 @@
+#!/bin/sh
+
+node ../server/lib/r.js -o arbclient-standalone.build.js

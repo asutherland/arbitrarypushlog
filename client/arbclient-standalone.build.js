@@ -5,7 +5,6 @@
     "text": "deps/requirejs/text",
     "d3": "deps/d3.min",
     "requireLib": "deps/requirejs/require",
-    // lie to the optimizer:
     "socket.io/socket.io": "deps/fake-socket-io",
   },
       packages: [
@@ -19,8 +18,7 @@
           location: "deps/jstut/lib-requirejs/narscribblus-plat" },
         { name: "wmsy", location: "deps/wmsy/lib/wmsy" },
       ],
-  exclude: ["socket.io/socket.io"],
   include: ["requireLib"],
   name: "arbclient/app-main",
-  out: "built-arbclient.js"
+  out: "standalone-arbclient.js"
 })
