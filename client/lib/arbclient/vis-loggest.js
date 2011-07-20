@@ -76,21 +76,42 @@ wy.defineWidget({
           clsNodeCircle = this.__cssClassBaseName + "nodeCircle",
           clsNodeText = this.__cssClassBaseName + "nodeText";
 
-      const w = 480, h = 320;
+      const w = 400, h = 400;
       var vis = this.vis = d3.select(this.domNode)
         .append("svg:svg")
           .attr("width", w)
           .attr("height", h);
 
       // -- layout
-      var force = d3.layout.force()
-        .nodes(this.nodes)
-        .links(this.links)
-        .gravity(0.05)
-        .distance(60)
-        .charge(-60)
-        .size([w, h])
-        .start();
+      const forceLayout = true;
+      var layout, nodes;
+      // - pack
+      if (!forceLayout) {
+        layout = d3.layout.pack()
+          .size([w - 4, h - 4])
+          .value(function(d) { return d.radius; });
+        var rootNode = {
+          name: "",
+          children: this.rootNodes,
+          radius: 1,
+        };
+        nodes = layout.nodes(rootNode);
+        // sort by depth so that we can
+        nodes.sort(function (a, b) {
+        });
+      }
+      // - (no longer used, force-directed)
+      else {
+        layout = d3.layout.force()
+          .nodes(this.nodes)
+          .links(this.links)
+          .gravity(0.05)
+          .distance(60)
+          .charge(-60)
+          .size([w, h])
+          .start();
+        nodes = this.nodes;
+      }
 
       // -- edges
       var link = vis.selectAll("line." + clsLine)
@@ -105,20 +126,27 @@ wy.defineWidget({
       // -- nodes
       // - container
       var node = vis.selectAll("g." + clsNode)
-          .data(this.nodes)
+          .data(nodes)
         .enter().append("svg:g")
-          .attr("class", clsNode)
-          .call(force.drag);
+          .attr("class", clsNode);
+      if (forceLayout)
+        node.call(layout.drag);
+      else
+        node.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")"; });
 
       // - node vis
-      node.append("svg:circle")
+      var nodeCirc = node.append("svg:circle")
           .attr("class", clsNodeCircle)
           .attr("loggerfamily", function(d) { return d.family; })
           .attr("type", function(d) { return d.type; })
           .attr("cx", 0)
-          .attr("cy", 0)
+          .attr("cy", 0);
           // CSS can't style the radius :(
-          .attr("r", function(d) { return d.radius; });
+      if (forceLayout)
+          nodeCirc.attr("r", function(d) { return d.radius; });
+      else
+          nodeCirc.attr("r", function(d) { return d.r; });
 
       // - node label
       node.append("svg:text")
@@ -127,17 +155,21 @@ wy.defineWidget({
           .attr("type", function(d) { return d.type; })
           .attr("dx", 12)
           .attr("dy", "0.35em")
+          .attr("text-anchor", "middle")
           .text(function(d) { return d.name; });
 
-      force.on("tick", function() {
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
 
-        node.attr("transform", function(d) {
-                    return "translate(" + d.x + "," + d.y + ")"; });
-      });
+      if (forceLayout) {
+        layout.on("tick", function() {
+          link.attr("x1", function(d) { return d.source.x; })
+              .attr("y1", function(d) { return d.source.y; })
+              .attr("x2", function(d) { return d.target.x; })
+              .attr("y2", function(d) { return d.target.y; });
+
+          node.attr("transform", function(d) {
+                      return "translate(" + d.x + "," + d.y + ")"; });
+        });
+      }
     },
     /**
      * Populate the nodes/links in the graph by traversing the logger family
@@ -154,7 +186,7 @@ wy.defineWidget({
      * - everybody else: get ignored
      */
     _populate: function() {
-      var nodes = this.nodes = [];
+      var nodes = this.nodes = [], rootNodes = this.rootNodes = [];
       var links = this.links = [];
       /**
        * Maps loggers to the node that directly represents them; this exists
@@ -193,7 +225,7 @@ wy.defineWidget({
             node = parentNode;
             break;
           default:
-            return;
+            return null;
         }
 
         if (node) {
@@ -204,8 +236,13 @@ wy.defineWidget({
         }
         else {
           node = { id: id, name: name, type: type, family: logger.family,
-                   radius: radius };
+                   radius: radius, children: null };
           nodes.push(node);
+          if (parentNode) {
+            if (!parentNode.children)
+              parentNode.children = [];
+            parentNode.children.push(node);
+          }
           aggrMap[id] = node;
 
           if (parentNode) {
@@ -239,11 +276,12 @@ wy.defineWidget({
         for (var iKid = 0; iKid < logger.kids.length; iKid++) {
           processLogger(logger.kids[iKid], node);
         }
+        return node;
       }
 
       var roots = this.obj;
       for (var iRoot = 0; iRoot < roots.length; iRoot++) {
-        processLogger(roots[iRoot]);
+        rootNodes.push(processLogger(roots[iRoot]));
       }
     },
     /**
