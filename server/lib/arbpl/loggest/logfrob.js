@@ -37,17 +37,30 @@
 
 /**
  * Process a stream for delineated loggest unit test run results.  Derived from
- *  the mozmill frobber.  The notable major change is that we are intended to
- *  process successes as well as failures.
+ *  the mozmill frobber.
+ *
+ * Notable things we do versus the mozmill frobber:
+ * - We process successes and failures.
+ * - We perform a preprocessing pass that is able to contribute derived metadata
+ *    from the logs.  We do this so that we can run graphviz
  **/
 
 define(
   [
+    "q",
+    "graphviz",
+    "arbcommon/chew-loggest",
+    "arbcommon/topo-loggest",
     "exports"
   ],
   function(
+    $Q,
+    $graphviz,
+    $chew_loggest,
+    $topo_loggest,
     exports
   ) {
+var when = $Q.when;
 
 /**
  * Detect indicators of failure other than the silver platter JSON objects.
@@ -74,6 +87,7 @@ var RE_BACKSLASH = /\\/g;
  *    of the schema block; I'm not crazy about it, but it may compress well.
  */
 function Frobber(stream, summaryKey, detailKeyPrefix, callback) {
+  this.stream = stream;
   stream.on("data", this.onData.bind(this));
   stream.on("end", this.onEnd.bind(this));
 
@@ -92,10 +106,13 @@ function Frobber(stream, summaryKey, detailKeyPrefix, callback) {
 
   this.inBlock = false;
   this.leftover = null;
+
+  this.totalPending = 0;
+  this.fileAllRead = false;
 }
 Frobber.prototype = {
   _gobbleJsonFromLines: function(dstr) {
-    var bits = dstr.split("\n");
+    var bits = dstr.split("\n"), self = this, pending = 0;
     for (var i = 0; i < bits.length; i++) {
       // ignore blank lines...
       if (!bits[i])
@@ -163,17 +180,159 @@ Frobber.prototype = {
         else {
           this.overview.successes.push(summaryObj);
         }
-        var detailObj = {
-          type: "loggest",
-          fileName: definerLog.semanticIdent,
-          schema: schema,
-          log: testCaseLog,
-        };
-        this.writeCells[this.detailKeyPrefix + ":" + testUniqueName] =
-          detailObj;
+
+        pending++;
+        this.totalPending++;
+        //console.log("totalPending", this.totalPending);
+        when(this._prechewCase(schema, definerLog.semanticIdent, testCaseLog),
+          function(prechewed) {
+            var detailObj = {
+              type: "loggest",
+              fileName: definerLog.semanticIdent,
+              schema: schema,
+              log: testCaseLog,
+              prechewed: prechewed,
+            };
+            self.writeCells[self.detailKeyPrefix + ":" + testUniqueName] =
+              detailObj;
+            // resume I/O if we suspended
+            if (--pending === 0)
+              self.stream.resume();
+            if (--self.totalPending === 0 && self.fileAllRead)
+              self.allDone();
+          }, function(err) {
+            console.error("prechew problem:", err);
+            if (--pending === 0)
+              self.stream.resume();
+            if (--self.totalPending === 0 && self.fileAllRead)
+              self.allDone();
+          });
       }
     }
+    // if we have outstanding requests, pause I/O until we process all we have
+    //  so far.  (avoid memory explosions)
+    if (pending) {
+      //console.log("PENDING:", pending);
+      this.stream.pause();
+    }
   },
+  _prechewCase: function(schema, fileName, testCaseLog) {
+    // XXX we should be able to reuse the transformer if we didn't screw up
+    var transformer = new $chew_loggest.LoggestLogTransformer();
+    transformer.processSchemas(schema);
+    var caseBundle = transformer.processTestCase(fileName, testCaseLog);
+    var permPrechews = [];
+
+    for (var iPerm = 0; iPerm < caseBundle.permutations.length; iPerm++) {
+      permPrechews.push(
+        this._topoLayoutPrechew(caseBundle.permutations[iPerm]));
+    }
+
+    return $Q.all(permPrechews);
+  },
+  _topoLayoutPrechew: function(perm) {
+    var deferred = $Q.defer();
+
+    // get the d3-biased node representation
+    var topo = $topo_loggest.analyzeRootLoggers(perm.rootLoggers);
+    // use that to build a graphviz style graph
+    // note: I am cribbing some stuff from some of my old school python
+    //  visophyte implementation.  it seemed reasonable at the time, but
+    //  may not be reasonable today.
+
+    // -- graph!
+    var g = $graphviz.graph("G");
+    // create a known, bounded coordinate space
+    g.set("size", "100,100");
+    //g.set("mode", "ipsep");
+    //g.set("overlap", "ipsep");
+    //g.set("model", "mds");
+
+    g.setNodeAttribut('shape', 'point');
+    //g.setNodeAttribut('width', '0.8');
+    //g.setNodeAttribut('height', '0.8');
+
+    // - nodes
+    for (var iNode = 0; iNode < topo.nodes.length; iNode++) {
+      var dNode = topo.nodes[iNode];
+      dNode.gNode = g.addNode(dNode.id);
+    }
+    // - edges
+    for (var iEdge = 0; iEdge < topo.links.length; iEdge++) {
+      var dEdge = topo.links[iEdge];
+      g.addEdge(dEdge.source.gNode, dEdge.target.gNode);
+    }
+
+    // -- roundtrip graph for layout
+    var dDot = $Q.defer();
+    //console.log("INDOT", g.to_dot());
+
+    // asuth's official aesthetic analysis when using no specialized graphviz
+    //  settings.  (I have previously tweaked neato to good effect, and it
+    //  should be considered.)
+    // - dot: no good, not suitable to network topology.
+    // - neato: pretty good, BUT:
+    //   - unneeded crossings observed (signup and mailstore connections)
+    //   - the server connection interconnection mixes up the deliver and
+    //      establish channels, which is not particularly helpful.
+    //   - label overlap happens for horizontal-ish lines (can we bias against?)
+    // - twopi: very bad for our network topology purposes given that we do not
+    //    really have a central/root node everything flows from.
+    // - circo: very good (BEST), notes:
+    //   - its bias towards creating circles/hexagons causes some oddness
+    //      in places where we don't really benefit
+    //   - it does a great job of breaking the establish and deliver subnets
+    //      into clusters.
+    //   - the circle bias does great things for label placement
+    // - fdp: bad, at least without better settings.  It's like the neato
+    //    graph melted to maximize ugliness.
+    // - sfdp: pretty good
+    //   - out-of-box is a little dense, especially in the server inter-link
+    //      cluster.
+    //   - less inclined to horizontal lines than neato
+    //
+    // Notable variations tried:
+    // - neato:
+    //   - mode=hier: bad
+    //   - mode=ipsep: no appreciable change with sizes of 0.8
+    //   - model=subset: no appreciable change
+    //
+    // fdp may end up being a better choice
+    g.output(
+      {
+        type: 'dot',
+        use: 'circo',
+      },
+      function(data) {
+        dDot.resolve(data);
+      },
+      dDot.reject);
+    //g.output({type: 'dot', use: 'neato'}, '/tmp/foo.dot');
+    //g.output({type: 'png', use: 'neato'}, '/tmp/foo.png');
+
+    when(dDot.promise, function(dotstr) {
+      //console.log("DOTSTR", dotstr.toString());
+      $graphviz.parse(dotstr, function callback(parsed) {
+        // -- extract the layout
+        var layoutData = {"BB": parsed.get("bb")};
+        for (var iNode = 0; iNode < topo.nodes.length; iNode++) {
+          var dNode = topo.nodes[iNode];
+          layoutData[dNode.id] = parsed.getNode(dNode.id).get("pos");
+        }
+        //console.error("LAYOUT DATA:", layoutData);
+        var retVal = {
+          topoLayout: layoutData,
+        };
+        deferred.resolve(retVal);
+      }, function(code, out, err) {
+        console.error("PARSE PROBLEM", code, out, err);
+        deferred.reject(err);
+      });
+    });
+
+    return deferred.promise;
+  },
+
   onData: function(data) {
     var dstr = this.leftover ?
                  (this.leftover + data.toString("utf8")) :
@@ -229,6 +388,16 @@ Frobber.prototype = {
   },
 
   onEnd: function(data) {
+    this.fileAllRead = true;
+    console.log("at end, total pending:", this.totalPending);
+    if (this.totalPending === 0)
+      this.allDone();
+  },
+
+  allDone: function() {
+    // avoid double.
+    this.totalPending = -1;
+    console.log("truly done");
     this.callback(this.writeCells);
   },
 };

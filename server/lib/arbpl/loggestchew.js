@@ -45,7 +45,7 @@ define(
     "fs",
     "q",
     "./hstore",
-    "./loggest-logfrob",
+    "./loggest/logfrob",
     "./databus",
     "exports"
   ],

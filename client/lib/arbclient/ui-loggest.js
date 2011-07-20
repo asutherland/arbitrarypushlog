@@ -52,7 +52,7 @@ define(
     "wmsy/wmsy",
     'wmsy/wlib/hier',
     "wmsy/wlib/objdict",
-    "./chew-loggest",
+    "arbcommon/chew-loggest",
     "./vis-loggest",
     "text!./ui-loggest.css",
     "exports"

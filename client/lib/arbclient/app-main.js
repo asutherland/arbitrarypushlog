@@ -42,7 +42,7 @@ define(
     "wmsy/viewslice-array",
     "./rstore",
     "arbcommon/repodefs",
-    "./chew-loghelper", "./chew-loggest",
+    "./chew-loghelper", "arbcommon/chew-loggest",
     "./ui-main",
     "socket.io/socket.io",
     "require",

@@ -43,14 +43,22 @@
   }
 }
 
+@highlightColor: purple;
+@highlightTextColor: violet;
+
 #topo-summary {
   #line {
     stroke: #ccc;
+    [highlighted="true"] {
+      stroke: @highlightColor;
+      stroke-width: 4px;
+      stroke-opacity: 0.2;
+    }
   }
   #nodeCircle {
     .loggerFamilyUniqueFillColors;
-    stroke: white;
-    stroke-width: 2px;
+    stroke: #888;
+    stroke-width: 1px;
     fill: white;
 /*
     [type="client"] {
@@ -60,6 +68,10 @@
       stroke: green;
     }
 */
+    [highlighted="true"] {
+      stroke: @highlightColor;
+      stroke-width: 3px;
+    }
   }
   #nodeText {
     pointer-events: none;
@@ -69,6 +81,11 @@
     [type="client"], [type="server"] {
       font: 12px sans-serif;
       fill: black;
+    }
+
+    [highlighted="true"] {
+      font-weight: bold;
+      fill: @highlightColor;
     }
   }
 }

@@ -201,8 +201,9 @@ TestCaseLogBundle.prototype = {
  *  logger log during that step.  (The test loggers' entries are fused into
  *  the row meta-data or they can be thought of as a special column.)
  */
-function TestCasePermutationLogBundle(raw) {
+function TestCasePermutationLogBundle(raw, prechewed) {
   this._raw = raw;
+  this.prechewed = prechewed || {};
 
   this._uniqueNameMap = {};
   /**
@@ -324,6 +325,7 @@ function TestCaseStepMeta(resolvedIdent, raw, entries) {
    */
   this.involvedActors = [];
 }
+exports.TestCaseStepMeta = TestCaseStepMeta;
 TestCaseStepMeta.prototype = {
 };
 
@@ -529,6 +531,7 @@ function LoggestLogTransformer() {
 
   this._usingAliasMap = {};
 }
+exports.LoggestLogTransformer = LoggestLogTransformer;
 LoggestLogTransformer.prototype = {
   _transformEx: untransformEx,
   /**
@@ -1058,7 +1061,7 @@ LoggestLogTransformer.prototype = {
     this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
 
     // -- connection naming
-    if (schemaNorm.type === 'connection') {
+    if (schemaNorm.type === 'connection' && schemaNorm.normalizeConnName) {
       var normName = schemaNorm.normalizeConnName(rawLogger.semanticIdent),
           connPairs, iPair;
       if (normName) {
@@ -1133,7 +1136,7 @@ LoggestLogTransformer.prototype = {
     loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
 
     // -- connection linkages
-    if (schemaNorm.type === 'connection') {
+    if (schemaNorm.type === 'connection' && schemaNorm.normalizeConnName) {
       var normName = schemaNorm.normalizeConnName(rawLogger.semanticIdent);
       if (normName) {
         var connPairs = this._connectionNameMap[normName];
@@ -1218,12 +1221,12 @@ LoggestLogTransformer.prototype = {
    *
    * @return[TestCasePermutationLogBundle]
    */
-  _processPermutation: function(rawPerm) {
+  _processPermutation: function(rawPerm, permPrechewed) {
     // normalize missing kids (=== no steps) into an empty list
     if (!rawPerm.kids)
       rawPerm.kids = [];
 
-    var perm = new TestCasePermutationLogBundle(rawPerm);
+    var perm = new TestCasePermutationLogBundle(rawPerm, permPrechewed);
     this._uniqueNameMap = perm._uniqueNameMap;
     this._usingAliasMap = perm._thingAliasMap;
     this._connectionNameMap = perm._connectionNameMap;
@@ -1341,7 +1344,7 @@ LoggestLogTransformer.prototype = {
    *
    * @return[TestCaseLogBundle]
    */
-  processTestCase: function(fileName, rawCase) {
+  processTestCase: function(fileName, rawCase, prechewed) {
     if (rawCase.loggerIdent !== 'testCase')
       throw new Error("You gave us a '" + rawCase.loggerIdent +
                       "', not a 'testCase'!");
@@ -1356,7 +1359,12 @@ LoggestLogTransformer.prototype = {
                         rawPerm.loggerIdent + "' kid where a " +
                         "'testCasePermutation' should be!");
 
-      caseBundle.permutations.push(this._processPermutation(rawPerm));
+      var permPrechewed = null;
+      if (prechewed && Array.isArray(prechewed))
+        permPrechewed = prechewed[iPerm];
+
+      caseBundle.permutations.push(this._processPermutation(rawPerm,
+                                                            permPrechewed));
     }
     return caseBundle;
   }
@@ -1366,7 +1374,8 @@ exports.chewLoggestCase = function chewLoggestCase(logDetail) {
   var transformer = new LoggestLogTransformer();
   transformer.processSchemas(logDetail.schema);
   var caseBundle = transformer.processTestCase(logDetail.fileName,
-                                               logDetail.log);
+                                               logDetail.log,
+                                               logDetail.prechewed);
   // temporary rep for consistency with mozmill
   return {
     failures: [caseBundle],

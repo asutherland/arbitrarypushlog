@@ -43,12 +43,16 @@ define(
   [
     "wmsy/wmsy",
     'd3',
+    'arbcommon/chew-loggest',
+    'arbcommon/topo-loggest',
     "text!./vis-loggest.css",
     'exports'
   ],
   function(
     $wmsy,
     _d3isnotrequirejsaware,
+    $chew_loggest,
+    $topo_loggest,
     $_css,
     exports
   ) {
@@ -67,6 +71,10 @@ wy.defineWidget({
   impl: {
     postInit: function() {
       this._highlightedNodes = [];
+      this._highlightGen = 1;
+      this._layoutMode = 'force';
+      this._width = 500;
+      this._height = 400;
       this._populate();
       this._makeVis();
     },
@@ -76,17 +84,17 @@ wy.defineWidget({
           clsNodeCircle = this.__cssClassBaseName + "nodeCircle",
           clsNodeText = this.__cssClassBaseName + "nodeText";
 
-      const w = 400, h = 400;
+      const w = this._width, h = this._height;
       var vis = this.vis = d3.select(this.domNode)
         .append("svg:svg")
           .attr("width", w)
           .attr("height", h);
 
       // -- layout
-      const forceLayout = true;
+      const layoutMode = this._layoutMode;
       var layout, nodes;
       // - pack
-      if (!forceLayout) {
+      if (layoutMode === 'pack') {
         layout = d3.layout.pack()
           .size([w - 4, h - 4])
           .value(function(d) { return d.radius; });
@@ -100,8 +108,8 @@ wy.defineWidget({
         nodes.sort(function (a, b) {
         });
       }
-      // - (no longer used, force-directed)
-      else {
+      // - force
+      else if (layoutMode === 'force') {
         layout = d3.layout.force()
           .nodes(this.nodes)
           .links(this.links)
@@ -110,6 +118,9 @@ wy.defineWidget({
           .charge(-60)
           .size([w, h])
           .start();
+        nodes = this.nodes;
+      }
+      else if (layoutMode === 'graphviz') {
         nodes = this.nodes;
       }
 
@@ -129,8 +140,10 @@ wy.defineWidget({
           .data(nodes)
         .enter().append("svg:g")
           .attr("class", clsNode);
-      if (forceLayout)
+      // force layout does the transforms in the tick
+      if (layoutMode === 'force')
         node.call(layout.drag);
+      // pack/graphviz have already laid things out by this time, translate
       else
         node.attr("transform", function(d) {
                     return "translate(" + d.x + "," + d.y + ")"; });
@@ -143,23 +156,25 @@ wy.defineWidget({
           .attr("cx", 0)
           .attr("cy", 0);
           // CSS can't style the radius :(
-      if (forceLayout)
-          nodeCirc.attr("r", function(d) { return d.radius; });
+      if (layoutMode !== 'pack')
+        nodeCirc.attr("r", function(d) { return d.radius; });
       else
-          nodeCirc.attr("r", function(d) { return d.r; });
+        nodeCirc.attr("r", function(d) { return d.r; });
 
       // - node label
-      node.append("svg:text")
+      var nodeText = node.append("svg:text")
           .attr("class", clsNodeText)
           .attr("loggerfamily", function(d) { return d.family; })
           .attr("type", function(d) { return d.type; })
           .attr("dx", 12)
           .attr("dy", "0.35em")
-          .attr("text-anchor", "middle")
           .text(function(d) { return d.name; });
+      // try and put the text in the circles
+      if (layoutMode === 'pack')
+        nodeText.attr("text-anchor", "middle");
 
 
-      if (forceLayout) {
+      if (layoutMode === 'force') {
         layout.on("tick", function() {
           link.attr("x1", function(d) { return d.source.x; })
               .attr("y1", function(d) { return d.source.y; })
@@ -171,123 +186,64 @@ wy.defineWidget({
         });
       }
     },
-    /**
-     * Populate the nodes/links in the graph by traversing the logger family
-     *  hierarchy roots recursively.
-     *
-     * We deal with loggers by their type:
-     * - synthetic actors: always get created as nodes
-     * - connections:
-     *   - aggregating nodes are created based on type
-     *   - a link is created to the parent
-     *   - links between connections are created to the counterpart node
-     * - servers/daemons: get aggregated into their parent
-     * - tasks: get ignored, eventually will get aggregated
-     * - everybody else: get ignored
-     */
     _populate: function() {
-      var nodes = this.nodes = [], rootNodes = this.rootNodes = [];
-      var links = this.links = [];
-      /**
-       * Maps loggers to the node that directly represents them; this exists
-       *  for aggregation nodes.
-       */
-      var loggerMap = this.loggerMap = {};
-      var aggrMap = {}, pendingLinkMap = {}, linkedMap = {};
+      // -- build the graph rep
+      var result = $topo_loggest.analyzeRootLoggers(this.obj);
+      this.rootNodes = result.rootNodes;
+      this.nodes = result.nodes;
+      this.links = result.links;
+      this.loggerMap = result.loggerMap;
 
-      const RADIUS_BIG = 8, RADIUS_MED = 5;
+      // -- if we have a prechewed graphviz layout, use it
+      var perm = this.__context.permutation;
+      if ("topoLayout" in perm.prechewed) {
+        this._layoutMode = 'graphviz';
+        var topoLayout = perm.prechewed.topoLayout;
 
-      function processLogger(logger, parentNode) {
-        var name, id, node, radius, type, othId;
-        switch (logger.schemaNorm.type) {
-          case 'test:synthactor':
-            id = logger.raw.uniqueName;
-            // this should already be a simple string of sorts, but force the
-            //  issue.
-            name = "" + logger.raw.semanticIdent;
-            type = logger.schemaNorm.subtype;
-            radius = RADIUS_BIG;
-            break;
-          case 'connection':
-            name = logger.schemaNorm.normalizeConnType(logger.raw.semanticIdent);
-            id = logger.family + "-" + name;
-            type = 'connection';
-            radius = RADIUS_MED;
-            if (logger.otherSide) {
-              var othLogger = logger.otherSide,
-                  othName = othLogger.schemaNorm.normalizeConnType(
-                              othLogger.raw.semanticIdent);
-              othId = othLogger.family + "-" + othName;
-            }
-            break;
-          case 'server':
-          case 'daemon':
-            node = parentNode;
-            break;
-          default:
-            return null;
-        }
+        var gvBounds = topoLayout.BB.split(',').map(parseFloat);
+        // scale by multiplication: x, y
+        var padleft = 10, padtop = 10, padright = 90, padbottom = 10;
+        var usewidth = this._width - padleft - padright;
+        var useheight = this._height - padtop - padbottom;
+        var smx = usewidth / gvBounds[2],
+            smy = useheight / gvBounds[3];
 
-        if (node) {
-          // do nothing; we just wanted to leave the node as-is
-        }
-        else if (aggrMap.hasOwnProperty(id)) {
-          node = aggrMap[id];
+        var rot = 0, rmx = 0, rmy = 0;
+        if (smx < smy) {
+          // if we are notably more wide than tall, perform a 45 degree rotation
+          //  to try and avoid labels overlapping each other.
+          if (smy / smx > 2) {
+            // downscale a little
+            smx *= 0.9;
+            var a45 = Math.sin(Math.PI / 4);
+            rmx = -a45 * smx;
+            rmy = a45 * smx;
+            padleft += padright - (padleft * 2);
+          }
+          smy = smx;
         }
         else {
-          node = { id: id, name: name, type: type, family: logger.family,
-                   radius: radius, children: null };
-          nodes.push(node);
-          if (parentNode) {
-            if (!parentNode.children)
-              parentNode.children = [];
-            parentNode.children.push(node);
-          }
-          aggrMap[id] = node;
-
-          if (parentNode) {
-            links.push({source: parentNode, target: node});
-          }
+          // nb: the layout algorithm should not be making stuff tall, if it does
+          //  we would want to change this to also rotate.
+          smx = smy;
         }
 
-        if (othId) {
-          console.log("wanna link", id, othId);
-          var linkId = (id < othId) ? (id + "-" + othId) : (othId + "-" + id);
-          if (linkedMap.hasOwnProperty(linkId)) {
-            // nothing to do if already linked
-          }
-          else if (pendingLinkMap.hasOwnProperty(linkId)) {
-            var link = {
-              source: node,
-              target: pendingLinkMap[linkId],
-            };
-            links.push(link);
-            delete pendingLinkMap[linkId];
-            console.log("  LINKED!");
-          }
-          else {
-            pendingLinkMap[linkId] = node;
-          }
+        //console.log("smx", smx, "smy", smy, "rmx", rmx, "rmy", rmy);
+        for (var iNode = 0; iNode < this.nodes.length; iNode++) {
+          var node = this.nodes[iNode];
+
+          var gvCoords = topoLayout[node.id].split(',').map(parseFloat);
+          node.x = padleft + gvCoords[0] * smx + gvCoords[1] * rmx;
+          node.y = padtop + gvCoords[1] * smy + gvCoords[0] * rmy;
         }
-
-        loggerMap[logger.raw.uniqueName] = node;
-
-        // - kids
-        for (var iKid = 0; iKid < logger.kids.length; iKid++) {
-          processLogger(logger.kids[iKid], node);
-        }
-        return node;
-      }
-
-      var roots = this.obj;
-      for (var iRoot = 0; iRoot < roots.length; iRoot++) {
-        rootNodes.push(processLogger(roots[iRoot]));
       }
     },
     /**
      *
      */
     _highlightStepParticipantsOnly: function(step) {
+      var highlightGen = this._highlightGen++;
+
       // -- figure out the loggers with any activity.
       var activeLoggers = [], logger;
       // nb: this is taken from the case-entry-matrix processor
@@ -322,19 +278,60 @@ wy.defineWidget({
         }
         if (logger) {
           node = loggerMap[logger.raw.uniqueName];
-          if (highlightNodes.indexOf(node) === -1)
+          if (highlightNodes.indexOf(node) === -1) {
             highlightNodes.push(node);
+            node.highlightGen = highlightGen;
+            // mark links if the other side is also highlighted (converges)
+            for (var iLink = 0; iLink < node.links.length; iLink++) {
+              var link = node.links[iLink];
+              if (link.source.highlightGen === highlightGen &&
+                  link.target.highlightGen === highlightGen)
+                link.highlightGen = highlightGen;
+            }
+          }
         }
       }
 
+      var clsLine = this.__cssClassBaseName + "line",
+          clsNode = this.__cssClassBaseName + "node",
+          clsNodeCircle = this.__cssClassBaseName + "nodeCircle",
+          clsNodeText = this.__cssClassBaseName + "nodeText";
+
+      // nb: we could be more efficient by stashing the DOM nodes on the
+      //  JS nodes, but our N is small enough this is not a huge deal.
+
       // -- un-highlight the currently highlighted
+      this.vis.selectAll("circle." + clsNodeCircle + "[highlighted]")
+        .attr("highlighted", null);
+      this.vis.selectAll("line." + clsLine + "[highlighted]")
+        .attr("highlighted", null);
+      this.vis.selectAll("text." + clsNodeText + "[highlighted]")
+        .attr("highlighted", null);
+
+      function highlightify(d) {
+        return d.highlightGen === highlightGen;
+      };
 
       // -- highlight the new fellas
+      this.vis.selectAll("circle." + clsNodeCircle)
+        .filter(highlightify)
+          .attr("highlighted", "true");
+      this.vis.selectAll("line." + clsLine)
+        .filter(highlightify)
+          .attr("highlighted", "true");
+      this.vis.selectAll("text." + clsNodeText)
+        .filter(highlightify)
+          .attr("highlighted", "true");
     },
   },
-  dreceive: {
-    brushStep: function(step) {
-      this._highlightStepParticipantsOnly(step);
+  receive: {
+    focusChanged: function(binding) {
+      if (!binding)
+        return;
+      var obj = binding.obj;
+      if (obj instanceof $chew_loggest.TestCaseStepMeta) {
+        this._highlightStepParticipantsOnly(obj);
+      }
     },
   },
 });
