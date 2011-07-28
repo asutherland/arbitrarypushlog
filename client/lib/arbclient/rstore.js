@@ -175,11 +175,11 @@ RemoteStore.prototype = {
       this._sock.disconnect();
 
     //console.log("establishing socket");
-    this._sock = new io.Socket();
+    // XXX socket.io is being slow about supporting the -07 websockets.
+    this._sock = io.connect(undefined, {transports: ['xhr-polling']});
     this._sock.on("connect", this.onConnect.bind(this));
     this._sock.on("message", this.onMessage.bind(this));
     this._sock.on("disconnect", this.onDisconnect.bind(this));
-    this._sock.connect();
   },
 
   /**
@@ -307,7 +307,7 @@ RemoteStore.prototype = {
     this._modeAcked = false;
     this._desiredPushes = desiredPushesCount;
 
-    this._sock.send({
+    this._sock.json.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "subtree",
       treeName: this.tinderTree.name,
@@ -329,7 +329,7 @@ RemoteStore.prototype = {
     this._modeAcked = false;
     this._desiredPushes = desiredPushesCount;
 
-    this._sock.send({
+    this._sock.json.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "subtree",
       treeName: this.tinderTree.name,
@@ -356,7 +356,7 @@ RemoteStore.prototype = {
       });
     }
 
-    this._sock.send({
+    this._sock.json.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "assertsub",
       treeName: this.tinderTree.name,
@@ -379,14 +379,14 @@ RemoteStore.prototype = {
     this._prevSubMode = this._subMode;
     this._subMode = null;
 
-    this._sock.send({
+    this._sock.json.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "unsub",
     });
   },
 
   subGrowOrShift: function(dir) {
-    this._sock.send({
+    this._sock.json.send({
       seqId: (this._pendingSeq = this._nextSeqId++),
       type: "subgrow",
       conditional: false,
@@ -443,7 +443,7 @@ RemoteStore.prototype = {
         msg.subPushCount < this._desiredPushes) {
       //console.log("trying to grow from", msg.subPushCount,
       //            "to", this._desiredPushes);
-      this._sock.send({
+      this._sock.json.send({
         seqId: (this._pendingSeq = this._nextSeqId++),
         type: "subgrow",
         conditional: true,

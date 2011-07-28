@@ -245,7 +245,7 @@ function DataServer(ioSocky, bridgeSink, devMode) {
   this._devMode = devMode;
 
   this._ioSocky = ioSocky;
-  ioSocky.on("connection", this.onConnection.bind(this));
+  ioSocky.sockets.on("connection", this.onConnection.bind(this));
 }
 DataServer.prototype = {
   //////////////////////////////////////////////////////////////////////////////
@@ -373,7 +373,7 @@ DataServer.prototype = {
     msg.subPushCount = sub.pushCount;
     msg.accurateAsOfMillis = sub.treeCache.mostRecentTinderboxScrapeMillis;
     msg.revForTimestamp = sub.treeCache.revForTimestamp;
-    return sub.client.send(msg);
+    return sub.client.json.send(msg);
   },
 
   //////////////////////////////////////////////////////////////////////////////
@@ -655,7 +655,7 @@ DataServer.prototype = {
    */
   _scoldClient: function(client, seqId, message) {
     console.warn("client error:", message);
-    client.send({
+    client.json.send({
       seqId: seqId, lastForSeq: true,
       type: "error",
       message: message
@@ -860,7 +860,7 @@ DataServer.prototype = {
         var colsAndValues = self._db.normalizeOneRow(rows);
         if (!colsAndValues.hasOwnProperty("s:r")) {
           if (mootable) {
-            client.send({
+            client.json.send({
               seqId: sub.seqId, lastForSeq: true,
               type: "moot",
               why: "fetch lacks revision",
@@ -944,7 +944,7 @@ DataServer.prototype = {
     // - moot out/shift range if already at max
     if (sub.pushCount >= MAX_PUSH_SUBS) {
       if (msg.conditional) {
-        client.send({
+        client.json.send({
           seqId: sub.seqId, lastForSeq: true,
           type: "moot",
           why: "conditional",
@@ -997,7 +997,7 @@ DataServer.prototype = {
   // Other
 
   broadcast: function(msg) {
-    this._ioSocky.broadcast(msg);
+    this._ioSocky.sockets.json.send(msg);
   },
 
   //////////////////////////////////////////////////////////////////////////////
