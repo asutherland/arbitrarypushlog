@@ -299,11 +299,47 @@ function TestCasePermutationLogBundle(raw, prechewed) {
   this._notableEntries = [];
 }
 TestCasePermutationLogBundle.prototype = {
+  /**
+   * Get the rows affiliated with a step.  Every step cares about its before and
+   *  itself, the last step cares about its after too.
+   */
+  getRowsForStep: function(step) {
+    var stepIndex = this.steps.indexOf(step),
+        isLastStep = stepIndex === (this.steps.length - 1),
+        rows = [];
+    rows.push(this._perStepPerLoggerEntries[stepIndex*2]); // before
+    rows.push(this._perStepPerLoggerEntries[stepIndex*2 + 1]); // the step
+    if (isLastStep)
+      rows.push(this._perStepPerLoggerEntries[stepIndex*2 + 2]); // after
+    return rows;
+  },
+
+  stepHasErrors: function(step) {
+    var rows = this.getRowsForStep(step);
+    var iRow, row, iCol, entries, iEntry, entry;
+    for (iRow = 0; iRow < rows.length; iRow++) {
+      row = rows[iRow];
+      for (iCol = 0; iCol < row.length; iCol++) {
+        entries = row[iCol];
+        if (!entries)
+          continue;
+
+        for (iEntry = 0; iEntry < entries.length; iEntry++) {
+          entry = entries[iEntry];
+          if ((entry instanceof ErrorEntry) ||
+              ((entry instanceof CallEntry) && entry.ex))
+            return true;
+        }
+      }
+    }
+    return false;
+  },
 };
 
 function TestCaseStepMeta(resolvedIdent, raw, entries) {
   this.resolvedIdent = resolvedIdent;
   this._raw = raw;
+  /** The step functions 's entries; not the matrix entries. */
   this.entries = entries;
 
   // result may not be present...

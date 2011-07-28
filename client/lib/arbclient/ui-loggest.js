@@ -328,6 +328,11 @@ wy.defineWidget({
           }
         }
       }
+      // ...or if the cells for this dude include an error/call with error
+      if (this.__context.permutation.stepHasErrors(this.obj)) {
+        this.collapsed = false;
+        this.domNode.setAttribute("haserrors", "true");
+      }
 
       // set it on all these directly because of webkit's selector deficiencies
       // XXX I believe the webkit bug has been fixed, so wen can probably stop
@@ -410,9 +415,7 @@ wy.defineWidget({
   },
   impl: {
     postInit: function() {
-      var step = this.obj, perm = this.__context.permutation,
-          stepIndex = perm.steps.indexOf(step),
-          isLastStep = stepIndex === (perm.steps.length - 1);
+      var step = this.obj, perm = this.__context.permutation;
 
       var clsHeaderRow = this.__cssClassBaseName + "headerRow",
           clsHeaderCol = this.__cssClassBaseName + "headerCol",
@@ -428,11 +431,7 @@ wy.defineWidget({
       var columnMetas = [], usingColumnMap = {};
       // the rows we care about, based on our step index.  Every step cares about
       //  its before and itself, the last step cares about its after too.
-      var rows = [];
-      rows.push(perm._perStepPerLoggerEntries[stepIndex*2]); // before
-      rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 1]); // the step
-      if (isLastStep)
-        rows.push(perm._perStepPerLoggerEntries[stepIndex*2 + 2]); // after
+      var rows = perm.getRowsForStep(step);
 
       // -- figure out the involved loggers from the step info
       var iLogger, logger, colMeta;

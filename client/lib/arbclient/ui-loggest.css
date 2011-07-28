@@ -171,6 +171,9 @@
     [collapsed="true"] {
       display: inline-block;
     }
+    [haserrors="true"] {
+      border-color: red;
+    }
   }
   #headerRow {
     border-top-left-radius: 4px;
