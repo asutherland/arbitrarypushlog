@@ -297,6 +297,12 @@ function TestCasePermutationLogBundle(raw, prechewed) {
    *  namely an exception thrown in the setupFunc.
    */
   this._notableEntries = [];
+
+  /**
+   * Dicers appropriate to this permutation; populated in a post-pass by
+   *  `dice-loggest.js`.
+   */
+  this.dicers = [];
 }
 TestCasePermutationLogBundle.prototype = {
   /**
@@ -593,8 +599,14 @@ LoggestLogTransformer.prototype = {
           args.push("null");
         }
         else if (typeof(arg) === 'object') {
-          // this used to only happen for 'jsonable'...
-          args.push({type: 'full-obj', obj: arg});
+          if (Array.isArray(arg) && arg.length === 0) {
+            // 0 length arrays look stupid in popups
+            args.push("[]");
+          }
+          else {
+            // this used to only happen for 'jsonable'...
+            args.push({type: 'full-obj', obj: arg});
+          }
         }
         else if (typeof(arg) === 'string') {
           // - direct alias
@@ -1088,6 +1100,8 @@ LoggestLogTransformer.prototype = {
    */
   _createNonTestLogger: function(rawLogger, allLoggers, rawPerm) {
     var schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
+    if (!schemaNorm)
+      throw new Error("No schema mapping for: '" + rawLogger.loggerIdent + "'");
     var loggerMeta = new LoggerMeta(
                        rawLogger,
                        /* semantic ident resolution deferred */ null,

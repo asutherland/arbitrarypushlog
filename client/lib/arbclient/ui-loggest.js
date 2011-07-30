@@ -54,6 +54,7 @@ define(
     "wmsy/wlib/objdict",
     "arbcommon/chew-loggest",
     "./vis-loggest",
+    "./ui-dice-loggest",
     "text!./ui-loggest.css",
     "exports"
   ],
@@ -63,6 +64,7 @@ define(
     $_wlib_objdict, // unused, just a dependency.
     $logmodel,
     $_vis_loggest, // unused, just a dep
+    $_ui_dice_loggest, // unused, just a dep
     $_css,
     exports
   ) {
@@ -131,6 +133,12 @@ wy.defineWidget({
         visLabel: "Relationship Overview:",
         vis: wy.widget({type: "topo-summary"}, "rootLoggers"),
       },
+      /*
+      diceBlock: {
+        diceLabel: "Slice-n-Dice:",
+        dicers: wy.widget({type: "dicer"}, "dicers"),
+      },
+      */
     },
     notableEntries: wy.vertList({type: "entry"}, "_notableEntries"),
     stepsLabel: "Steps:",
