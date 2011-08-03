@@ -332,6 +332,7 @@ wy.defineWidget({
         for (var iEntry = 0; iEntry < this.obj.entries.length; iEntry++) {
           if (this.obj.entries[iEntry] instanceof $logmodel.ErrorEntry) {
             this.collapsed = false;
+            this.domNode.setAttribute("haserrors", "true");
             break;
           }
         }
@@ -921,7 +922,7 @@ wy.defineWidget({
       expName: wy.bind("expName"),
       lParen: "! (",
       args: wy.stream({type: "arg-stream"}, "expArgs"),
-      rParenVersus: ") vs.",
+      rParenVersus: ") expected but got",
     }),
     actualEntry: wy.widget({type: "entry"}, "actualEntry"),
   }, {layer: "layer"}),
