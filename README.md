@@ -51,6 +51,24 @@ For development:
 
 ## Server HBase Setup
 
+If you don't have hbase already, you might want to consider using the cloudera
+distribution.  Instructions on how to set things up using a package manager for
+linux distros can be found here:
+https://ccp.cloudera.com/display/CDHDOC/HBase+Installation
+
+You will want to pay particular attention to the file limits stuff, don't skip
+that.  You will want the hadoop-hbase-master configuration.  You will also want
+hadoop-hbase-thrift.  You will want to start both and make sure that thrift
+is operating in framed mode bound to your loopback address.  For me on Fedora,
+I had to modify /etc/init.d/hadoop-hbase-thrift so that its start line looked
+like this:
+
+    su -s /bin/sh hbase -c "${DAEMON_SCRIPT} start thrift -f -b 127.0.0.1" 
+
+Without that, it binds to the wrong address and does not operate in framed mode
+and nothing works and it's all very sad.
+
+
 There is an example hbase-site.xml file in server (example-hbase-site.xml)
 which has some reasonable settings to use to make sure your hbase server does
 not explode if you give it a small heap.  (Heap size is set in hbase-env.sh.)
