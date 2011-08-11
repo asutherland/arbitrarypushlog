@@ -25,7 +25,7 @@ out with "--recursive".  If you forgot to do that, do "git submodule init" then
 - jstut: uh, reusing my visualizable promise work, documentation eventually.
 
 
-## Server Deps:
+## Server NPM Deps:
 
 Just do "npm install" in server and the stuff should show up.  Read
 package.json to know what shows up.
@@ -41,6 +41,14 @@ Note: we also locally have a git submodule for a modified version of the
 compress module that actually works.  "npm install" will see it and do the
 right thing (build it).
 
+
+## Server Program Deps
+
+If using the "loggest" processing functionality for deuxdrop, you need:
+
+- graphviz: We use dot/neato/circo what not to perform some offline graph
+   layout.  If you don't have this installed logalchew will apparently silently
+   hang and then automatically kill itself based on a timeout.
 
 ## Server Optional Deps
 
