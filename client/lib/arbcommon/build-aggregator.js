@@ -428,6 +428,8 @@ AggrBuildSummary.prototype = {
         else if (testType === "loggest") {
           // loggest-logfrob is currently pretending to be like mozmill, so
           //  we use the same logic.
+          if (!bresult.fileName)
+            bresult.fileName = "UNNAMED";
           pathParts = bresult.fileName.split("/");
           testName = bresult.testName;
           signature = "";

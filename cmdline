@@ -1,4 +1,9 @@
 #!/bin/sh
 
-cd server/lib
+basedir=`dirname $0`
+if [ -z "$basedir" ]; then
+  cd server/lib
+else
+  cd $basedir/server/lib
+fi
 node r.js arbpl/cmdline.js "$@"

@@ -388,7 +388,7 @@ parser.command('frob-loggest')
   })
   .callback(function(options) {
     $require(
-      ["arbpl/loggest-logfrob"],
+      ["arbpl/loggest/logfrob"],
       function($frobber) {
         $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
