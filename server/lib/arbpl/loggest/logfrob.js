@@ -161,6 +161,7 @@ Frobber.prototype = {
       // Empty / fully disabled test files will have no kids!
       if (!definerLog.kids)
         continue;
+
       for (var iKid = 0; iKid < definerLog.kids.length; iKid++) {
         var testCaseLog = definerLog.kids[iKid];
         var testUniqueName = definerLog.semanticIdent + "-" +
@@ -184,17 +185,18 @@ Frobber.prototype = {
         pending++;
         this.totalPending++;
         //console.log("totalPending", this.totalPending);
-        when(this._prechewCase(schema, definerLog.semanticIdent, testCaseLog),
-          function(prechewed) {
-            var detailObj = {
-              type: "loggest",
-              fileName: definerLog.semanticIdent,
-              schema: schema,
-              log: testCaseLog,
-              prechewed: prechewed,
-            };
-            self.writeCells[self.detailKeyPrefix + ":" + testUniqueName] =
-              detailObj;
+        var detailObj = {
+          type: "loggest",
+          fileName: definerLog.semanticIdent,
+          schema: schema,
+          log: testCaseLog,
+          prechewed: null,
+        };
+        self.writeCells[self.detailKeyPrefix + ":" + testUniqueName] =
+            detailObj;
+        when(this._prechewCase(schema, definerLog.semanticIdent, testCaseLog,
+                               detailObj),
+          function() {
             // resume I/O if we suspended
             if (--pending === 0)
               self.stream.resume();
@@ -216,7 +218,7 @@ Frobber.prototype = {
       this.stream.pause();
     }
   },
-  _prechewCase: function(schema, fileName, testCaseLog) {
+  _prechewCase: function(schema, fileName, testCaseLog, detailObj) {
     // XXX we should be able to reuse the transformer if we didn't screw up
     var transformer = new $chew_loggest.LoggestLogTransformer();
     transformer.processSchemas(schema);
@@ -228,7 +230,9 @@ Frobber.prototype = {
         this._topoLayoutPrechew(caseBundle.permutations[iPerm]));
     }
 
-    return $Q.all(permPrechews);
+    return when($Q.all(permPrechews), function (prechewed) {
+                  detailObj.prechewed = prechewed;
+                });
   },
   _topoLayoutPrechew: function(perm) {
     var deferred = $Q.defer();
