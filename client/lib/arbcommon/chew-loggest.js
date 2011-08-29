@@ -304,6 +304,7 @@ function TestCasePermutationLogBundle(raw, prechewed) {
    */
   this.dicers = [];
 }
+exports.TestCasePermutationLogBundle = TestCasePermutationLogBundle;
 TestCasePermutationLogBundle.prototype = {
   /**
    * Get the rows affiliated with a step.  Every step cares about its before and
