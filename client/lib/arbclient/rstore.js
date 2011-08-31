@@ -175,8 +175,7 @@ RemoteStore.prototype = {
       this._sock.disconnect();
 
     //console.log("establishing socket");
-    // XXX socket.io is being slow about supporting the -07 websockets.
-    this._sock = io.connect(undefined, {transports: ['xhr-polling']});
+    this._sock = io.connect(undefined, {});
     this._sock.on("connect", this.onConnect.bind(this));
     this._sock.on("message", this.onMessage.bind(this));
     this._sock.on("disconnect", this.onDisconnect.bind(this));

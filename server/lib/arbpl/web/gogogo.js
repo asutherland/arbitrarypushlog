@@ -170,7 +170,7 @@ app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
 var sideServer = new $http.Server();
 var scraperSink = new $databus.ScraperBridgeSink(sideServer);
 
-var socky = $io.listen(app);
+var socky = $io.listen(app, {"log level": -1});
 var dataServer = new $datastore.DataServer(socky, scraperSink,
                                            LISTEN_PORT === 8008);
 
