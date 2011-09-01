@@ -1011,6 +1011,9 @@ LoggestLogTransformer.prototype = {
         needSpace = false;
         resolved.push(bit);
       }
+      else if (bit == null) {
+        resolved.push(maybeNeedComma ? ", NULL" : "NULL");
+      }
       else {
         if (maybeNeedComma)
           resolved.push(", ");
