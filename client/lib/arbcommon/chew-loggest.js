@@ -445,7 +445,9 @@ LoggerMeta.prototype = {
       this.kids[i].brandFamily(name);
     }
     for (i = 0; i < this.things.length; i++) {
-      this.things[i].family = name;
+      // things may have a hardcoded family
+      if (!this.things[i].family)
+        this.things[i].family = name;
     }
   },
 
@@ -484,7 +486,7 @@ var UNRESOLVED_THING_RAW = {};
 function ThingMeta(raw) {
   this.raw = raw;
   this.name = raw.name;
-  this.family = "";
+  this.family = raw.hasOwnProperty('family') ? raw.family : '';
   this.distinctAliases = [];
   if (raw.dname)
     this.distinctAliases.push(raw.dname);
