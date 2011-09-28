@@ -739,6 +739,8 @@ wy.defineWidget({
   structure: {
     table: wy.libWidget({
         type: "objdict",
+        labelConstraint: {type: "obj-detail"},
+        labelTransformer: aliasTransformer,
         valueConstraint: {type: "obj-detail"},
         // we want string values alias-transformed
         valueTransformer: aliasTransformer,

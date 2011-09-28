@@ -1,6 +1,14 @@
-Mozilla Tinderbox processor and UI.
+A log viewing UI with a pushlog UI that also hangs around.
 
-## The Server:
+ArbPL is four things, in decreasing order of importance/relevance:
+- A log viewing UI for the Deuxdrop "loggest" logging / testing framework.
+- A log viewing UI for Thunderbird's mozmill logging framework.
+- A live-updating 'pushlog' interface that tracks new builds/test runs.  A lot
+   of fanciness exists for dealing with complicated build setups like
+   the comm-central and mozilla-central trees.
+- A tinderbox scraper capable of dealing with the comm-central tree.
+
+## The Largely Mooted Tinderbox Scraper Server:
 
 - Pulls build info from tinderbox.mozilla.org in its JSON-ish format.
 - Pulls push/revision info from hg.mozilla.org in its real JSON format.
@@ -12,6 +20,7 @@ Mozilla Tinderbox processor and UI.
 ## The UI/client:
 
 - Talks to the server.
+- Can also operate in a standlone log viewer mode.
 
 
 ## Client Deps (Included):
