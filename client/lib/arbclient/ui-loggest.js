@@ -73,6 +73,17 @@ define(
 var wy = exports.wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "loggest",
                                             css: $_css});
 
+function dotMilliTimeFormatter(t) {
+  var truncated = Math.floor(t / 100);
+  var wholish = truncated.toString();
+  // make sure to get a leading zero.
+  if (truncated < 10)
+    wholish = "0" + wholish;
+  var len = wholish.length;
+  return wholish.substring(0, len - 1) + "." + wholish.substring(len - 1) +
+    "ms ";
+}
+
 wy.defineWidget({
   name: "file-failure",
   doc: "display the exception related to a test file failure",
@@ -93,6 +104,7 @@ var groupInterposer = wy.defineInterposingViewSlice({
   maker: function groupMaker(pre, post) {
     return {
       name: post.group,
+      relstamp: post.relstamp,
     };
   }
 });
@@ -183,6 +195,8 @@ wy.defineWidget({
   },
   structure: {
     name: wy.bind("name"),
+    lblAt: " @ ",
+    timestamp: wy.bind("relstamp", dotMilliTimeFormatter),
   },
 });
 
@@ -312,6 +326,7 @@ wy.defineWidget({
     headerRow: wy.block({
       twisty: {},
       resolvedIdent: wy.stream({type: "sem-stream"}, "resolvedIdent"),
+      duration: wy.bind("durationMS", dotMilliTimeFormatter),
     }, {result: "result", boring: "boring"}),
     contentBlock: {
       logEntries: wy.vertList({type: "entry-with-timestamp"}, wy.NONE),
@@ -767,13 +782,6 @@ wy.defineWidget({
   structure: wy.bind("name", {loggerfamily: "family"}),
 });
 
-
-function dotMilliTimeFormatter(t) {
-  var wholish = Math.floor(t / 100).toString();
-  var len = wholish.length;
-  return wholish.substring(0, len - 1) + "." + wholish.substring(len - 1) +
-    "ms ";
-}
 
 wy.defineWidget({
   name: "entry-with-timestamp",

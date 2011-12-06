@@ -346,7 +346,7 @@ TestCasePermutationLogBundle.prototype = {
 function TestCaseStepMeta(resolvedIdent, raw, entries) {
   this.resolvedIdent = resolvedIdent;
   this._raw = raw;
-  /** The step functions 's entries; not the matrix entries. */
+  /** The step functions's entries; not the matrix entries. */
   this.entries = entries;
 
   // result may not be present...
@@ -370,6 +370,21 @@ function TestCaseStepMeta(resolvedIdent, raw, entries) {
 }
 exports.TestCaseStepMeta = TestCaseStepMeta;
 TestCaseStepMeta.prototype = {
+  /**
+   * The duration of this step's execution in milliseconds.
+   */
+  get durationMS() {
+    if (!this.entries || !this.entries.length)
+      return 0;
+    return this.entries[this.entries.length - 1].relstamp -
+           this.entries[0].relstamp;
+  },
+
+  get relstamp() {
+    if (!this.entries || !this.entries.length)
+      return 0;
+    return this.entries[0].relstamp;
+  },
 };
 
 
