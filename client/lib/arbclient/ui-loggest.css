@@ -70,27 +70,34 @@
   }
 }
 
+.prettyBox {
+  display: inline-block;
+  border-radius: 4px;
+  border: 1px solid black;
+  margin: 4px;
+  padding: 4px;
+  vertical-align: top;
+}
+.prettyBoxLabel {
+  display: block;
+  border-radius: 4px;
+  margin: -4px;
+  margin-bottom: 4px;
+  padding: 4px;
+  background-color: black;
+  color: white;
+}
+
 #test-perm {
   #whoBlock {
   }
 
-  #loggersBlock, #visBlock {
-    display: inline-block;
-    border-radius: 4px;
-    border: 1px solid black;
-    margin: 4px;
-    padding: 4px;
-    vertical-align: top;
+  #loggersBlock, #visBlock, #summaryBlock {
+    .prettyBox;
   }
 
-  #loggersLabel, #visLabel {
-    display: block;
-    border-radius: 4px;
-    margin: -4px;
-    margin-bottom: 4px;
-    padding: 4px;
-    background-color: black;
-    color: white;
+  #loggersLabel, #visLabel, #summaryLabel {
+    .prettyBoxLabel
   }
 
   #stepsLabel {
@@ -99,6 +106,13 @@
 
   #stepsBlock {
     padding: 4px;
+  }
+}
+
+#async-summary-item {
+  #layer {
+    display: inline-block;
+    width: 6em;
   }
 }
 

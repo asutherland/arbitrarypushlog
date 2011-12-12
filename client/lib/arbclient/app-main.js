@@ -43,6 +43,7 @@ define(
     "./rstore",
     "arbcommon/repodefs",
     "./chew-loghelper", "arbcommon/chew-loggest",
+    "arbcommon/analyze-loggest",
     "./ui-main",
     "socket.io/socket.io",
     "require",
@@ -55,6 +56,7 @@ define(
     $rstore,
     $repodefs,
     $chew_loghelper, $chew_loggest,
+    $analyze_loggest,
     $ui_main,
     $_na_socketio,
     $require,
@@ -417,7 +419,15 @@ ArbApp.prototype = {
         break;
 
       case "loggest":
-        chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
+        var caseBundle = $chew_loggest.chewLoggestCase(logDetail);
+        $analyze_loggest.runOnPermutations(
+          [
+            $analyze_loggest.SummarizeAsyncTasks,
+          ],
+          caseBundle);
+        chewedDetails = {
+          failures: [caseBundle],
+        };
         break;
 
       case "filefail":

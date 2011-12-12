@@ -145,6 +145,10 @@ wy.defineWidget({
         visLabel: "Relationship Overview:",
         vis: wy.widget({type: "topo-summary"}, "rootLoggers"),
       },
+      summaryBlock: {
+        summaryLabel: "Async Durations by Layer",
+        asyncSummary: wy.widget({ type: "async-summary" }, wy.SELF),
+      },
       /*
       diceBlock: {
         diceLabel: "Slice-n-Dice:",
@@ -185,6 +189,28 @@ wy.defineWidget({
         this.maybeShowDetailForBinding(binding);
       }
     },
+  },
+});
+
+wy.defineWidget({
+  name: "async-summary",
+  constraint: {
+    type: "async-summary",
+  },
+  structure: {
+    summaries: wy.vertList({ type: "async-summary-item" },
+                           wy.dictAsKeyValueObjs(['summaries', 'asyncTasks'])),
+  }
+});
+
+wy.defineWidget({
+  name: "async-summary-item",
+  constraint: {
+    type: "async-summary-item",
+  },
+  structure: {
+    layer: wy.bind('key'),
+    timestamp: wy.bind('value', dotMilliTimeFormatter),
   },
 });
 

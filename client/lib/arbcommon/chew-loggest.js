@@ -205,6 +205,9 @@ function TestCasePermutationLogBundle(raw, prechewed) {
   this._raw = raw;
   this.prechewed = prechewed || {};
 
+  // mount point for analyzers
+  this.summaries = null;
+
   this._uniqueNameMap = {};
   /**
    * @dictof[
@@ -321,6 +324,24 @@ TestCasePermutationLogBundle.prototype = {
     return rows;
   },
 
+  /**
+   * Get all of the entries that happened in a step flattened into a single
+   *  list.
+   */
+  getAllEntriesForStep: function(step) {
+    var rows = this.getRowsForStep(step), events = [];
+    for (var iRow = 0; iRow < rows.length; iRow++) {
+      var row = rows[iRow];
+      for (var iCol = 0; iCol < row.length; iCol++) {
+        var rowEvents = row[iCol];
+        if (rowEvents)
+          events = events.concat(rowEvents);
+      }
+    }
+
+    return events;
+  },
+
   stepHasErrors: function(step) {
     var rows = this.getRowsForStep(step);
     var iRow, row, iCol, entries, iEntry, entry;
@@ -346,6 +367,9 @@ TestCasePermutationLogBundle.prototype = {
 function TestCaseStepMeta(resolvedIdent, raw, entries) {
   this.resolvedIdent = resolvedIdent;
   this._raw = raw;
+
+  this.summaries = null;
+
   /** The step functions's entries; not the matrix entries. */
   this.entries = entries;
 
@@ -571,11 +595,13 @@ function LoggestLogTransformer() {
   this._schemaHandlerMaps = {};
   /**
    * @dictof[
-   *   @key[schemaName String]
+   *   @key[schemaName String]{
+   *     The name of the schema, which usually corresponds to a single
+   *      implementation class (but could be used by multiple classes.)
+   *   }
    *   @value[@dict[
    *     @key[layerMapping LayerMapping]
    *     @key[hasTopBilling Boolean]
-   *     @key[netMap]
    * ]{
    *   Map schema names to layer labeling mappings. (ex: app, protocol, crypto)
    * }
@@ -1193,6 +1219,8 @@ LoggestLogTransformer.prototype = {
         schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
     var entries = loggerMeta.entries =
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
+    if (entries)
+      loggerMeta._tagEntriesWithLayers();
     if (rawLogger.died) {
       // This is okay because this is a fallback comparator, but it would be
       //  nice if we didn't need to fall back to this.
@@ -1447,10 +1475,7 @@ exports.chewLoggestCase = function chewLoggestCase(logDetail) {
   var caseBundle = transformer.processTestCase(logDetail.fileName,
                                                logDetail.log,
                                                logDetail.prechewed);
-  // temporary rep for consistency with mozmill
-  return {
-    failures: [caseBundle],
-  };
+  return caseBundle;
 };
 
 }); // end define
