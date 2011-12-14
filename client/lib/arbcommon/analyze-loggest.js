@@ -79,6 +79,7 @@ SummarizeAsyncTasks.prototype = {
             localSummary[event.layer] = 0;
 
           var duration = event.relstamp - tracky[event.name].relstamp;
+          event.duration = duration;
           tracky[event.name] = null;
 
           //console.log(event.layer, event.name, duration);

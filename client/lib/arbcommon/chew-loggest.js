@@ -97,6 +97,7 @@ function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.duration = 0;
 }
 AsyncJobEndEntry.prototype = {
   type: "async-end",

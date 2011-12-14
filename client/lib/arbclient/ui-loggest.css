@@ -345,6 +345,12 @@
 }
 #entry-async-job-end {
   .entryLayerColorization;
+  #duration {
+    display: inline-block;
+    font-size: 9px;
+    color: gray;
+    margin-left: 0.5em;
+  }
 }
 #entry-call {
   .entryLayerColorization;

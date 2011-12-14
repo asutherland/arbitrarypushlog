@@ -874,6 +874,7 @@ wy.defineWidget({
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
     rParen: ")",
+    duration: wy.bind("duration", dotMilliTimeFormatter),
   }, {layer: "layer"}),
 });
 
