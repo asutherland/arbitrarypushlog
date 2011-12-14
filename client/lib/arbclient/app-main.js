@@ -250,10 +250,13 @@ ArbApp.prototype = {
       return;
     }
 
-    // XXX default to true for autonew because I pretty much always want it on,
-    //  although it really should be based on a local sticky preference...
+    // Default to true for autonew if they are requesting the most recent log
+    //  (for that log).  If they are clicking on an older log, they obviously
+    //  don't want it immediately replacing itself with something more recent.
+    // XXX for now, assume that if it's the most recent push, it's the most
+    //  recent log.  This holds true for full runs, but not sparse runs.
     var autonew = (typeof(loc.autonew) === "string") ? (loc.autonew === "true")
-                    : true;
+                    : this.rstore.isMostRecentPush(loc.pushid);
 
     // yes log, request it
     this._getLog(parseInt(loc.pushid), loc.log, pathNodes, autonew,

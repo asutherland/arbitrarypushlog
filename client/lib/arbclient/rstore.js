@@ -182,6 +182,20 @@ RemoteStore.prototype = {
   },
 
   /**
+   * Check if the given push is the most recent push known to the server.
+   */
+  isMostRecentPush: function(pushId) {
+    if (this._subMode !== "recent")
+      return false;
+    for (var key in this._knownPushes) {
+      var knownId = parseInt(key);
+      if (knownId > pushId)
+        return false;
+    }
+    return true;
+  },
+
+  /**
    * Re-assert subscription status on reconnect.
    */
   onConnect: function() {
