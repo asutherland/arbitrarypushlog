@@ -38,43 +38,35 @@
 define(
   [
     "url", "http", "fs", "stream",
-    "compress",
+    "zlib", // node 0.6+
     "exports"
   ],
   function(
     $url, $http, $fs, $stream,
-    $compress,
+    $zlib,
     exports
   ) {
 
 var RE_URL = /^http:/;
 var RE_GZIPPED = /\.gz$/;
+// XXX this has not been tested since I lost the compress dep
 exports.gimmeStreamForThing = function gimmeStreamForThing(thing) {
   if (RE_URL.test(thing)) {
     var parsed = $url.parse(thing);
-    var stream;
-
-    if (RE_GZIPPED.test(parsed.pathname)) {
-      var gunzipStream = stream = new $compress.GunzipStream(stream);
-    }
-    else {
-      stream = new $stream.Stream();
-    }
+    var stream = new $stream.Stream();
 
     var req = $http.get({
       host: parsed.host,
       port: parsed.hasOwnProperty("port") ? parsed.port : 80,
       path: parsed.pathname,
     }, function(httpStream) {
-      httpStream.on("data", function(data) {
-        stream.write(data);
-      });
-      httpStream.on("end", function() {
-        stream.end();
-      });
-      httpStream.on("close", function() {
-        stream.close();
-      });
+      if (RE_GZIPPED.test(parsed.pathname)) {
+        var unzipper = $zlib.createGunzip();
+        httpStream.pipe(unzipper).pipe(stream);
+      }
+      else {
+        httpStream.pipe(stream);
+      }
     });
 
     return stream;
