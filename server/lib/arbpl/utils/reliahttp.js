@@ -57,6 +57,11 @@
  *  of quirky mozilla.org servers interacting with the transparent caching
  *  proxies that front them.  That and the newer node HTTP API not being
  *  entirely production-grade yet (but still very nice!)
+ *
+ * This module has now been upgraded to 0.6.* node; we previously performed
+ *  a white-box subclassing of the Agent class to accomplish our goals, but
+ *  now that the socket is directly exposed via the 'socket' event, that is
+ *  not required.
  **/
 
 define(
@@ -74,51 +79,6 @@ var when = $Q.when;
 
 var DEFAULT_IDLE_TIMEOUT_MS = 15 * 1000;
 var DEFAULT_TRIES = 3;
-
-/**
- * Subclasses http Agent class to let us add timeout support in a comparatively
- *  less hacky fashion than monkeypatching.
- *
- * In order to do the timeout thing, we need to be able to get at the raw net
- *  socket and call setTimeout on it.  Timeouts cover both connecting and
- *  data streaming; they are based on timers internally and not lower level
- *  system connection timeout abstractions.  To this end, our subclassing
- *  enables us to replace the act of establishing the connection, at which time
- *  we can establish the timeout and a timeout handler.
- */
-function Agent(options) {
-  $http.Agent.call(this, options);
-}
-$util.inherits(Agent, $http.Agent);
-
-Agent.prototype._getConnection = function(options, cb) {
-  var c;
-
-  // old thyme impl (host, port, cb)
-  if (arguments.length === 3) {
-    c = $net.createConnection(arguments[1], arguments[0]);
-    cb = arguments[2];
-  }
-  // new thyme impl (options, cb)
-  else if (options.host) {
-    c = $net.createConnection(options.port, options.host);
-  } else if (options.socketPath) {
-    c = $net.createConnection(options.socketPath);
-  } else {
-    c = $net.createConnection(options.port);
-  }
-  c.setTimeout(DEFAULT_IDLE_TIMEOUT_MS,
-    function() {
-      // Destroy the connection so we can't hear anything more the socket might
-      //  say; we don't want a weird race where the socket comes back to life
-      //  but we have kicked off a new one.
-      console.warn("  killing connection due to timeout!");
-      c.end();
-    }
-  );
-  c.on('connect', cb);
-  return c;
-};
 
 /**
  * Fetching abstraction with retries and timeouts.
@@ -165,6 +125,17 @@ exports.reliago = function reliago(config) {
     );
   }
 
+  function addConnectTimeout(sock) {
+    sock.setTimeout(DEFAULT_IDLE_TIMEOUT_MS,
+      function() {
+        // Destroy the connection so we can't hear anything more the socket might
+        //  say; we don't want a weird race where the socket comes back to life
+        //  but we have kicked off a new one.
+        console.warn("  killing connection due to timeout!");
+        sock.end();
+      });
+  }
+
   function tryIt() {
     // add something to grep for so we can see if this ever gets used...
     if (triesLeft !== DEFAULT_TRIES)
@@ -175,9 +146,11 @@ exports.reliago = function reliago(config) {
       return;
     }
 
-    options.agent = new Agent(options);
-    var req = $http._requestFromAgent(options, resultHandler);
-    req.on("error", tryIt);
+    var req = $http.request(options, resultHandler);
+    // (Even though the socket should be immediately created, it won't be saved
+    //  to its attribute or the event generated until a future tick.)
+    req.on('socket', addConnectTimeout);
+    req.on('error', tryIt);
     if (config.body)
       req.write(config.body);
     req.end();
