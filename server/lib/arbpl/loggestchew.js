@@ -199,7 +199,7 @@ LocalLoggestChewer.prototype = {
         when(self._db.metaLogTreeScrape("Local", true,
                {timestamp: scrapeStamp, rev: 0, highPushId: self._usePushId}),
              function() {
-          console.error("issuing sideband write");
+          console.error("issuing sideband write on port", self._bridgePort);
           when(bridge.send({
                  type: "push",
                  treeName: LOCAL_TREE_NAME,
