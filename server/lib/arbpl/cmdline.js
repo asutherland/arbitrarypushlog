@@ -374,7 +374,7 @@ parser.command('frob-mozmill')
   })
   .callback(function(options) {
     $require(
-      ["arbpl/mozmill-logfrob"],
+      ["arbcommon/moztinder/mozmill-logfrob"],
       function($frobber) {
         $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }

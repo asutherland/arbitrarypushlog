@@ -45,7 +45,7 @@ define(
     "fs",
     "q",
     "./hstore",
-    "./moztinder/mozmill-logfrob",
+    "arbcommon/moztinder/mozmill-logfrob",
     "./databus",
     "exports"
   ],

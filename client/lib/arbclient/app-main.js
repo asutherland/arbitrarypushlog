@@ -398,6 +398,32 @@ ArbApp.prototype = {
   },
 
   /**
+   * Show a failure log from a set of writeCells.  This is intended for use
+   *  for display of in-browser parsed logs using the frobber infrastructure.
+   *  The frobbers produce writeCells, so this way we can just slurp the
+   *  output and show it directly.
+   *
+   * This is currently only intended/expected to work with mozmill logs.
+   */
+  standaloneLoadLogsFromWriteCells: function(writeCells, summaryKey,
+                                             detailKeyPrefix) {
+    var failures = [],
+        logDetail =  {
+          type: 'mozmill-array',
+          failures: failures,
+        },
+        overview = writeCells[summaryKey];
+
+    for (var iFail = 0; iFail < overview.failures.length; iFail++) {
+      var summaryObj = overview.failures[iFail];
+      failures.push(writeCells[detailKeyPrefix + ":" +
+                               summaryObj.uniqueName]);
+    }
+
+    this._showLogPageForData(1, logDetail, [], false, null);
+  },
+
+  /**
    * Load the contents of a log detail from
    */
   standaloneLoadLogFromUrl: function(url) {
@@ -417,6 +443,10 @@ ArbApp.prototype = {
                                 divertedFrom) {
     var chewedDetails;
     switch (logDetail.type) {
+      case "mozmill-array":
+        chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail.failures);
+        break;
+
       case "mozmill":
         chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
         break;
@@ -640,6 +670,14 @@ exports.mainStandalone = function(url) {
   var app = APP = window.app = new ArbApp(window, true);
   $ui_main.bindStandaloneApp(app);
   app.standaloneLoadLogFromUrl(url);
+};
+
+exports.mainStandaloneFromData = function(writeCells, summaryKey,
+                                          detailKeyPrefix) {
+  var app = APP = window.app = new ArbApp(window, true);
+  $ui_main.bindStandaloneApp(app);
+  app.standaloneLoadLogsFromWriteCells(writeCells, summaryKey,
+                                       detailKeyPrefix);
 };
 
 }); // end define

@@ -63,7 +63,7 @@ define(
     "../hstore",
     "../databus",
     "./tinderboxer",
-    "./xpcshell-logfrob", "./mozmill-logfrob",
+    "./xpcshell-logfrob", "arbcommon/moztinder/mozmill-logfrob",
     "./mochitest-logfrob", "./reftest-logfrob",
     "arbcommon/repodefs",
     "../utils/reliahttp",
