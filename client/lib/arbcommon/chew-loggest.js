@@ -193,6 +193,7 @@ TestCaseLogBundle.prototype = {
   // identify for the UI (type: build-test-failure, ui-page-testlog.js)
   type: "loggest",
 };
+exports.TestCaseLogBundle = TestCaseLogBundle;
 
 /**
  * Holds the summary of what happened in the test run, the loggers active during

@@ -424,7 +424,12 @@ ArbApp.prototype = {
   },
 
   /**
-   * Load the contents of a log detail from
+   * Load the contents of a log from a URL.  Historically, this has taken the
+   *  form of using the actual ArbPL server, clicking on a link, and then just
+   *  wget-ing the contents of whatever the underlying URL turned out to be.
+   *  The file is going to be the same as a detail write cell from
+   *  `standaloneLoadLogsFromWriteCells`.  (That function is somewhat atypical
+   *  in that it smooshes what would normally be N separate pages into 1 page.)
    */
   standaloneLoadLogFromUrl: function(url) {
     var self = this;
@@ -437,6 +442,16 @@ ArbApp.prototype = {
         self.error = err;
         self._updateState("error");
       });
+  },
+
+  /**
+   * Load a log from a LogReaper-created time series of logs that exist outside
+   * of a unit test context.  This is to support the deuxdrop logui use-case.
+   */
+  standaloneLoadLogFromBacklog: function(msg) {
+    var sliceProcessor = new LogSliceProcessor();
+    sliceProcessor.receiveMessage(msg);
+    this._showLogPageForData(1, sliceProcessor.caseBundle, [], false, null);
   },
 
   _showLogPageForData: function(pushId, logDetail, pathNodes, autoNew,
@@ -452,7 +467,11 @@ ArbApp.prototype = {
         break;
 
       case "loggest":
-        var caseBundle = $chew_loggest.chewLoggestCase(logDetail);
+        var caseBundle;
+        if (logDetail instanceof $chew_loggest.TestCaseLogBundle)
+          caseBundle = logDetail;
+        else
+          caseBundle = $chew_loggest.chewLoggestCase(logDetail);
         $analyze_loggest.runOnPermutations(
           [
             $analyze_loggest.SummarizeAsyncTasks,
@@ -653,6 +672,93 @@ TestLogPage.prototype = {
   },
 };
 
+/**
+ * Process log slices produced by a LogReaper to create a set of loggest data
+ * that be shown on a results page.
+ */
+function LogSliceProcessor() {
+  this.transformer = null;
+  this._earliestStamp = null;
+
+  this.caseBundle = new $chew_loggest.TestCaseLogBundle(
+                      'postMessage()',
+                      {
+                        semanticIdent: 'unknown',
+                      });
+  this.fakePerms = this.caseBundle.permutations;
+
+  this.useNamesMap = null;
+}
+LogSliceProcessor.prototype = {
+  processSchema: function(schema) {
+    this.transformer = new $chew_loggest.LoggestLogTransformer();
+    this.transformer.processSchemas(schema);
+  },
+
+  /**
+   * Process the logger, abusing a fair amount of the `chew-loggest.js`
+   *  internals to enclose the logger in a fake test hierarchy.
+   */
+  processLogSlice: function(logslice) {
+    if (this._earliestStamp === null)
+      this._earliestStamp = logslice.begin;
+
+    var transformer = this.transformer;
+    var rootLogger = logslice.logFrag;
+
+    // XXX in theory we might be provided with names by the server and so we
+    //  should merge things, but for now it's known to not be the case.
+    if (this.useNamesMap)
+      rootLogger.named = this.useNamesMap;
+
+    var fakePerm = new $chew_loggest.TestCasePermutationLogBundle({});
+    transformer._uniqueNameMap = fakePerm._uniqueNameMap;
+    transformer._usingAliasMap = fakePerm._thingAliasMap;
+    transformer._connectionNameMap = fakePerm._connectionNameMap;
+    transformer._baseTime = logslice.begin;
+
+    var label = [Math.floor((logslice.begin - this._earliestStamp) / 1000) +
+      'ms - ' +
+      Math.floor((logslice.end - this._earliestStamp) / 1000) + 'ms'];
+    var fakeStep = new $chew_loggest.TestCaseStepMeta(
+                     label, { latched: {result: 'pass', boring: false} }, []);
+    fakePerm.steps.push(fakeStep);
+
+    // we are only putting one step in...
+    var rows = fakePerm._perStepPerLoggerEntries,
+        timeSpans = [[logslice.begin, logslice.end]];
+    rows.push([]);
+    rows.push([]);
+
+    var rootLoggerMeta = transformer._createNonTestLogger(
+                           rootLogger, fakePerm.loggers, fakePerm);
+    // only one family!
+    rootLoggerMeta.brandFamily('a');
+    transformer._processNonTestLogger(rootLoggerMeta, rows, timeSpans);
+
+    this.fakePerms.push(fakePerm);
+  },
+
+  receiveMessage: function(msg) {
+    if (msg.type === 'logslice') {
+      this.processLogSlice(msg.slice);
+    }
+    else if (msg.type === 'backlog') {
+      this.processSchema(msg.schema);
+      for (var i = 0; i < msg.backlog.length; i++) {
+        this.processLogSlice(msg.backlog[i]);
+      }
+    }
+    else if (msg.type === 'url') {
+      this.useNamesMap = msg.annoFrag.named;
+      remoteFetch(this, msg.url);
+    }
+    else {
+      throw new Error("Unknown message type from logger: " + msg.type);
+    }
+  },
+};
+
 var APP;
 exports.main = function main() {
   var env = $env.getEnv();
@@ -678,6 +784,42 @@ exports.mainStandaloneFromData = function(writeCells, summaryKey,
   $ui_main.bindStandaloneApp(app);
   app.standaloneLoadLogsFromWriteCells(writeCells, summaryKey,
                                        detailKeyPrefix);
+};
+
+/**
+ * Operate in a standalone mode where we get our data from some other open
+ * window that postMessage()s the data to us.  Because the window that opened
+ * us cannot possibly know when we have finished loading, we send out a
+ * broad-spectrum postMessage indicating our successful startup and desire for
+ * data.
+ *
+ * The hash in our location tells us the disambiguation code to use so that
+ * this will work for more than one tab.
+ */
+exports.mainPostalone = function() {
+  var app = APP = window.app = new ArbApp(window, true);
+  $ui_main.bindStandaloneApp(app);
+
+  var channelId = window.location.hash.substring(1);
+  window.addEventListener("message", function(event) {
+    if (event.data.id !== channelId)
+      return;
+    if (event.data.type === 'hello') {
+      event.source.postMessage(
+        { type: 'gimme', id: channelId },
+        event.origin);
+    }
+    else if (event.data.type === 'backlog') {
+      console.log("Trying to load backlog!");
+      try {
+        app.standaloneLoadLogFromBacklog(event.data);
+      }
+      catch (ex) {
+        console.error('Problem backlog processing:', ex, ex.stack);
+      }
+    }
+  }, false);
+
 };
 
 }); // end define
