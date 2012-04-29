@@ -260,6 +260,8 @@ wy.defineWidget({
       var iRow, row, iCol, entries, iLogger;
       for (iRow = 0; iRow < rows.length; iRow++) {
         row = rows[iRow];
+        // (defensive guard against bad rows)
+        if (!row) continue;
         for (iCol = 0; iCol < row.length; iCol++) {
           entries = row[iCol];
           logger = perm.loggers[iCol];

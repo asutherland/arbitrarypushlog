@@ -858,7 +858,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParenDots: ")...",
+    rParenDots: ")... ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
   }, {layer: "layer"}),
 });
 
@@ -873,7 +874,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParen: ")",
+    rParen: ") ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
     duration: wy.bind("duration", dotMilliTimeFormatter),
   }, {layer: "layer"}),
 });

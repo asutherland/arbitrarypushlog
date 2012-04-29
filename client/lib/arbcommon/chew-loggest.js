@@ -77,26 +77,28 @@ EventEntry.prototype = {
 };
 exports.EventEntry = EventEntry;
 
-function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
+function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
 }
 AsyncJobBeginEntry.prototype = {
   type: "async-begin",
 };
 exports.AsyncJobBeginEntry = AsyncJobBeginEntry;
 
-function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
+function AsyncJobEndEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
   this.duration = 0;
 }
 AsyncJobEndEntry.prototype = {
@@ -718,20 +720,28 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name_begin, ...args..., timestamp, seq]
-  _proc_asyncJobBegin: function(metaArgs, numArgs, name, entry) {
-    var args = this._transformArgs(metaArgs, entry);
+  _proc_asyncJobBegin: function(metaArgs, numArgs, name, metaTestOnlyArgs,
+                                entry) {
+    var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
+    if (entry.length > numArgs + 3)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 3);
     return new AsyncJobBeginEntry(entry[numArgs+1],
                                   entry[numArgs+1] - this._baseTime,
                                   entry[numArgs+2],
-                                  name, args);
+                                  name, args, testOnlyArgs);
   },
 
   // [name_end, ...args..., timestamp, seq]
-  _proc_asyncJobEnd: function(metaArgs, numArgs, name, entry) {
-    var args = this._transformArgs(metaArgs, entry);
+  _proc_asyncJobEnd: function(metaArgs, numArgs, name, metaTestOnlyArgs,
+                              entry) {
+    var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
+    if (entry.length > numArgs + 3)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 3);
     return new AsyncJobEndEntry(entry[numArgs+1],
                                 entry[numArgs+1] - this._baseTime,
-                                entry[numArgs+2], name, args);
+                                entry[numArgs+2], name, args, testOnlyArgs);
   },
 
   // [name, ...args..., startTimestamp, startSeq, endTimestamp, endSeq, ex]
@@ -908,6 +918,7 @@ LoggestLogTransformer.prototype = {
           testOnlyMeta = null;
           if (testOnlyEventsSchema && testOnlyEventsSchema.hasOwnProperty(key))
             testOnlyMeta = testOnlyEventsSchema[key];
+
           schemaSoup[key] = ['event', schemaDef.events[key]];
           handlers[key] = this._proc_event.bind(this,
                             schemaDef.events[key],
@@ -916,20 +927,30 @@ LoggestLogTransformer.prototype = {
         }
       }
       if ("asyncJobs" in schemaDef) {
+        var testOnlyAsyncJobsSchema = null;
+        if ("TEST_ONLY_asyncJobs" in schemaDef)
+          testOnlyAsyncJobsSchema = schemaDef.TEST_ONLY_asyncJobs;
         for (key in schemaDef.asyncJobs) {
+          testOnlyMeta = null;
+          if (testOnlyAsyncJobsSchema &&
+              testOnlyAsyncJobsSchema.hasOwnProperty(key))
+            testOnlyMeta = testOnlyAsyncJobsSchema[key];
+
           schemaSoup[key + '_begin'] = ['async job begin',
                                         schemaDef.asyncJobs[key]];
           handlers[key + '_begin'] = this._proc_asyncJobBegin.bind(
               this,
               schemaDef.asyncJobs[key],
               countArgsInSchema(schemaDef.asyncJobs[key]),
-              key);
+              key,
+              testOnlyMeta);
           schemaSoup[key + '_end'] = ['async job end', schemaDef.asyncJobs[key]];
           handlers[key + '_end'] = this._proc_asyncJobEnd.bind(
               this,
               schemaDef.asyncJobs[key],
               countArgsInSchema(schemaDef.asyncJobs[key]),
-              key);
+              key,
+              testOnlyMeta);
         }
       }
       if ("calls" in schemaDef) {

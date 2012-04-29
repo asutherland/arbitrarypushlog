@@ -686,6 +686,8 @@ function LogSliceProcessor() {
                         semanticIdent: 'unknown',
                       });
   this.fakePerms = this.caseBundle.permutations;
+  this.fakePerm = null;
+  this.timeSpans = [];
 
   this.useNamesMap = null;
 }
@@ -711,11 +713,20 @@ LogSliceProcessor.prototype = {
     if (this.useNamesMap)
       rootLogger.named = this.useNamesMap;
 
-    var fakePerm = new $chew_loggest.TestCasePermutationLogBundle({});
-    transformer._uniqueNameMap = fakePerm._uniqueNameMap;
-    transformer._usingAliasMap = fakePerm._thingAliasMap;
-    transformer._connectionNameMap = fakePerm._connectionNameMap;
-    transformer._baseTime = logslice.begin;
+    var fakePerm;
+    if (!this.fakePerm) {
+      fakePerm = this.fakePerm =
+        new $chew_loggest.TestCasePermutationLogBundle({});
+      this.fakePerms.push(this.fakePerm);
+
+      transformer._uniqueNameMap = fakePerm._uniqueNameMap;
+      transformer._usingAliasMap = fakePerm._thingAliasMap;
+      transformer._connectionNameMap = fakePerm._connectionNameMap;
+      transformer._baseTime = logslice.begin;
+    }
+    else {
+      fakePerm = this.fakePerm;
+    }
 
     var label = [Math.floor((logslice.begin - this._earliestStamp) / 1000) +
       'ms - ' +
@@ -725,18 +736,16 @@ LogSliceProcessor.prototype = {
     fakePerm.steps.push(fakeStep);
 
     // we are only putting one step in...
-    var rows = fakePerm._perStepPerLoggerEntries,
-        timeSpans = [[logslice.begin, logslice.end]];
+    var rows = fakePerm._perStepPerLoggerEntries;
     rows.push([]);
     rows.push([]);
+    this.timeSpans.push([logslice.begin, logslice.end]);
 
     var rootLoggerMeta = transformer._createNonTestLogger(
                            rootLogger, fakePerm.loggers, fakePerm);
     // only one family!
     rootLoggerMeta.brandFamily('a');
-    transformer._processNonTestLogger(rootLoggerMeta, rows, timeSpans);
-
-    this.fakePerms.push(fakePerm);
+    transformer._processNonTestLogger(rootLoggerMeta, rows, this.timeSpans);
   },
 
   receiveMessage: function(msg) {
@@ -802,6 +811,7 @@ exports.mainPostalone = function() {
 
   var channelId = window.location.hash.substring(1);
   window.addEventListener("message", function(event) {
+    //console.log("message", event.data);
     if (event.data.id !== channelId)
       return;
     if (event.data.type === 'hello') {

@@ -327,6 +327,10 @@
   #root[layer="protocol"] {
     opacity: 0.4;
   }
+  #testOnlyArgs {
+    background-color: #eee;
+    color: #555;
+  }
 }
 
 #entry-state-change {
