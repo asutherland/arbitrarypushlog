@@ -1244,7 +1244,7 @@ LoggestLogTransformer.prototype = {
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
     if (entries)
       loggerMeta._tagEntriesWithLayers();
-    if (rawLogger.died) {
+    if (entries && rawLogger.died) {
       // This is okay because this is a fallback comparator, but it would be
       //  nice if we didn't need to fall back to this.
       var useSeq = 999999999;
@@ -1474,6 +1474,8 @@ LoggestLogTransformer.prototype = {
     // XXX process run_begin/run_end here perchance...
 
     var caseBundle = new TestCaseLogBundle(fileName, rawCase);
+    if (!rawCase.kids)
+      return caseBundle;
     for (var iPerm = 0; iPerm < rawCase.kids.length; iPerm++) {
       var rawPerm = rawCase.kids[iPerm];
       if (rawPerm.loggerIdent !== 'testCasePermutation')
