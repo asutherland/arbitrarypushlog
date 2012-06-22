@@ -388,7 +388,7 @@
 
 #entry-mismatched-expectation {
   .entryLayerColorization;
-  #errLabel {
+  #errLabel, #versus {
     color: red;
   }
   #expLine {
