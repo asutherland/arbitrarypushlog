@@ -116,11 +116,22 @@ LocalLoggestChewer.prototype = {
 
   _goParse: function() {
     console.error("parsing and pre-chewing, which can include graphviz ops");
-    // Right, so the encoding is utf8 because that's what console.error appears
+    // The correct encoding to use here is tricky because different output
+    //  methods are resulting in varying in varying levels of transformation
+    //  that may or not break things.
+    // The right answers for various setups seem to be:
+    // - xpcshell loggest for gaia-email-libs-and-more: binary
+    // - node loggest for deuxdrop: utf8
+    // In the node case, the theory is that console.error is itself doing utf-8
+    //  encoding that complicates our lives.  I may have also just made the
+    //  wrong call or screwed something up at a different layer.
+    //
+    // I had the following note here previously:
+    // "Right, so the encoding is utf8 because that's what console.error appears
     //  to be using.  If we change it to binary we may sidestep some JSON
     //  parsing failures, but it's because it breaks the data in such a way
-    //  that errors may be hidden.
-    var stream = $fs.createReadStream(this._path, {encoding: 'utf8'});
+    //  that errors may be hidden."
+    var stream = $fs.createReadStream(this._path, {encoding: 'binary'});
     var loggestFrobber =
       new $loggestFrobber.LoggestFrobber(stream,
                                          "s:l:" + this._path,
