@@ -424,18 +424,25 @@ ArbApp.prototype = {
   },
 
   /**
-   * Load the contents of a log from a URL.  Historically, this has taken the
-   *  form of using the actual ArbPL server, clicking on a link, and then just
-   *  wget-ing the contents of whatever the underlying URL turned out to be.
-   *  The file is going to be the same as a detail write cell from
+   * Load the contents of a log from a URL, detect whether it is a fully formed
+   * test log or a time-windows backlog, and do the right thing.
+   *
+   * For the fully formed test log: historically, this has taken the form of
+   *  using the actual ArbPL server, clicking on a link, and then just wget-ing
+   *  the contents of whatever the underlying URL turned out to be.  The file is
+   *  going to be the same as a detail write cell from
    *  `standaloneLoadLogsFromWriteCells`.  (That function is somewhat atypical
    *  in that it smooshes what would normally be N separate pages into 1 page.)
    */
   standaloneLoadLogFromUrl: function(url) {
     var self = this;
     when($rstore.commonLoad(url, "log-fetch", url),
-      function gotLogDetail(text) {
-        self._showLogPageForData(1, JSON.parse(text), [], false, null);
+      function gotLog(text) {
+        var data = JSON.parse(text);
+        if (data.hasOwnProperty('type') && data.type === 'backlog')
+          self.standaloneLoadLogFromBacklog(data);
+        else
+          self._showLogPageForData(1, data, [], false, null);
       },
       function fetchProblem(err) {
         console.error("No go on the data.");
@@ -768,6 +775,31 @@ LogSliceProcessor.prototype = {
   },
 };
 
+/**
+ * Get a log path from the location, handling the case where the user did
+ * not properly escape things.
+ */
+exports.getLogPathFromLocation = function getLogPathFromLocation() {
+  var queryStr = window.location.search;
+  var inUrl = queryStr.substring(5);
+  if (/^\?log=/.test(queryStr)) {
+    // if there's an un-escaped question mark in there, it's raw and we can use
+    //  it verbatim!
+    // NB: I am assuming I did not do this for the heck of it and the 'right'
+    //  way breaks if we don't do this, but I am not sure and am not deeply
+    //  invested enough to run this down.
+    if (inUrl.indexOf('?') !== -1) {
+    }
+    // otherwise it's right and proper and we should right and properly process
+    else {
+      var env = $env.getEnv(window);
+      inUrl = env.log;
+    }
+    return inUrl;
+  }
+  return null;
+};
+
 var APP;
 exports.main = function main() {
   var env = $env.getEnv();
@@ -777,16 +809,26 @@ exports.main = function main() {
 };
 
 /**
- * Operate in standalone single test viewer mode; we fetch the data and cram it
+ * Operate in standalone single test viewer mode; we fetch the (pre-processed)
+ * data from a URL that is the same as what ArbPL would serve from a specific
+ * result retrieval request.  This is used by index-standalone.html.
  */
-exports.mainStandalone = function(url) {
-  var env = $env.getEnv();
+exports.mainStandalone = function(fallbackUrl) {
+  var url = exports.getLogPathFromLocation();
+  if (!url) {
+    url = fallbackUrl;
+  }
 
   var app = APP = window.app = new ArbApp(window, true);
   $ui_main.bindStandaloneApp(app);
   app.standaloneLoadLogFromUrl(url);
 };
 
+/**
+ * Operate in standalone single test view mode, consuming data from a
+ * write-cells representation, implying this directly came from the parsing
+ * layer.  This is used by `app-tb-mozmill.js`.
+ */
 exports.mainStandaloneFromData = function(writeCells, summaryKey,
                                           detailKeyPrefix) {
   var app = APP = window.app = new ArbApp(window, true);
@@ -829,7 +871,6 @@ exports.mainPostalone = function() {
       }
     }
   }, false);
-
 };
 
 }); // end define

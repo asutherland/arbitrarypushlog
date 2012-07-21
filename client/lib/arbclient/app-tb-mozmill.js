@@ -109,20 +109,8 @@ function makeNodeLookingXHRStreamForURL(url) {
 }
 
 exports.goFetchAndShow = function() {
-  var queryStr = window.location.search, inUrl;
-  if (/^\?log=/.test(queryStr)) {
-    inUrl = queryStr.substring(5);
-    // if there's an un-escaped question mark in there, it's raw and we can use
-    //  it verbatim!
-    if (inUrl.indexOf('?') !== -1) {
-    }
-    // otherwise it's right and proper and we should right and properly process
-    else {
-      var env = $env.getEnv(window);
-      inUrl = env.log;
-    }
-  }
-  else {
+  var inUrl = $app_main.getLogPathFromLocation();
+  if (!inUrl) {
     console.error(
       "You need to provide us with a tinderbox log URL in the query as 'log'.",
       "It does not need to be escaped or anything.  You can just type '?log='",
