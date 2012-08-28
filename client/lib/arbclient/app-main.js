@@ -43,6 +43,7 @@ define(
     "./rstore",
     "arbcommon/repodefs",
     "./chew-loghelper", "arbcommon/chew-loggest",
+    "arbcommon/analyze-loggest",
     "./ui-main",
     "socket.io/socket.io",
     "require",
@@ -55,6 +56,7 @@ define(
     $rstore,
     $repodefs,
     $chew_loghelper, $chew_loggest,
+    $analyze_loggest,
     $ui_main,
     $_na_socketio,
     $require,
@@ -248,10 +250,13 @@ ArbApp.prototype = {
       return;
     }
 
-    // XXX default to true for autonew because I pretty much always want it on,
-    //  although it really should be based on a local sticky preference...
+    // Default to true for autonew if they are requesting the most recent log
+    //  (for that log).  If they are clicking on an older log, they obviously
+    //  don't want it immediately replacing itself with something more recent.
+    // XXX for now, assume that if it's the most recent push, it's the most
+    //  recent log.  This holds true for full runs, but not sparse runs.
     var autonew = (typeof(loc.autonew) === "string") ? (loc.autonew === "true")
-                    : true;
+                    : this.rstore.isMostRecentPush(loc.pushid);
 
     // yes log, request it
     this._getLog(parseInt(loc.pushid), loc.log, pathNodes, autonew,
@@ -393,7 +398,38 @@ ArbApp.prototype = {
   },
 
   /**
-   * Load the contents of a log detail from
+   * Show a failure log from a set of writeCells.  This is intended for use
+   *  for display of in-browser parsed logs using the frobber infrastructure.
+   *  The frobbers produce writeCells, so this way we can just slurp the
+   *  output and show it directly.
+   *
+   * This is currently only intended/expected to work with mozmill logs.
+   */
+  standaloneLoadLogsFromWriteCells: function(writeCells, summaryKey,
+                                             detailKeyPrefix) {
+    var failures = [],
+        logDetail =  {
+          type: 'mozmill-array',
+          failures: failures,
+        },
+        overview = writeCells[summaryKey];
+
+    for (var iFail = 0; iFail < overview.failures.length; iFail++) {
+      var summaryObj = overview.failures[iFail];
+      failures.push(writeCells[detailKeyPrefix + ":" +
+                               summaryObj.uniqueName]);
+    }
+
+    this._showLogPageForData(1, logDetail, [], false, null);
+  },
+
+  /**
+   * Load the contents of a log from a URL.  Historically, this has taken the
+   *  form of using the actual ArbPL server, clicking on a link, and then just
+   *  wget-ing the contents of whatever the underlying URL turned out to be.
+   *  The file is going to be the same as a detail write cell from
+   *  `standaloneLoadLogsFromWriteCells`.  (That function is somewhat atypical
+   *  in that it smooshes what would normally be N separate pages into 1 page.)
    */
   standaloneLoadLogFromUrl: function(url) {
     var self = this;
@@ -408,16 +444,42 @@ ArbApp.prototype = {
       });
   },
 
+  /**
+   * Load a log from a LogReaper-created time series of logs that exist outside
+   * of a unit test context.  This is to support the deuxdrop logui use-case.
+   */
+  standaloneLoadLogFromBacklog: function(msg) {
+    var sliceProcessor = new LogSliceProcessor();
+    sliceProcessor.receiveMessage(msg);
+    this._showLogPageForData(1, sliceProcessor.caseBundle, [], false, null);
+  },
+
   _showLogPageForData: function(pushId, logDetail, pathNodes, autoNew,
                                 divertedFrom) {
     var chewedDetails;
     switch (logDetail.type) {
+      case "mozmill-array":
+        chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail.failures);
+        break;
+
       case "mozmill":
         chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
         break;
 
       case "loggest":
-        chewedDetails = $chew_loggest.chewLoggestCase(logDetail);
+        var caseBundle;
+        if (logDetail instanceof $chew_loggest.TestCaseLogBundle)
+          caseBundle = logDetail;
+        else
+          caseBundle = $chew_loggest.chewLoggestCase(logDetail);
+        $analyze_loggest.runOnPermutations(
+          [
+            $analyze_loggest.SummarizeAsyncTasks,
+          ],
+          caseBundle);
+        chewedDetails = {
+          failures: [caseBundle],
+        };
         break;
 
       case "filefail":
@@ -610,6 +672,102 @@ TestLogPage.prototype = {
   },
 };
 
+/**
+ * Process log slices produced by a LogReaper to create a set of loggest data
+ * that be shown on a results page.
+ */
+function LogSliceProcessor() {
+  this.transformer = null;
+  this._earliestStamp = null;
+
+  this.caseBundle = new $chew_loggest.TestCaseLogBundle(
+                      'postMessage()',
+                      {
+                        semanticIdent: 'unknown',
+                      });
+  this.fakePerms = this.caseBundle.permutations;
+  this.fakePerm = null;
+  this.timeSpans = [];
+
+  this.useNamesMap = null;
+}
+LogSliceProcessor.prototype = {
+  processSchema: function(schema) {
+    this.transformer = new $chew_loggest.LoggestLogTransformer();
+    this.transformer.processSchemas(schema);
+  },
+
+  /**
+   * Process the logger, abusing a fair amount of the `chew-loggest.js`
+   *  internals to enclose the logger in a fake test hierarchy.
+   */
+  processLogSlice: function(logslice) {
+    if (this._earliestStamp === null)
+      this._earliestStamp = logslice.begin;
+
+    var transformer = this.transformer;
+    var rootLogger = logslice.logFrag;
+
+    // XXX in theory we might be provided with names by the server and so we
+    //  should merge things, but for now it's known to not be the case.
+    if (this.useNamesMap)
+      rootLogger.named = this.useNamesMap;
+
+    var fakePerm;
+    if (!this.fakePerm) {
+      fakePerm = this.fakePerm =
+        new $chew_loggest.TestCasePermutationLogBundle({});
+      this.fakePerms.push(this.fakePerm);
+
+      transformer._uniqueNameMap = fakePerm._uniqueNameMap;
+      transformer._usingAliasMap = fakePerm._thingAliasMap;
+      transformer._connectionNameMap = fakePerm._connectionNameMap;
+      transformer._baseTime = logslice.begin;
+    }
+    else {
+      fakePerm = this.fakePerm;
+    }
+
+    var label = [Math.floor((logslice.begin - this._earliestStamp) / 1000) +
+      'ms - ' +
+      Math.floor((logslice.end - this._earliestStamp) / 1000) + 'ms'];
+    var fakeStep = new $chew_loggest.TestCaseStepMeta(
+                     label, { latched: {result: 'pass', boring: false} }, []);
+    fakePerm.steps.push(fakeStep);
+
+    // we are only putting one step in...
+    var rows = fakePerm._perStepPerLoggerEntries;
+    rows.push([]);
+    rows.push([]);
+    this.timeSpans.push([logslice.begin, logslice.end]);
+
+    var rootLoggerMeta = transformer._createNonTestLogger(
+                           rootLogger, fakePerm.loggers, fakePerm);
+    // only one family!
+    rootLoggerMeta.brandFamily('a');
+    transformer._processNonTestLogger(rootLoggerMeta, rows, this.timeSpans);
+  },
+
+  receiveMessage: function(msg) {
+    if (msg.type === 'logslice') {
+      this.processLogSlice(msg.slice);
+    }
+    else if (msg.type === 'backlog') {
+      this.processSchema(msg.schema);
+      for (var i = 0; i < msg.backlog.length; i++) {
+        this.processLogSlice(msg.backlog[i]);
+      }
+    }
+    else if (msg.type === 'url') {
+      this.useNamesMap = msg.annoFrag.named;
+      remoteFetch(this, msg.url);
+    }
+    else {
+      throw new Error("Unknown message type from logger: " + msg.type);
+    }
+  },
+};
+
 var APP;
 exports.main = function main() {
   var env = $env.getEnv();
@@ -627,6 +785,51 @@ exports.mainStandalone = function(url) {
   var app = APP = window.app = new ArbApp(window, true);
   $ui_main.bindStandaloneApp(app);
   app.standaloneLoadLogFromUrl(url);
+};
+
+exports.mainStandaloneFromData = function(writeCells, summaryKey,
+                                          detailKeyPrefix) {
+  var app = APP = window.app = new ArbApp(window, true);
+  $ui_main.bindStandaloneApp(app);
+  app.standaloneLoadLogsFromWriteCells(writeCells, summaryKey,
+                                       detailKeyPrefix);
+};
+
+/**
+ * Operate in a standalone mode where we get our data from some other open
+ * window that postMessage()s the data to us.  Because the window that opened
+ * us cannot possibly know when we have finished loading, we send out a
+ * broad-spectrum postMessage indicating our successful startup and desire for
+ * data.
+ *
+ * The hash in our location tells us the disambiguation code to use so that
+ * this will work for more than one tab.
+ */
+exports.mainPostalone = function() {
+  var app = APP = window.app = new ArbApp(window, true);
+  $ui_main.bindStandaloneApp(app);
+
+  var channelId = window.location.hash.substring(1);
+  window.addEventListener("message", function(event) {
+    //console.log("message", event.data);
+    if (event.data.id !== channelId)
+      return;
+    if (event.data.type === 'hello') {
+      event.source.postMessage(
+        { type: 'gimme', id: channelId },
+        event.origin);
+    }
+    else if (event.data.type === 'backlog') {
+      console.log("Trying to load backlog!");
+      try {
+        app.standaloneLoadLogFromBacklog(event.data);
+      }
+      catch (ex) {
+        console.error('Problem backlog processing:', ex, ex.stack);
+      }
+    }
+  }, false);
+
 };
 
 }); // end define

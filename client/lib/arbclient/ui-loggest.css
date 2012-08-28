@@ -70,27 +70,34 @@
   }
 }
 
+.prettyBox {
+  display: inline-block;
+  border-radius: 4px;
+  border: 1px solid black;
+  margin: 4px;
+  padding: 4px;
+  vertical-align: top;
+}
+.prettyBoxLabel {
+  display: block;
+  border-radius: 4px;
+  margin: -4px;
+  margin-bottom: 4px;
+  padding: 4px;
+  background-color: black;
+  color: white;
+}
+
 #test-perm {
   #whoBlock {
   }
 
-  #loggersBlock, #visBlock {
-    display: inline-block;
-    border-radius: 4px;
-    border: 1px solid black;
-    margin: 4px;
-    padding: 4px;
-    vertical-align: top;
+  #loggersBlock, #visBlock, #summaryBlock {
+    .prettyBox;
   }
 
-  #loggersLabel, #visLabel {
-    display: block;
-    border-radius: 4px;
-    margin: -4px;
-    margin-bottom: 4px;
-    padding: 4px;
-    background-color: black;
-    color: white;
+  #loggersLabel, #visLabel, #summaryLabel {
+    .prettyBoxLabel
   }
 
   #stepsLabel {
@@ -102,9 +109,19 @@
   }
 }
 
+#async-summary-item {
+  #layer {
+    display: inline-block;
+    width: 6em;
+  }
+}
+
 #test-step-group {
   #name {
     font-size: 150%;
+  }
+  #lblAt, #timestamp {
+    color: gray;
   }
 }
 
@@ -194,6 +211,12 @@
   }
   #headerRow[boring="true"] {
     opacity: 0.4;
+  }
+  #duration {
+    display: inline-block;
+    margin-left: 0.5em;
+    border-left: 1px dotted #888;
+    padding-left: 0.4em;
   }
 
   #twisty {
@@ -304,6 +327,10 @@
   #root[layer="protocol"] {
     opacity: 0.4;
   }
+  #testOnlyArgs {
+    background-color: #eee;
+    color: #555;
+  }
 }
 
 #entry-state-change {
@@ -322,6 +349,12 @@
 }
 #entry-async-job-end {
   .entryLayerColorization;
+  #duration {
+    display: inline-block;
+    font-size: 9px;
+    color: gray;
+    margin-left: 0.5em;
+  }
 }
 #entry-call {
   .entryLayerColorization;
@@ -355,7 +388,7 @@
 
 #entry-mismatched-expectation {
   .entryLayerColorization;
-  #errLabel {
+  #errLabel, #versus {
     color: red;
   }
   #expLine {

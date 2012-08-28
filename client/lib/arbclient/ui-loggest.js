@@ -73,6 +73,17 @@ define(
 var wy = exports.wy = new $wmsy.WmsyDomain({id: "ui-loggest", domain: "loggest",
                                             css: $_css});
 
+function dotMilliTimeFormatter(t) {
+  var truncated = Math.floor(t / 100);
+  var wholish = truncated.toString();
+  // make sure to get a leading zero.
+  if (truncated < 10)
+    wholish = "0" + wholish;
+  var len = wholish.length;
+  return wholish.substring(0, len - 1) + "." + wholish.substring(len - 1) +
+    "ms ";
+}
+
 wy.defineWidget({
   name: "file-failure",
   doc: "display the exception related to a test file failure",
@@ -93,6 +104,7 @@ var groupInterposer = wy.defineInterposingViewSlice({
   maker: function groupMaker(pre, post) {
     return {
       name: post.group,
+      relstamp: post.relstamp,
     };
   }
 });
@@ -132,6 +144,10 @@ wy.defineWidget({
       visBlock: {
         visLabel: "Relationship Overview:",
         vis: wy.widget({type: "topo-summary"}, "rootLoggers"),
+      },
+      summaryBlock: {
+        summaryLabel: "Async Durations by Layer",
+        asyncSummary: wy.widget({ type: "async-summary" }, wy.SELF),
       },
       /*
       diceBlock: {
@@ -177,12 +193,36 @@ wy.defineWidget({
 });
 
 wy.defineWidget({
+  name: "async-summary",
+  constraint: {
+    type: "async-summary",
+  },
+  structure: {
+    summaries: wy.vertList({ type: "async-summary-item" },
+                           wy.dictAsKeyValueObjs(['summaries', 'asyncTasks'])),
+  }
+});
+
+wy.defineWidget({
+  name: "async-summary-item",
+  constraint: {
+    type: "async-summary-item",
+  },
+  structure: {
+    layer: wy.bind('key'),
+    timestamp: wy.bind('value', dotMilliTimeFormatter),
+  },
+});
+
+wy.defineWidget({
   name: "test-step-group",
   constraint: {
     type: "test-step-group",
   },
   structure: {
     name: wy.bind("name"),
+    lblAt: " @ ",
+    timestamp: wy.bind("relstamp", dotMilliTimeFormatter),
   },
 });
 
@@ -312,6 +352,7 @@ wy.defineWidget({
     headerRow: wy.block({
       twisty: {},
       resolvedIdent: wy.stream({type: "sem-stream"}, "resolvedIdent"),
+      duration: wy.bind("durationMS", dotMilliTimeFormatter),
     }, {result: "result", boring: "boring"}),
     contentBlock: {
       logEntries: wy.vertList({type: "entry-with-timestamp"}, wy.NONE),
@@ -768,13 +809,6 @@ wy.defineWidget({
 });
 
 
-function dotMilliTimeFormatter(t) {
-  var wholish = Math.floor(t / 100).toString();
-  var len = wholish.length;
-  return wholish.substring(0, len - 1) + "." + wholish.substring(len - 1) +
-    "ms ";
-}
-
 wy.defineWidget({
   name: "entry-with-timestamp",
   constraint: {
@@ -824,7 +858,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParenDots: ")...",
+    rParenDots: ")... ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
   }, {layer: "layer"}),
 });
 
@@ -839,7 +874,9 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParen: ")",
+    rParen: ") ",
+    testOnlyArgs: wy.stream({type: "arg-stream"}, "testOnlyArgs"),
+    duration: wy.bind("duration", dotMilliTimeFormatter),
   }, {layer: "layer"}),
 });
 
@@ -924,7 +961,8 @@ wy.defineWidget({
       expName: wy.bind("expName"),
       lParen: "! (",
       args: wy.stream({type: "arg-stream"}, "expArgs"),
-      rParenVersus: ") expected but got",
+      rParen: ") ",
+      versus: "expected but got",
     }),
     actualEntry: wy.widget({type: "entry"}, "actualEntry"),
   }, {layer: "layer"}),

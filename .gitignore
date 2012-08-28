@@ -1,6 +1,7 @@
 client/built-arbclient.js
 client/built-arbclient.js.gz
 client/standalone-arbclient.js
+client/standalone-tb-arbclient.js
 client/deps/d3.js
 client/index-optimized.html.gz
 

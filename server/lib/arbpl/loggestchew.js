@@ -106,7 +106,7 @@ LocalLoggestChewer.prototype = {
               self._usePushId = 1;
             }
 
-            console.log("Decided on push id:", self._usePushId);
+            console.error("Decided on push id:", self._usePushId);
             self._goParse();
           });
       });
@@ -115,11 +115,23 @@ LocalLoggestChewer.prototype = {
   },
 
   _goParse: function() {
-    // Right, so the encoding is utf8 because that's what console.error appears
+    console.error("parsing and pre-chewing, which can include graphviz ops");
+    // The correct encoding to use here is tricky because different output
+    //  methods are resulting in varying in varying levels of transformation
+    //  that may or not break things.
+    // The right answers for various setups seem to be:
+    // - xpcshell loggest for gaia-email-libs-and-more: binary
+    // - node loggest for deuxdrop: utf8
+    // In the node case, the theory is that console.error is itself doing utf-8
+    //  encoding that complicates our lives.  I may have also just made the
+    //  wrong call or screwed something up at a different layer.
+    //
+    // I had the following note here previously:
+    // "Right, so the encoding is utf8 because that's what console.error appears
     //  to be using.  If we change it to binary we may sidestep some JSON
     //  parsing failures, but it's because it breaks the data in such a way
-    //  that errors may be hidden.
-    var stream = $fs.createReadStream(this._path, {encoding: 'utf8'});
+    //  that errors may be hidden."
+    var stream = $fs.createReadStream(this._path, {encoding: 'binary'});
     var loggestFrobber =
       new $loggestFrobber.LoggestFrobber(stream,
                                          "s:l:" + this._path,
@@ -128,7 +140,7 @@ LocalLoggestChewer.prototype = {
   },
 
   _parsed: function(setstate) {
-    console.log("all parsed, writing");
+    console.error("all parsed, writing");
     var logFileInfo = $fs.statSync(this._path);
     var logDate = new Date(logFileInfo.mtime);
     var logStamp = Math.floor(logDate.valueOf() / 1000);
@@ -192,12 +204,13 @@ LocalLoggestChewer.prototype = {
     var scrapeStamp = Date.now();
 
     var self = this;
+    console.error("issuing db write");
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
       function() {
         when(self._db.metaLogTreeScrape("Local", true,
                {timestamp: scrapeStamp, rev: 0, highPushId: self._usePushId}),
              function() {
-          console.log("write meta tree junk");
+          console.error("issuing sideband write on port", self._bridgePort);
           when(bridge.send({
                  type: "push",
                  treeName: LOCAL_TREE_NAME,
@@ -207,10 +220,11 @@ LocalLoggestChewer.prototype = {
                  revForTimestamp: 0,
                }),
             function() {
+              console.error("db and sideband written");
               self._chewDeferred.resolve(self._usePushId);
             },
             function() {
-              console.warn("problem sidebanding, continuing.");
+              console.error("problem sidebanding, continuing.");
               self._chewDeferred.resolve(self._usePushId);
             }
           );

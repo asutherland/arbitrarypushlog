@@ -343,34 +343,43 @@ function chewException(rawEx) {
  *  logHelper generated entries.
  *
  * @args[
- *   @param[rawFailure MozmillFailureInfo]
+ *   @param[rawFailure @oneof[MozmillFailureInfo @listof[MozmillFailureInfo]]]{
+ *     In the server-based mode, this will be a singular failure object.  In
+ *     the in-browser version, it's an array of them.  Since our output format
+ *     is based on plurals, it's not a big deal for us to handle both idioms.
+ *   }
  * ]
  */
-exports.chewMozmillFailure = function(rawFailure) {
+exports.chewMozmillFailure = function(rawFailures) {
+  if (!Array.isArray(rawFailures))
+    rawFailures = [rawFailures];
   var chewedDetails = {
     failures: [],
   };
   var chewedFailures = chewedDetails.failures;
 
-  var outFailure = {};
-  chewedFailures.push(outFailure);
+  for (var iFail = 0; iFail < rawFailures.length; iFail++) {
+    var rawFailure = rawFailures[iFail],
+        outFailure = {};
+    chewedFailures.push(outFailure);
 
-  for (var key in rawFailure) {
-    if (key === "failureContext") {
-      var rawContext = rawFailure.failureContext;
-      var outContext = outFailure.failureContext = {};
-      for (var subkey in rawContext) {
-        if (subkey === "events" || subkey === "preEvents")
-          outContext[subkey] = chewEvents(rawContext[subkey]);
-        else
-          outContext[subkey] = rawContext[subkey];
+    for (var key in rawFailure) {
+      if (key === "failureContext") {
+        var rawContext = rawFailure.failureContext;
+        var outContext = outFailure.failureContext = {};
+        for (var subkey in rawContext) {
+          if (subkey === "events" || subkey === "preEvents")
+            outContext[subkey] = chewEvents(rawContext[subkey]);
+          else
+            outContext[subkey] = rawContext[subkey];
+        }
       }
-    }
-    else if (key === "exception") {
-      outFailure[key] = chewException(rawFailure[key]);
-    }
-    else {
-      outFailure[key] = rawFailure[key];
+      else if (key === "exception") {
+        outFailure[key] = chewException(rawFailure[key]);
+      }
+      else {
+        outFailure[key] = rawFailure[key];
+      }
     }
   }
 

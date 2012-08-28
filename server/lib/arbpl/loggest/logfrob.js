@@ -147,6 +147,7 @@ Frobber.prototype = {
           testName: '$FILE',
           uniqueName: fileFailure.fileName + '-$FILE',
         };
+        this.overview.failureIndicated = true;
         this.overview.failures.push(summaryObj);
         this.writeCells[this.detailKeyPrefix + ":" + summaryObj.uniqueName] = {
           type: "filefail",

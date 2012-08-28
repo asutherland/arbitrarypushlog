@@ -374,12 +374,27 @@ parser.command('frob-mozmill')
   })
   .callback(function(options) {
     $require(
-      ["arbpl/mozmill-logfrob"],
+      ["arbcommon/moztinder/mozmill-logfrob"],
       function($frobber) {
         $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
       }
     );
   });
+
+parser.command('frob-tbimap')
+  .help("Debugging: Process a Thunderbird IMAP log and dump its output to stdout.")
+  .opts({
+    logfile: OPT_LOGFILE,
+  })
+  .callback(function(options) {
+    $require(
+      ["arbcommon/moztinder/mozmill-logfrob"],
+      function($frobber) {
+        $frobber.dummyTestRun($hackjobs.gimmeStreamForThing(options.logfile));
+      }
+    );
+  });
+
 
 parser.command('frob-loggest')
   .help("Debugging: Process a loggest log and dump its output to stdout.")

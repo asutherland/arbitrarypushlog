@@ -77,26 +77,29 @@ EventEntry.prototype = {
 };
 exports.EventEntry = EventEntry;
 
-function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args) {
+function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
 }
 AsyncJobBeginEntry.prototype = {
   type: "async-begin",
 };
 exports.AsyncJobBeginEntry = AsyncJobBeginEntry;
 
-function AsyncJobEndEntry(timestamp, relstamp, seq, name, args) {
+function AsyncJobEndEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.testOnlyArgs = testOnlyArgs;
+  this.duration = 0;
 }
 AsyncJobEndEntry.prototype = {
   type: "async-end",
@@ -192,6 +195,7 @@ TestCaseLogBundle.prototype = {
   // identify for the UI (type: build-test-failure, ui-page-testlog.js)
   type: "loggest",
 };
+exports.TestCaseLogBundle = TestCaseLogBundle;
 
 /**
  * Holds the summary of what happened in the test run, the loggers active during
@@ -204,6 +208,9 @@ TestCaseLogBundle.prototype = {
 function TestCasePermutationLogBundle(raw, prechewed) {
   this._raw = raw;
   this.prechewed = prechewed || {};
+
+  // mount point for analyzers
+  this.summaries = null;
 
   this._uniqueNameMap = {};
   /**
@@ -321,6 +328,24 @@ TestCasePermutationLogBundle.prototype = {
     return rows;
   },
 
+  /**
+   * Get all of the entries that happened in a step flattened into a single
+   *  list.
+   */
+  getAllEntriesForStep: function(step) {
+    var rows = this.getRowsForStep(step), events = [];
+    for (var iRow = 0; iRow < rows.length; iRow++) {
+      var row = rows[iRow];
+      for (var iCol = 0; iCol < row.length; iCol++) {
+        var rowEvents = row[iCol];
+        if (rowEvents)
+          events = events.concat(rowEvents);
+      }
+    }
+
+    return events;
+  },
+
   stepHasErrors: function(step) {
     var rows = this.getRowsForStep(step);
     var iRow, row, iCol, entries, iEntry, entry;
@@ -346,7 +371,10 @@ TestCasePermutationLogBundle.prototype = {
 function TestCaseStepMeta(resolvedIdent, raw, entries) {
   this.resolvedIdent = resolvedIdent;
   this._raw = raw;
-  /** The step functions 's entries; not the matrix entries. */
+
+  this.summaries = null;
+
+  /** The step functions's entries; not the matrix entries. */
   this.entries = entries;
 
   // result may not be present...
@@ -370,6 +398,21 @@ function TestCaseStepMeta(resolvedIdent, raw, entries) {
 }
 exports.TestCaseStepMeta = TestCaseStepMeta;
 TestCaseStepMeta.prototype = {
+  /**
+   * The duration of this step's execution in milliseconds.
+   */
+  get durationMS() {
+    if (!this.entries || !this.entries.length)
+      return 0;
+    return this.entries[this.entries.length - 1].relstamp -
+           this.entries[0].relstamp;
+  },
+
+  get relstamp() {
+    if (!this.entries || !this.entries.length)
+      return 0;
+    return this.entries[0].relstamp;
+  },
 };
 
 
@@ -445,7 +488,9 @@ LoggerMeta.prototype = {
       this.kids[i].brandFamily(name);
     }
     for (i = 0; i < this.things.length; i++) {
-      this.things[i].family = name;
+      // things may have a hardcoded family
+      if (!this.things[i].family)
+        this.things[i].family = name;
     }
   },
 
@@ -484,7 +529,7 @@ var UNRESOLVED_THING_RAW = {};
 function ThingMeta(raw) {
   this.raw = raw;
   this.name = raw.name;
-  this.family = "";
+  this.family = raw.hasOwnProperty('family') ? raw.family : '';
   this.distinctAliases = [];
   if (raw.dname)
     this.distinctAliases.push(raw.dname);
@@ -554,11 +599,13 @@ function LoggestLogTransformer() {
   this._schemaHandlerMaps = {};
   /**
    * @dictof[
-   *   @key[schemaName String]
+   *   @key[schemaName String]{
+   *     The name of the schema, which usually corresponds to a single
+   *      implementation class (but could be used by multiple classes.)
+   *   }
    *   @value[@dict[
    *     @key[layerMapping LayerMapping]
    *     @key[hasTopBilling Boolean]
-   *     @key[netMap]
    * ]{
    *   Map schema names to layer labeling mappings. (ex: app, protocol, crypto)
    * }
@@ -673,20 +720,28 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name_begin, ...args..., timestamp, seq]
-  _proc_asyncJobBegin: function(metaArgs, numArgs, name, entry) {
-    var args = this._transformArgs(metaArgs, entry);
+  _proc_asyncJobBegin: function(metaArgs, numArgs, name, metaTestOnlyArgs,
+                                entry) {
+    var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
+    if (entry.length > numArgs + 3)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 3);
     return new AsyncJobBeginEntry(entry[numArgs+1],
                                   entry[numArgs+1] - this._baseTime,
                                   entry[numArgs+2],
-                                  name, args);
+                                  name, args, testOnlyArgs);
   },
 
   // [name_end, ...args..., timestamp, seq]
-  _proc_asyncJobEnd: function(metaArgs, numArgs, name, entry) {
-    var args = this._transformArgs(metaArgs, entry);
+  _proc_asyncJobEnd: function(metaArgs, numArgs, name, metaTestOnlyArgs,
+                              entry) {
+    var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
+    if (entry.length > numArgs + 3)
+      testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
+                                         numArgs + 3);
     return new AsyncJobEndEntry(entry[numArgs+1],
                                 entry[numArgs+1] - this._baseTime,
-                                entry[numArgs+2], name, args);
+                                entry[numArgs+2], name, args, testOnlyArgs);
   },
 
   // [name, ...args..., startTimestamp, startSeq, endTimestamp, endSeq, ex]
@@ -863,6 +918,7 @@ LoggestLogTransformer.prototype = {
           testOnlyMeta = null;
           if (testOnlyEventsSchema && testOnlyEventsSchema.hasOwnProperty(key))
             testOnlyMeta = testOnlyEventsSchema[key];
+
           schemaSoup[key] = ['event', schemaDef.events[key]];
           handlers[key] = this._proc_event.bind(this,
                             schemaDef.events[key],
@@ -871,20 +927,30 @@ LoggestLogTransformer.prototype = {
         }
       }
       if ("asyncJobs" in schemaDef) {
+        var testOnlyAsyncJobsSchema = null;
+        if ("TEST_ONLY_asyncJobs" in schemaDef)
+          testOnlyAsyncJobsSchema = schemaDef.TEST_ONLY_asyncJobs;
         for (key in schemaDef.asyncJobs) {
+          testOnlyMeta = null;
+          if (testOnlyAsyncJobsSchema &&
+              testOnlyAsyncJobsSchema.hasOwnProperty(key))
+            testOnlyMeta = testOnlyAsyncJobsSchema[key];
+
           schemaSoup[key + '_begin'] = ['async job begin',
                                         schemaDef.asyncJobs[key]];
           handlers[key + '_begin'] = this._proc_asyncJobBegin.bind(
               this,
               schemaDef.asyncJobs[key],
               countArgsInSchema(schemaDef.asyncJobs[key]),
-              key);
+              key,
+              testOnlyMeta);
           schemaSoup[key + '_end'] = ['async job end', schemaDef.asyncJobs[key]];
           handlers[key + '_end'] = this._proc_asyncJobEnd.bind(
               this,
               schemaDef.asyncJobs[key],
               countArgsInSchema(schemaDef.asyncJobs[key]),
-              key);
+              key,
+              testOnlyMeta);
         }
       }
       if ("calls" in schemaDef) {
@@ -1176,7 +1242,9 @@ LoggestLogTransformer.prototype = {
         schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
     var entries = loggerMeta.entries =
       this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
-    if (rawLogger.died) {
+    if (entries)
+      loggerMeta._tagEntriesWithLayers();
+    if (entries && rawLogger.died) {
       // This is okay because this is a fallback comparator, but it would be
       //  nice if we didn't need to fall back to this.
       var useSeq = 999999999;
@@ -1406,6 +1474,8 @@ LoggestLogTransformer.prototype = {
     // XXX process run_begin/run_end here perchance...
 
     var caseBundle = new TestCaseLogBundle(fileName, rawCase);
+    if (!rawCase.kids)
+      return caseBundle;
     for (var iPerm = 0; iPerm < rawCase.kids.length; iPerm++) {
       var rawPerm = rawCase.kids[iPerm];
       if (rawPerm.loggerIdent !== 'testCasePermutation')
@@ -1430,10 +1500,7 @@ exports.chewLoggestCase = function chewLoggestCase(logDetail) {
   var caseBundle = transformer.processTestCase(logDetail.fileName,
                                                logDetail.log,
                                                logDetail.prechewed);
-  // temporary rep for consistency with mozmill
-  return {
-    failures: [caseBundle],
-  };
+  return caseBundle;
 };
 
 }); // end define
