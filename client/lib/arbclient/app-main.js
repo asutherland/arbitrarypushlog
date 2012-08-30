@@ -435,7 +435,11 @@ ArbApp.prototype = {
     var self = this;
     when($rstore.commonLoad(url, "log-fetch", url),
       function gotLogDetail(text) {
-        self._showLogPageForData(1, JSON.parse(text), [], false, null);
+        var data = JSON.parse(text);
+        if (data.hasOwnProperty('type') && data.type === 'backlog')
+          self.standaloneLoadLogFromBacklog(data);
+        else
+          self._showLogPageForData(1, data, [], false, null);
       },
       function fetchProblem(err) {
         console.error("No go on the data.");
@@ -779,8 +783,12 @@ exports.main = function main() {
 /**
  * Operate in standalone single test viewer mode; we fetch the data and cram it
  */
-exports.mainStandalone = function(url) {
-  var env = $env.getEnv();
+exports.mainStandalone = function(defaultUrl) {
+  var env = $env.getEnv(), url;
+  if (env.hasOwnProperty('log'))
+    url = env.log;
+  else
+    url = defaultUrl;
 
   var app = APP = window.app = new ArbApp(window, true);
   $ui_main.bindStandaloneApp(app);
