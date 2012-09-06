@@ -36,18 +36,19 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- * HBase interaction.
+ * Database abstraction using SQLite, previously using hbase, but hbase would
+ * betray us regularly, so... no more!
  **/
 
 define(
   [
-    "thrift", "hbase-thrift/Hbase", "hbase-thrift/Hbase_types",
+    "sqlite3",
     //"jsonlint",
     "q",
     "exports"
   ],
   function(
-    $thrift, $thriftHbase, $baseTypes,
+    $sqlite3,
     //$jsonlint,
     $Q,
     exports
@@ -55,6 +56,8 @@ define(
 var when = $Q.when;
 
 var TABLE_PUSH_FOCUSED = "arbpl_pushy";
+
+const CUR_SCHEMA_VERSION = 1;
 
 // mozilla-central is currently at ~20000
 var BIG_PUSH_NUMBER = 9999999;
@@ -260,62 +263,37 @@ function HStore() {
    */
   this._dbOpsMap = {};
 
-  this._ensuringUnderway = false;
   this.bootstrapped = false;
-  this._iNextTableSchema = 0;
-
   this._bootstrapDeferred = $Q.defer();
 
-  this._connect();
+  this._openDB();
 }
 HStore.prototype = {
-  _connect: function() {
-    console.log("opening thrift connection");
-    this.state = "connecting";
+  _openDB: function() {
+    var self = this;
+    console.log("opening database");
+    this._db = $sqlite.Database('arbpl.sqlite', function(err) {
+      if (err) {
+        console.error('Database setup problem!', ex, '\n', ex.stack);
+        process.exit(1);
+      }
 
-    this._connection = $thrift.createConnection("localhost", 9090);
-    this._client = $thrift.createClient($thriftHbase, this._connection);
-
-    this._connection.on("connect", this._onConnect.bind(this));
-    this._connection.on("close", this._onClose.bind(this));
-    this._connection.on("timeout", this._onTimeout.bind(this));
-    this._connection.on("error", this._errConnection.bind(this));
-  },
-
-  /**
-   * re-establish our connection on-demand.
-   */
-  get client() {
-    if (!this._client)
-      this._connect();
-    return this._client;
+      self._db.run('pragma schema_version', function(err, row) {
+        if (row.schema_version !== CUR_SCHEMA_VERSION) {
+          self._createSchema();
+          return;
+        }
+        self.bootstrapped = true;
+        self._bootstrapDeferred.resolve();
+      });
+    });
   },
 
-  _onConnect: function() {
-    this.state = "connected";
-    //this._ensureSchema();
-  },
-  _onClose: function() {
-    console.warn("thrift connection closed!");
-    this._connection = null;
-    this._client = null;
-    this._ensuringUnderway = false;
-  },
-  _onTimeout: function() {
-    console.warn("thrift connection timed out!");
-    this._connection = null;
-    this._client = null;
-    this._ensuringUnderway = false;
-  },
-  _errConnection: function(err) {
-    console.error(err, err.stack);
-    this._connection = null;
-    this._client = null;
-    this._ensuringUnderway = false;
-  },
-
-  _ensureSchema: function() {
-    console.log("_ensureSchema", this._iNextTableSchema);
+  _createSchema: function() {
+    console.log("_createSchema");
+    var db = this._db;
+    this._db.serialize(function() {
+    });
     var schema = SCHEMA_TABLES[this._iNextTableSchema++];
     var self = this;
     this.client.createTable(
