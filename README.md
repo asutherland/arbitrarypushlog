@@ -42,7 +42,8 @@ package.json to know what shows up.
 - q, q-http: promises stuff
 - carrier: simple line-reader stream filter
 - express/connect: web serving framework, used very shallowly.
-- thrift: for hbase talkin'
+- sqlite3: For database storage.  You might need to "npm install -g node-gyp"
+  for this bit to install correctly.
 - nomnom: option parsing
 - socket.io: realtime updates
 
@@ -64,46 +65,4 @@ If using the "loggest" processing functionality for deuxdrop, you need:
 For development:
 - node-dev: Auto-restart helper; the webserve scripts use this if present on
    the path.
-
-
-## Server HBase Setup
-
-If you don't have hbase already, you might want to consider using the cloudera
-distribution.  Instructions on how to set things up using a package manager for
-linux distros can be found here:
-https://ccp.cloudera.com/display/CDHDOC/HBase+Installation
-
-You will want to pay particular attention to the file limits stuff, don't skip
-that.  You will want the hadoop-hbase-master configuration.  You will also want
-hadoop-hbase-thrift.  You will want to start both and make sure that thrift
-is operating in framed mode bound to your loopback address.  For me on Fedora,
-I had to modify /etc/init.d/hadoop-hbase-thrift so that its start line looked
-like this:
-
-    su -s /bin/sh hbase -c "${DAEMON_SCRIPT} start thrift -f -b 127.0.0.1" 
-
-Without that, it binds to the wrong address and does not operate in framed mode
-and nothing works and it's all very sad.
-
-
-There is an example hbase-site.xml file in server (example-hbase-site.xml)
-which has some reasonable settings to use to make sure your hbase server does
-not explode if you give it a small heap.  (Heap size is set in hbase-env.sh.)
-
-You will strongly want to consider modifying hbase-env.sh to set the heap used
-by Hbase.  arbpl.visophyte.org is currently using a 400m heap for the master
-and 200m for the thrift daemon.  This is hackily accomplished by modifying
-/usr/lib/hbase/bin/hbase to include the following block where it currently sets
-JAVA_HEAP_MAX.
-
-    # check envvars which might override default args
-    if [ "$HBASE_HEAPSIZE" != "" ]; then
-      #echo "run with heapsize $HBASE_HEAPSIZE"
-      if [ "$COMMAND" != "thrift" ]; then
-        JAVA_HEAP_MAX="-Xmx""$HBASE_HEAPSIZE""m"
-      else
-        JAVA_HEAP_MAX="-Xmx200m"
-      fi
-      #echo $JAVA_HEAP_MAX
-    fi
 
