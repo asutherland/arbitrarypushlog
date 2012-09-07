@@ -298,6 +298,8 @@ HStore.prototype = {
     console.log("_createSchema");
     var db = this._db, self = this;
     this._db.serialize(function() {
+      db.run('PRAGMA page_size = 32768');
+
       function errCallback(err) {
         if (err)
           console.error("Error in DB creation:", err);

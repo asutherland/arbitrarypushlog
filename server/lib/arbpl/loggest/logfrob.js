@@ -109,6 +109,9 @@ function Frobber(stream, summaryKey, detailKeyPrefix, callback) {
 
   this.totalPending = 0;
   this.fileAllRead = false;
+
+  this._prechewActive = false;
+  this._pendingPrechews = [];
 }
 Frobber.prototype = {
   _gobbleJsonFromLines: function(dstr) {
@@ -137,11 +140,11 @@ Frobber.prototype = {
         process.exit(1);
       }
       // top level is 'schema', 'log' whose 'kids' are testcase loggers
-      var schema = rawObj.schema;
+      var schema = rawObj.schema, summaryObj;
       // -- file require() failure
       if (rawObj.hasOwnProperty("fileFailure")) {
         var fileFailure = rawObj.fileFailure;
-        var summaryObj = {
+        summaryObj = {
           fileName: fileFailure.fileName,
           moduleName: fileFailure.moduleName,
           testName: '$FILE',
@@ -167,7 +170,7 @@ Frobber.prototype = {
         var testCaseLog = definerLog.kids[iKid];
         var testUniqueName = definerLog.semanticIdent + "-" +
                                testCaseLog.semanticIdent;
-        var summaryObj = {
+        summaryObj = {
           fileName: definerLog.semanticIdent,
           testName: testCaseLog.semanticIdent,
           uniqueName: testUniqueName,
@@ -219,6 +222,28 @@ Frobber.prototype = {
       this.stream.pause();
     }
   },
+  /**
+   * Support for pipelining our prechew logic rather than doing them all in
+   * parallel.
+   */
+  _actuallyPerformNextPrechew: function() {
+    if (!this._pendingPrechews.length) {
+      this._prechewActive = false;
+      return;
+    }
+    this._prechewActive = true;
+    var todo = this._pendingPrechews.shift();
+    var self = this;
+    when(this._topoLayoutPrechew(todo.perm),
+         function(rval) {
+           todo.deferred.resolve(rval);
+           self._actuallyPerformNextPrechew();
+         },
+         function(err) {
+           todo.deferred.reject(err);
+           self._actuallyPerformNextPrechew();
+         });
+  },
   _prechewCase: function(schema, fileName, testCaseLog, detailObj) {
     // XXX we should be able to reuse the transformer if we didn't screw up
     var transformer = new $chew_loggest.LoggestLogTransformer();
@@ -227,9 +252,13 @@ Frobber.prototype = {
     var permPrechews = [];
 
     for (var iPerm = 0; iPerm < caseBundle.permutations.length; iPerm++) {
-      permPrechews.push(
-        this._topoLayoutPrechew(caseBundle.permutations[iPerm]));
+      var perm = caseBundle.permutations[iPerm],
+          todo = { deferred: $Q.defer(), perm: perm };
+      this._pendingPrechews.push(todo);
+      permPrechews.push(todo.deferred.promise);
     }
+    if (!this._prechewActive)
+      this._actuallyPerformNextPrechew();
 
     return when($Q.all(permPrechews), function (prechewed) {
                   detailObj.prechewed = prechewed;
@@ -244,6 +273,12 @@ Frobber.prototype = {
     // note: I am cribbing some stuff from some of my old school python
     //  visophyte implementation.  it seemed reasonable at the time, but
     //  may not be reasonable today.
+
+    // no nodes means no need to graph.
+    if (!topo.nodes.length) {
+      deferred.resolve({});
+      return deferred.promise;
+    }
 
     // -- graph!
     var g = $graphviz.graph("G");
@@ -316,7 +351,7 @@ Frobber.prototype = {
     //g.output({type: 'png', use: 'neato'}, '/tmp/foo.png');
 
     when(dDot.promise, function(dotstr) {
-      //console.log("DOTSTR", dotstr.toString());
+      // console.log("DOTSTR", dotstr.toString());
       $graphviz.parse(dotstr, function callback(parsed) {
         // -- extract the layout
         var layoutData = {"BB": parsed.get("bb")};
@@ -333,6 +368,10 @@ Frobber.prototype = {
         console.error("PARSE PROBLEM", code, out, err);
         deferred.reject(err);
       });
+    },
+    function(err) {
+      console.error('INITIAL DOT GENERATION PROBLEM', err);
+      deferred.reject(err);
     });
 
     return deferred.promise;
