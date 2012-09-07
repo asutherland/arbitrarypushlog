@@ -48,7 +48,7 @@ define(
     "exports"
   ],
   function(
-    $sqlite3,
+    $sqlite,
     //$jsonlint,
     $Q,
     exports
@@ -121,7 +121,7 @@ function transformPushId(pushId) {
 var TDEF_PUSH_FOCUSED = {
   name: TABLE_PUSH_FOCUSED,
   columnFamilies: [
-    new $baseTypes.ColumnDescriptor({
+    {
       name: "s",
       maxVersions: 1,
       // it does not like compression: RECORD and the javadoc says the option
@@ -129,8 +129,8 @@ var TDEF_PUSH_FOCUSED = {
       //  in favor of...
       bloomFilterType: "ROW",
       blockCacheEnabled: 1,
-    }),
-    new $baseTypes.ColumnDescriptor({
+    },
+    {
       name: "d",
       maxVersions: 1,
       // it does not like compression: RECORD and the javadoc says the option
@@ -138,7 +138,7 @@ var TDEF_PUSH_FOCUSED = {
       //  in favor of...
       bloomFilterType: "ROW",
       blockCacheEnabled: 1,
-    }),
+    },
   ]
 };
 
@@ -185,12 +185,12 @@ var TABLE_META_STATE = "arbpl_meta";
 var TDEF_META_STATE = {
   name: TABLE_META_STATE,
   columnFamilies: [
-    new $baseTypes.ColumnDescriptor({
+    {
       name: "m",
       // Keep multiple versions around for easier debugging since it turns out
       //  I am not doing a great job of hooking up a logging solution.
       maxVersions: 60,
-    }),
+    },
   ],
 };
 
@@ -272,13 +272,13 @@ HStore.prototype = {
   _openDB: function() {
     var self = this;
     console.log("opening database");
-    this._db = $sqlite.Database('arbpl.sqlite', function(err) {
+    this._db = new $sqlite.Database('arbpl.sqlite', function(err) {
       if (err) {
         console.error('Database setup problem!', ex, '\n', ex.stack);
         process.exit(1);
       }
 
-      self._db.run('pragma schema_version', function(err, row) {
+      self._db.get('pragma schema_version', function(err, row) {
         if (row.schema_version !== CUR_SCHEMA_VERSION) {
           self._createSchema();
           return;
@@ -287,40 +287,31 @@ HStore.prototype = {
         self._bootstrapDeferred.resolve();
       });
     });
+    if (false) {
+      this._db.on('trace', function(sql) {
+        console.log('SQL:', sql);
+      });
+    }
   },
 
   _createSchema: function() {
     console.log("_createSchema");
-    var db = this._db;
+    var db = this._db, self = this;
     this._db.serialize(function() {
+      function errCallback(err) {
+        if (err)
+          console.error("Error in DB creation:", err);
+      }
+      for (var i = 0; i < SCHEMA_TABLES.length; i++) {
+        var schema = SCHEMA_TABLES[i];
+        self._hb_createTable(schema.name, schema.columnFamilies, errCallback);
+      }
+      db.run('pragma schema_version = ' + CUR_SCHEMA_VERSION);
+      self._bootstrapDeferred.resolve();
     });
-    var schema = SCHEMA_TABLES[this._iNextTableSchema++];
-    var self = this;
-    this.client.createTable(
-      schema.name,
-      schema.columnFamilies,
-      function(err) {
-        console.log("_ensureSchema callback", err);
-        // We don't care if there is an error right now; we are striving for
-        //  idempotency and this gets us that.
-
-        // If we are all done, resolve.
-        if (self._iNextTableSchema >= SCHEMA_TABLES.length) {
-          console.log("resolving db bootstrap");
-          self._bootstrapDeferred.resolve();
-          return;
-        }
-
-        self._ensureSchema();
-      });
   },
 
   bootstrap: function() {
-    if (!this.bootstrapped && !this._ensuringUnderway) {
-      this._iNextTableSchema = 0;
-      this._ensureSchema();
-      this._ensuringUnderway = true;
-    }
     return this._bootstrapDeferred.promise;
   },
 
@@ -436,6 +427,100 @@ HStore.prototype = {
   },
 
   //////////////////////////////////////////////////////////////////////////////
+  // Seem-like HBase layer:
+  //
+  // We're being super-lazy about using prepared statements because all of this
+  // code is not remotely performance sensitive.
+
+  _hb_createTable: function(name, columnFamilyDefs, errCallback) {
+    // the primary key creates the index we use for lookup
+    this._db.run(
+      "CREATE TABLE " + name + "(row TEXT, key TEXT, value TEXT, " +
+        "PRIMARY KEY(row ASC, key ASC))", errCallback);
+  },
+
+  _hb_scan1: function(table, firstRow, lastRow, columnFamilies, callback) {
+    var self = this;
+    // issue a limit 1 read to find out the row of interest, then do a row
+    // fetch to follow-up.
+    this._db.get(
+      "SELECT row, key FROM " + table + " WHERE row >= $firstRow AND " +
+        "row <= $lastRow ORDER BY row ASC, key ASC LIMIT 1",
+      { $firstRow: firstRow, $lastRow: lastRow },
+      function(err, rowObj) {
+        if (err)
+          console.error('scan error', err);
+        if (err || !rowObj) {
+console.log('empty scan result?', rowObj);
+          callback(err, []);
+          return;
+        }
+console.log(' scan says: ', rowObj.row, '!!!', rowObj.key);
+        self._hb_getRowWithColumns(table, rowObj.row, columnFamilies,
+                                   callback);
+      });
+  },
+
+  _hb_mutateRow: function(table, row, mutations, callback) {
+    var db = this._db;
+    // serialization is not really required for these semantics, but it does
+    // avoid contention since these are all writes.
+    db.serialize(function() {
+      function doneso(err) {
+        if (err)
+          console.error('mutation error', err);
+        callback();
+      }
+      function errcheck(err) {
+        if (err)
+          console.error('mutation error', err);
+      }
+      for (var i = 0; i < mutations.length; i++) {
+        var mutation = mutations[i];
+        db.run(
+          "REPLACE INTO " + table + "(row, key, value) VALUES " +
+            "($row, $key, $value)",
+          { $row: row, $key: mutation.column, $value: mutation.value },
+          (i === mutations.length - 1) ? doneso : errcheck);
+      }
+    });
+  },
+  _hb_getRowWithColumns: function(table, rowId, columnFamilies, callback) {
+    var sql = "SELECT key, value FROM " + table + " WHERE row = $row AND " +
+      "substr(key, 1, 1) = $cfname";
+    this._db.all(
+      // we only ever specify one column family...
+      sql, { $row: rowId, $cfname: columnFamilies[0] },
+      function(err, rows) {
+        if (err)
+          console.error('getRowWithColumns error', err, 'on table',
+                        table, 'rowId:', rowId);
+        var colsOut = {}, dataOut = { columns: colsOut }, rowsOut = [dataOut];
+        for (var i = 0; i < rows.length; i++) {
+          var row = rows[i];
+          colsOut[row.key] = { value: row.value };
+        }
+        callback(err, rowsOut);
+      });
+  },
+
+  _hb_get: function(table, row, key, callback) {
+    this._db.get(
+      "SELECT value FROM " + table + " WHERE row = $row AND " +
+        "key = $key",
+      { $row: row, $key: key },
+      function(err, row) {
+        if (err)
+          console.error('get error', err, 'row', row, 'key', key);
+        var cells = [];
+        if (row !== undefined)
+          cells.push({ value: row.value });
+        callback(err, cells);
+      });
+  },
+
+
+  //////////////////////////////////////////////////////////////////////////////
   // Meta DB Ops
 
   /**
@@ -473,37 +558,25 @@ HStore.prototype = {
     //console.log("getMostRecentKnownPush...", treeId);
     var deferred = $Q.defer();
     var self = this;
-    this.client.scannerOpenWithStop(
+    this._hb_scan1(
       TABLE_PUSH_FOCUSED,
       treeId + "," + ZEROES,
       // we need to specify the stop row to stop from reading into the next
       //  tree's data!
       treeId + "," + NINES,
       ["s"],
-      function(err, scannerId) {
-        if (err) {
-          console.error("Failed to get scanner for most recent on tree",
-                        treeId);
+      function(err, rowResults) {
+        if (err)
           deferred.reject(err);
-        }
-        else {
-          self.client.scannerGetList(
-            scannerId, /* count */ 1,
-            function(err, rowResults) {
-              self.client.scannerClose(scannerId);
-              if (err)
-                deferred.reject(err);
-              else
-                deferred.resolve(rowResults);
-            });
-        }
+        else
+          deferred.resolve(rowResults);
       });
     return deferred.promise;
   },
 
   _getPushInfo: function(treeId, pushId) {
     var deferred = $Q.defer();
-    this.client.getRowWithColumns(
+    this._hb_getRowWithColumns(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       ["s"],
       function(err, rowResults) {
@@ -521,7 +594,7 @@ HStore.prototype = {
 
   _getPushLogDetail: function(treeId, pushId, buildId) {
     var deferred = $Q.defer();
-    this.client.get(
+    this._hb_get(
       TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
       "d:l:" + buildId,
       function(err, cells) {
@@ -601,15 +674,15 @@ HStore.prototype = {
     var mutations = [];
     for (var key in keysAndValues) {
       var value = keysAndValues[key];
-      mutations.push(new $baseTypes.Mutation({
+      mutations.push({
         column: key,
         value: JSON.stringify(value),
-      }));
+      });
     }
 
     // if there are no mutations, do not bother issuing a write.
     if (mutations.length) {
-      this.client.mutateRow(
+      this._hb_mutateRow(
         TABLE_PUSH_FOCUSED, treeId + "," + transformPushId(pushId),
         mutations,
         function(err) {
@@ -633,7 +706,7 @@ HStore.prototype = {
   _getMetaRow: function(rowId) {
     var deferred = $Q.defer();
     var self = this;
-    this.client.getRowWithColumns(
+    this._hb_getRowWithColumns(
       TABLE_META_STATE, rowId,
       ["m"],
       function(err, rowResults) {
@@ -653,15 +726,15 @@ HStore.prototype = {
     var mutations = [];
     for (var key in keysAndValues) {
       var value = keysAndValues[key];
-      mutations.push(new $baseTypes.Mutation({
+      mutations.push({
         column: key,
         value: JSON.stringify(value),
-      }));
+      });
     }
 
     // if there are no mutations, do not bother issuing a write.
     if (mutations.length) {
-      this.client.mutateRow(
+      this._hb_mutateRow(
         TABLE_META_STATE, rowId,
         mutations,
         function(err) {
@@ -681,6 +754,11 @@ HStore.prototype = {
     return deferred.promise;
   }
 };
-exports.HStore = HStore;
 
+var daStore = null;
+exports.HStore = function() {
+  if (!daStore)
+    daStore = new HStore();
+  return daStore;
+}
 }); // end define

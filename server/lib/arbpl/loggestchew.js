@@ -116,22 +116,14 @@ LocalLoggestChewer.prototype = {
 
   _goParse: function() {
     console.error("parsing and pre-chewing, which can include graphviz ops");
-    // The correct encoding to use here is tricky because different output
-    //  methods are resulting in varying in varying levels of transformation
-    //  that may or not break things.
-    // The right answers for various setups seem to be:
-    // - xpcshell loggest for gaia-email-libs-and-more: binary
-    // - node loggest for deuxdrop: utf8
-    // In the node case, the theory is that console.error is itself doing utf-8
-    //  encoding that complicates our lives.  I may have also just made the
-    //  wrong call or screwed something up at a different layer.
-    //
-    // I had the following note here previously:
-    // "Right, so the encoding is utf8 because that's what console.error appears
-    //  to be using.  If we change it to binary we may sidestep some JSON
-    //  parsing failures, but it's because it breaks the data in such a way
-    //  that errors may be hidden."
-    var stream = $fs.createReadStream(this._path, {encoding: 'binary'});
+    // We always want files encoded as utf8.  Support for writing to utf8
+    // varies a little:
+    // - Node does the right thing.  It creates WriteStreams that use utf8 by
+    //   default
+    // - gecko/xpcshell do not automatically do the right thing.  Specifically,
+    //   JS' C encoding is set to binary, and xpcshell.cpp does nothing special
+    //   in dump or print to force an encoding, so we need to do it.
+    var stream = $fs.createReadStream(this._path, {encoding: 'utf8'});
     var loggestFrobber =
       new $loggestFrobber.LoggestFrobber(stream,
                                          "s:l:" + this._path,
@@ -207,7 +199,8 @@ LocalLoggestChewer.prototype = {
     console.error("issuing db write");
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
       function() {
-        when(self._db.metaLogTreeScrape("Local", true,
+        console.log("db write completed");
+        when(self._db.metaLogTreeScrape("Logal", true,
                {timestamp: scrapeStamp, rev: 0, highPushId: self._usePushId}),
              function() {
           console.error("issuing sideband write on port", self._bridgePort);
