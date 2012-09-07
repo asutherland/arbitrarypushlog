@@ -132,7 +132,7 @@ Frobber.prototype = {
         // XXX once all test-driver bugs are ironed out, we want to stop doing
         //  this and instead just propagate an annotation that there was
         //  something corrupt about the log.
-        console.error("JSON PARSING PROBLEM! on...");
+        console.error("JSON PARSING PROBLEM! " + ex + " on...");
         console.error(bits[i]);
         process.exit(1);
       }
