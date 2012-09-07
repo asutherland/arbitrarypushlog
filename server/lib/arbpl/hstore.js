@@ -451,11 +451,9 @@ HStore.prototype = {
         if (err)
           console.error('scan error', err);
         if (err || !rowObj) {
-console.log('empty scan result?', rowObj);
           callback(err, []);
           return;
         }
-console.log(' scan says: ', rowObj.row, '!!!', rowObj.key);
         self._hb_getRowWithColumns(table, rowObj.row, columnFamilies,
                                    callback);
       });
