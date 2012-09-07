@@ -7,5 +7,5 @@
 LOGFILE=~/runlogs/nohup-`date "+%Y-%m-%d--%H-%M.out"`
 
 pkill -f "node r.js arbpl/cmdline.js web"
-nohup ./prod-webserve-hbase > $LOGFILE &
+nohup ./prod-webserve > $LOGFILE &
 
