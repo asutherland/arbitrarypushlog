@@ -206,13 +206,15 @@ Frobber.prototype = {
               self.stream.resume();
             if (--self.totalPending === 0 && self.fileAllRead)
               self.allDone();
-          }, function(err) {
-            console.error("prechew problem:", err);
+          }, function(definerLog, testCaseLog, err) {
+            console.error('prechew problem on file:', definerLog.semanticIdent,
+                          '   test:', testCaseLog.semanticIdent,
+                          '   err:', err);
             if (--pending === 0)
               self.stream.resume();
             if (--self.totalPending === 0 && self.fileAllRead)
               self.allDone();
-          });
+          }.bind(null, definerLog, testCaseLog));
       }
     }
     // if we have outstanding requests, pause I/O until we process all we have
@@ -240,7 +242,11 @@ Frobber.prototype = {
            self._actuallyPerformNextPrechew();
          },
          function(err) {
-           todo.deferred.reject(err);
+           // convert failures into empty graphs.
+           todo.deferred.resolve({});
+           console.warn('prechew failure converted to empty graph',
+                        'file:', todo.fileName,
+                        '   test:', todo.testName);
            self._actuallyPerformNextPrechew();
          });
   },
@@ -253,7 +259,8 @@ Frobber.prototype = {
 
     for (var iPerm = 0; iPerm < caseBundle.permutations.length; iPerm++) {
       var perm = caseBundle.permutations[iPerm],
-          todo = { deferred: $Q.defer(), perm: perm };
+          todo = { deferred: $Q.defer(), perm: perm,
+                   fileName: fileName, testName: testCaseLog.semanticIdent };
       this._pendingPrechews.push(todo);
       permPrechews.push(todo.deferred.promise);
     }
@@ -344,9 +351,19 @@ Frobber.prototype = {
         use: 'circo',
       },
       function(data) {
+        if (!data) {
+          console.warn('Problem generating dotfile, had', topo.nodes.length,
+                       'nodes. data:', typeof(data), data);
+          dDot.reject('no dotfile data?');
+          return;
+        }
         dDot.resolve(data);
       },
-      dDot.reject);
+      function(code, out, err) {
+        console.warn('dot failure, stdout:', out);
+        console.warn('stderr:', err);
+        dDot.reject('dot invocation failure');
+      });
     //g.output({type: 'dot', use: 'neato'}, '/tmp/foo.dot');
     //g.output({type: 'png', use: 'neato'}, '/tmp/foo.png');
 
