@@ -62,7 +62,7 @@ var $connectUtils = $connect.utils;
 
 // importante: this is only for log fetching.
 var DB = new $hstore.HStore();
-var app = $express.createServer();
+var app = $express();
 
 var LISTEN_PORT = 8008;
 
@@ -167,17 +167,19 @@ app.get("/tree/:tree/push/:pushid/log/:buildid", function(req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 // sideband notifications from the scraper, socket.io hookup
 
-var sideServer = new $http.Server();
+var mainServer = $http.createServer(app);
+
+var sideServer = $http.createServer();
 var scraperSink = new $databus.ScraperBridgeSink(sideServer);
 
-var socky = $io.listen(app, {"log level": -1});
+var socky = $io.listen(mainServer, {"log level": -1});
 var dataServer = new $datastore.DataServer(socky, scraperSink,
                                            LISTEN_PORT === 8008);
 
 // do not accept incoming connections until we have bootstrapped
 when(dataServer.bootstrap(), function() {
   console.log("LISTENING ON", LISTEN_PORT);
-  app.listen(LISTEN_PORT);
+  mainServer.listen(LISTEN_PORT);
 
   console.log("SIDEBAND LISTENING ON", LISTEN_PORT + 1);
   sideServer.listen(LISTEN_PORT + 1);
