@@ -105,6 +105,8 @@ var THISFILE_BUILD_TREES = {
  * Local-only trees
  */
 var DUMMY_LOCAL_TREES = {
+  // this implies mozmill logs, which is not recently a thing.
+  /*
   Local: new BuildTreeDef({
     id: "local",
     name: "Local",
@@ -116,6 +118,7 @@ var DUMMY_LOCAL_TREES = {
       "mozmill",
     ],
   }),
+  */
   Logal: new BuildTreeDef({
     id: "logal",
     name: "Logal",
@@ -138,9 +141,17 @@ function mix(source, target) {
 mix($mozrepos.REPOS, REPOS);
 mix(THISFILE_REPOS, REPOS);
 
+// Righto!  So, we used to have a set of published trees which were the things
+// we scraped off the Tinderbox when we were trying to be like TBPL.  We aren't
+// trying to be like TBPL, so all those trees don't matter right now.  So we
+// comment them out and only publish our DUMMY_TREES, because that's all we want
+// the UI to show.
+
 var PUBLISHED_TREES = exports.PUBLISHED_TREES = {};
-mix($mozrepos.TINDER_TREES, PUBLISHED_TREES);
-mix(THISFILE_BUILD_TREES, PUBLISHED_TREES);
+//mix($mozrepos.TINDER_TREES, PUBLISHED_TREES);
+//mix(THISFILE_BUILD_TREES, PUBLISHED_TREES);
+// (yes, this makes safeGetTreeByName a little redundant, but it's fine.)
+mix(DUMMY_LOCAL_TREES, PUBLISHED_TREES);
 
 exports.safeGetTreeByName = function safeGetTreeByName(treeName) {
   if (PUBLISHED_TREES.hasOwnProperty(treeName)) {
