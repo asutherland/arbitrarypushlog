@@ -313,7 +313,7 @@ parser.command('logalchew')
     $require(
       ["arbpl/loggestchew"],
       function($loggestchew) {
-        WATCHDOG_TIMEOUT = 10 * 1000;
+        WATCHDOG_TIMEOUT = 20 * 1000;
         deathClock();
         var chewer = new $loggestchew.LocalLoggestChewer(options.bridgePort);
         when(chewer.chew(options.logfile),
