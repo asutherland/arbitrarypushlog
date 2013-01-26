@@ -432,6 +432,12 @@ function LoggerMeta(raw, semanticIdent, entries, schemaNorm) {
   this.otherSide = null;
   this.kids = [];
 
+  /**
+   * The actor, if any, that was associated with this logger.  This is
+   * established by _processPermutation in a post-pass.
+   */
+  this.actor = null;
+
   this.things = [];
 
   this.topBilled = schemaNorm.hasTopBilling;
@@ -1102,7 +1108,7 @@ LoggestLogTransformer.prototype = {
     if (this._uniqueNameMap.hasOwnProperty(uniqueNameStr)) {
       actor = this._uniqueNameMap[uniqueNameStr];
       actor.raw = raw;
-      return thing;
+      return actor;
     }
 
     actor = this._uniqueNameMap[uniqueNameStr] =
@@ -1456,6 +1462,16 @@ LoggestLogTransformer.prototype = {
     for (iLogger = 0; iLogger < perm.rootLoggers.length; iLogger++) {
       this._processNonTestLogger(perm.rootLoggers[iLogger],
                                  rows, stepTimeSpans);
+    }
+
+    // -- establish linkage from loggers to actors
+    // Now that we know about all the loggers, use actors' ability to resolve
+    // to their logger to establish back-links from the loggers.
+    for (iActor = 0; iActor < perm.actors.length; iActor++) {
+      actor = perm.actors[iActor];
+      loggerMeta = actor.logger;
+      if (loggerMeta)
+        loggerMeta.actor = actor;
     }
 
     return perm;

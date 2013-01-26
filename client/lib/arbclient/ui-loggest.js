@@ -570,7 +570,9 @@ wy.defineWidget({
       var headerPartial = this._headerPartial,
           headerConstraint = this._headerConstraint;
       function addHeaderNode(colMeta) {
-        headerConstraint.obj = colMeta.logger;
+        // Try and use the actor if we know it since it might have more
+        // information associated.
+        headerConstraint.obj = colMeta.logger.actor || colMeta.logger;
         var headerCol = doc.createElement("div");
         headerCol.className = clsHeaderCol;
         headerCol.setAttribute("loggerfamily", colMeta.logger.family);
