@@ -753,7 +753,13 @@ wy.defineWidget({
   },
 });
 
-function aliasTransformer(val) {
+/**
+ * Resolve aliases; also, augment things that we think are dates.
+ */
+function aliasTransformer(val, owningKey) {
+  if (owningKey && owningKey === 'date' && typeof(val) === 'number') {
+    return val + ' (' + new Date(val) + ')';
+  }
   if (typeof(val) !== "string")
     return undefined;
   var context = this.__context;
