@@ -69,8 +69,8 @@ function EventEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
   this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
   this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
 }
@@ -85,8 +85,8 @@ function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) 
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
   this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
   this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
 }
@@ -101,8 +101,8 @@ function AsyncJobEndEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
   this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
   this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
   this.duration = 0;
@@ -122,8 +122,8 @@ function CallEntry(startTimestamp, startRelstamp, startSeq,
   this.endTimestamp = endTimestamp;
   this.endSeq = endSeq;
   this.name = name;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
   this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
   this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
   this.ex = ex;
@@ -140,8 +140,8 @@ function ErrorEntry(timestamp, relstamp, seq, name, args) {
   this.seq = seq;
   this.name = name;
   this.args = args;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
 }
 ErrorEntry.prototype = {
   type: "error",
@@ -155,8 +155,8 @@ function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
   this.seq = seq;
   this.expType = expType;
   this.name = name;
-  this.args = args.stream;
-  this.argsMap = args.map;
+  this.args = args && args.stream;
+  this.argsMap = args && args.map;
 }
 FailedExpectationEntry.prototype = {
   type: "failed-expectation",
@@ -170,8 +170,8 @@ function MismatchedExpectationEntry(timestamp, relstamp, seq,
   this.relstamp = relstamp;
   this.seq = seq;
   this.expName = expName;
-  this.expArgs = expArgs.stream;
-  this.expArgsMap = expArgs.map;
+  this.expArgs = expArgs && expArgs.stream;
+  this.expArgsMap = expArgs && expArgs.map;
   this.actualEntry = actualEntry;
 };
 MismatchedExpectationEntry.prototype = {
@@ -1520,7 +1520,7 @@ LoggestLogTransformer.prototype = {
     //  thus stashed inside loggers.
     for (iLogger = 0; iLogger < perm.rootLoggers.length; iLogger++) {
       this._processNonTestLogger(perm.rootLoggers[iLogger],
-                                 rows, stepTimeSpans);
+                                 perm, stepTimeSpans);
     }
 
     // -- establish linkage from loggers to actors
