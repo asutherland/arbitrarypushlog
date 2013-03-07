@@ -697,6 +697,7 @@ function LogSliceProcessor() {
   this.timeSpans = [];
 
   this.useNamesMap = null;
+  this.generation = 1;
 }
 LogSliceProcessor.prototype = {
   processSchema: function(schema) {
@@ -709,6 +710,7 @@ LogSliceProcessor.prototype = {
    *  internals to enclose the logger in a fake test hierarchy.
    */
   processLogSlice: function(logslice) {
+    var generation = this.generation++;
     if (this._earliestStamp === null)
       this._earliestStamp = logslice.begin;
 
@@ -749,10 +751,11 @@ LogSliceProcessor.prototype = {
     this.timeSpans.push([logslice.begin, logslice.end]);
 
     var rootLoggerMeta = transformer._createNonTestLogger(
-                           rootLogger, fakePerm.loggers, fakePerm);
+                           rootLogger, fakePerm.loggers, fakePerm, generation);
     // only one family!
     rootLoggerMeta.brandFamily('a');
-    transformer._processNonTestLogger(rootLoggerMeta, rows, this.timeSpans);
+    transformer._processNonTestLogger(rootLoggerMeta, fakePerm, this.timeSpans,
+                                      this.timeSpans.length - 1);
   },
 
   receiveMessage: function(msg) {

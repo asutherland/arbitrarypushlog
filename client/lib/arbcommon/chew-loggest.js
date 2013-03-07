@@ -69,8 +69,10 @@ function EventEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args;
-  this.testOnlyArgs = testOnlyArgs;
+  this.args = args.stream;
+  this.argsMap = args.map;
+  this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
+  this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
 }
 EventEntry.prototype = {
   type: "event",
@@ -83,8 +85,10 @@ function AsyncJobBeginEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) 
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args;
-  this.testOnlyArgs = testOnlyArgs;
+  this.args = args.stream;
+  this.argsMap = args.map;
+  this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
+  this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
 }
 AsyncJobBeginEntry.prototype = {
   type: "async-begin",
@@ -97,8 +101,10 @@ function AsyncJobEndEntry(timestamp, relstamp, seq, name, args, testOnlyArgs) {
   this.relstamp = relstamp;
   this.seq = seq;
   this.name = name;
-  this.args = args;
-  this.testOnlyArgs = testOnlyArgs;
+  this.args = args.stream;
+  this.argsMap = args.map;
+  this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
+  this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
   this.duration = 0;
 }
 AsyncJobEndEntry.prototype = {
@@ -116,8 +122,10 @@ function CallEntry(startTimestamp, startRelstamp, startSeq,
   this.endTimestamp = endTimestamp;
   this.endSeq = endSeq;
   this.name = name;
-  this.args = args;
-  this.testOnlyArgs = testOnlyArgs;
+  this.args = args.stream;
+  this.argsMap = args.map;
+  this.testOnlyArgs = testOnlyArgs && testOnlyArgs.stream;
+  this.testOnlyArgsMap = testOnlyArgs && testOnlyArgs.map;
   this.ex = ex;
 }
 CallEntry.prototype = {
@@ -132,6 +140,8 @@ function ErrorEntry(timestamp, relstamp, seq, name, args) {
   this.seq = seq;
   this.name = name;
   this.args = args;
+  this.args = args.stream;
+  this.argsMap = args.map;
 }
 ErrorEntry.prototype = {
   type: "error",
@@ -145,7 +155,8 @@ function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
   this.seq = seq;
   this.expType = expType;
   this.name = name;
-  this.args = args;
+  this.args = args.stream;
+  this.argsMap = args.map;
 }
 FailedExpectationEntry.prototype = {
   type: "failed-expectation",
@@ -159,7 +170,8 @@ function MismatchedExpectationEntry(timestamp, relstamp, seq,
   this.relstamp = relstamp;
   this.seq = seq;
   this.expName = expName;
-  this.expArgs = expArgs;
+  this.expArgs = expArgs.stream;
+  this.expArgsMap = expArgs.map;
   this.actualEntry = actualEntry;
 };
 MismatchedExpectationEntry.prototype = {
@@ -328,6 +340,19 @@ TestCasePermutationLogBundle.prototype = {
     return rows;
   },
 
+  putEntries: function(index, loggerMeta, entries) {
+    var row = this._perStepPerLoggerEntries[index],
+        idxLogger = this.loggers.indexOf(loggerMeta);
+    if (idxLogger === -1)
+      throw new Error('Unable to find logger!');
+    while(idxLogger >= row.length)
+      row.push(null);
+    if (row[idxLogger] === null)
+      row[idxLogger] = entries;
+    else
+      throw new Error('trying to put entries in the same timespan twice!');
+  },
+
   /**
    * Get all of the entries that happened in a step flattened into a single
    *  list.
@@ -421,7 +446,19 @@ TestCaseStepMeta.prototype = {
  *  transport data, as well as access to the raw data.
  */
 function LoggerMeta(raw, semanticIdent, entries, schemaNorm) {
+  /**
+   * The raw logger meta that was most recently used to initialize/update us.
+   * This used to only ever have 1 value, but now this gets updated as we
+   * process additional time slices.  Because our semanticIdent is stable or
+   * only improves with time, it's okay to update this.
+   */
   this.raw = raw;
+  /**
+   * Track the generation the raw of this meta was last updated.  Relevant for
+   * (sparse hierarchy) `LogReaper`-generated time-sliced logs that we're
+   * re-assembling.
+   */
+  this.generation = 0;
   this.schemaNorm = schemaNorm;
   this.semanticIdent = semanticIdent;
   this.entries = entries;
@@ -458,10 +495,12 @@ LoggerMeta.prototype = {
    *  to run the analysis someplace that can be stateful.  Also the bulk
    *  conversion logic would not benefit from extra complexity.
    */
-  _tagEntriesWithLayers: function() {
+  _tagEntriesWithLayers: function(entries) {
     if (!this._layerMapping)
       return;
-    var entries = this.entries, layerMapping = this._layerMapping;
+    if (!entries)
+      entries = this.entries;
+    var layerMapping = this._layerMapping;
 
     var layer = layerMapping.layer;
     // XXX we are hard-coded to state transitions, and just one, for now.
@@ -640,11 +679,16 @@ LoggestLogTransformer.prototype = {
     if (startFrom === undefined)
       startFrom = 1;
     var iEntry = startFrom;
-    var args = [];
+    var argsInfo = {
+      stream: [],
+      map: {},
+    };
+    var args = argsInfo.stream, argsMap = argsInfo.map;
     for (var key in metaArgs) {
       var def = metaArgs[key];
       args.push(((iEntry > startFrom) ? ", " : "") + key + ": ");
       var arg = entry[iEntry++];
+      argsInfo.map[key] = arg;
       if (def === 'exception') {
         args.push(this._transformEx(arg));
       }
@@ -705,7 +749,7 @@ LoggestLogTransformer.prototype = {
         }
       }
     }
-    return args;
+    return argsInfo;
   },
 
   // [name, val, timestamp, seq]
@@ -1174,17 +1218,28 @@ LoggestLogTransformer.prototype = {
    *  object creation and naming.  We defer all name resolution (or anything
    *  that requires it) to the second phase so all names will be available.
    */
-  _createNonTestLogger: function(rawLogger, allLoggers, rawPerm) {
+  _createNonTestLogger: function(rawLogger, allLoggers, rawPerm, generation) {
     var schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
     if (!schemaNorm)
       throw new Error("No schema mapping for: '" + rawLogger.loggerIdent + "'");
-    var loggerMeta = new LoggerMeta(
-                       rawLogger,
-                       /* semantic ident resolution deferred */ null,
-                       /* entries deferred */ null,
-                       schemaNorm);
-    allLoggers.push(loggerMeta);
-    this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
+    var loggerMeta;
+    // Reuse the logger if it's already known to us.  (This only happens in
+    // time-sliced logs provided by a periodic LogReaper.)
+    if (this._uniqueNameMap.hasOwnProperty(rawLogger.uniqueName)) {
+      loggerMeta = this._uniqueNameMap[rawLogger.uniqueName];
+      // do clobber the raw logger so we get new events from it
+      loggerMeta.raw = rawLogger;
+    }
+    else {
+      loggerMeta = new LoggerMeta(
+                         rawLogger,
+                         /* semantic ident resolution deferred */ null,
+                         /* entries deferred */ null,
+                         schemaNorm);
+      allLoggers.push(loggerMeta);
+      this._uniqueNameMap[loggerMeta.raw.uniqueName] = loggerMeta;
+    }
+    loggerMeta.generation = generation;
 
     // -- connection naming
     if (schemaNorm.type === 'connection' && schemaNorm.normalizeConnName) {
@@ -1214,7 +1269,8 @@ LoggestLogTransformer.prototype = {
           console.error("Non-test loggers should not own/name actors.",
                         rawLogger);
         }
-        else {
+        // create the named thing if it doesn't already exist
+        else if (!this._uniqueNameMap.hasOwnProperty(strName)) {
           var thing = this._makeThing(strName, rawLogger.named[strName]);
           loggerMeta.things.push(thing);
           // (flatten out things)
@@ -1227,11 +1283,14 @@ LoggestLogTransformer.prototype = {
     if (rawLogger.kids) {
       for (var iKid = 0; iKid < rawLogger.kids.length; iKid++) {
         var kidMeta = this._createNonTestLogger(rawLogger.kids[iKid],
-                                                allLoggers, rawPerm);
-        loggerMeta.kids.push(kidMeta);
-        // nb: this does not allow for generation skipping, currently fine.
-        if (kidMeta.topBilled && loggerMeta.topBilled)
-          loggerMeta.topBilledKids.push(kidMeta);
+                                                allLoggers, rawPerm, generation);
+        // only add the kid if it is newly created
+        if (loggerMeta.kids.indexOf(kidMeta) === -1) {
+          loggerMeta.kids.push(kidMeta);
+          // nb: this does not allow for generation skipping, currently fine.
+          if (kidMeta.topBilled && loggerMeta.topBilled)
+            loggerMeta.topBilledKids.push(kidMeta);
+        }
       }
     }
 
@@ -1243,13 +1302,17 @@ LoggestLogTransformer.prototype = {
    *  representations, slicing the events for our logger/step matrix, and
    *  establishing any linkage relationships.
    */
-  _processNonTestLogger: function(loggerMeta, rows, stepTimeSpans) {
+  _processNonTestLogger: function(loggerMeta, rowOwner, stepTimeSpans, baseSpan) {
     var rawLogger = loggerMeta.raw,
         schemaNorm = this._schemaNormMap[rawLogger.loggerIdent];
-    var entries = loggerMeta.entries =
-      this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
+    var entries = this._processEntries(rawLogger.loggerIdent, rawLogger.entries);
+    if (!loggerMeta.entries)
+      loggerMeta.entries = entries;
+    else
+      loggerMeta.entries = loggerMeta.entries.concat(entries);
+
     if (entries)
-      loggerMeta._tagEntriesWithLayers();
+      loggerMeta._tagEntriesWithLayers(entries);
     if (entries && rawLogger.died) {
       // This is okay because this is a fallback comparator, but it would be
       //  nice if we didn't need to fall back to this.
@@ -1264,6 +1327,8 @@ LoggestLogTransformer.prototype = {
     loggerMeta.resolveSemanticIdentDeep(this._usingAliasMap);
 
     // -- connection linkages
+    // XXX this was written before we did the multiple time-slice LogReaper
+    // stuff and may be broken now for reused loggerMetas.
     if (schemaNorm.type === 'connection' && schemaNorm.normalizeConnName) {
       var normName = schemaNorm.normalizeConnName(rawLogger.semanticIdent);
       if (normName) {
@@ -1281,16 +1346,14 @@ LoggestLogTransformer.prototype = {
 
     // -- matrix building
     var iRow;
-    if (entries === null) {
-      for (iRow = 0; iRow < rows.length; iRow++) {
-        rows[iRow].push(null);
-      }
-    }
-    else {
+    if (entries !== null) {
       var iSpan, iEntry = 0, markEntry;
       // keep in mind that a failed test may not have run all the way and so
       //  we may not have all the spans.
-      for (iSpan = 0, iRow = 0; iSpan < stepTimeSpans.length; iSpan++) {
+      for (iSpan = (baseSpan != null) ? baseSpan : 0,
+             iRow = iSpan ? (iSpan * 2) : 0;
+           iSpan < stepTimeSpans.length;
+           iSpan++) {
         var timeStart = stepTimeSpans[iSpan][0];
 
         // - before step
@@ -1300,9 +1363,8 @@ LoggestLogTransformer.prototype = {
           iEntry++;
         }
         if (iEntry > markEntry)
-          rows[iRow++].push(entries.slice(markEntry, iEntry));
-        else
-          rows[iRow++].push(null);
+          rowOwner.putEntries(iRow, loggerMeta, entries.slice(markEntry, iEntry));
+        iRow++;
 
         // - in step
         markEntry = iEntry;
@@ -1318,26 +1380,23 @@ LoggestLogTransformer.prototype = {
           }
         }
         if (iEntry > markEntry)
-          rows[iRow++].push(entries.slice(markEntry, iEntry));
-        else
-          rows[iRow++].push(null);
+          rowOwner.putEntries(iRow, loggerMeta, entries.slice(markEntry, iEntry));
+        iRow++;
       }
       // - leftovers
       // if we have any entries that did not fall inside a step, push them
       //  into their own row.
       if (iEntry < entries.length) {
-        rows[iRow++].push(entries.slice(iEntry));
-      }
-      // - blanks
-      // fill in any un-filled rows in this column with nulls.
-      while (iRow < rows.length) {
-        rows[iRow++].push(null);
+        rowOwner.putEntries(iRow++, loggerMeta, entries.slice(iEntry));
       }
     }
 
+    var generation = loggerMeta.generation;
     for (var iKid = 0; iKid < loggerMeta.kids.length; iKid++) {
       var kidMeta = loggerMeta.kids[iKid];
-      this._processNonTestLogger(kidMeta, rows, stepTimeSpans);
+      // only process kid nodes if they were mentioned in the current 'raw' node
+      if (kidMeta.generation === generation)
+        this._processNonTestLogger(kidMeta, rowOwner, stepTimeSpans, baseSpan);
     }
   },
 
@@ -1449,7 +1508,7 @@ LoggestLogTransformer.prototype = {
     var iLogger, loggerMeta;
     for (iLogger = 0; iLogger < nonTestLoggers.length; iLogger++) {
       loggerMeta = this._createNonTestLogger(nonTestLoggers[iLogger],
-                                             perm.loggers, perm);
+                                             perm.loggers, perm, 1);
       // ('a').charCodeAt(0) === 97
       loggerMeta.brandFamily(String.fromCharCode(97 + iLogger));
       perm.rootLoggers.push(loggerMeta);
