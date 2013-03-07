@@ -434,13 +434,13 @@ ArbApp.prototype = {
    *  `standaloneLoadLogsFromWriteCells`.  (That function is somewhat atypical
    *  in that it smooshes what would normally be N separate pages into 1 page.)
    */
-  standaloneLoadLogFromUrl: function(url) {
+  standaloneLoadLogFromUrl: function(url, callback) {
     var self = this;
     when($rstore.commonLoad(url, "log-fetch", url),
       function gotLog(text) {
         var data = JSON.parse(text);
         if (data.hasOwnProperty('type') && data.type === 'backlog')
-          self.standaloneLoadLogFromBacklog(data);
+          self.standaloneLoadLogFromBacklog(data, callback);
         else
           self._showLogPageForData(1, data, [], false, null);
       },
@@ -455,9 +455,11 @@ ArbApp.prototype = {
    * Load a log from a LogReaper-created time series of logs that exist outside
    * of a unit test context.  This is to support the deuxdrop logui use-case.
    */
-  standaloneLoadLogFromBacklog: function(msg) {
+  standaloneLoadLogFromBacklog: function(msg, callback) {
     var sliceProcessor = new LogSliceProcessor();
     sliceProcessor.receiveMessage(msg);
+    if (callback)
+      callback(sliceProcessor);
     this._showLogPageForData(1, sliceProcessor.caseBundle, [], false, null);
   },
 
@@ -816,7 +818,7 @@ exports.main = function main() {
  * data from a URL that is the same as what ArbPL would serve from a specific
  * result retrieval request.  This is used by index-standalone.html.
  */
-exports.mainStandalone = function(fallbackUrl) {
+exports.mainStandalone = function(fallbackUrl, callback) {
   var url = exports.getLogPathFromLocation();
   if (!url) {
     url = fallbackUrl;
@@ -824,7 +826,7 @@ exports.mainStandalone = function(fallbackUrl) {
 
   var app = APP = window.app = new ArbApp(window, true);
   $ui_main.bindStandaloneApp(app);
-  app.standaloneLoadLogFromUrl(url);
+  app.standaloneLoadLogFromUrl(url, callback);
 };
 
 /**

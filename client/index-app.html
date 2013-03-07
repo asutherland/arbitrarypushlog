@@ -48,9 +48,15 @@
       // try and force these to start loading even before the DOM is ready...?
       deps: ["arbclient/app-main"],
       ready: function() {
-        require(["arbclient/app-main"],
-          function(mainModule) {
-            mainModule.mainStandalone("arbdata.json");
+        require(["arbclient/app-main", "arbcommon/modeler",
+                 "arbclient/app/gelam/model", "arbclient/app/gelam/vis"],
+          function(mainModule, modeler, gelamModel, gelamVis) {
+            mainModule.mainStandalone("arbdata.json", function(sliceProcessor) {
+              var fakePerm = sliceProcessor.fakePerm;
+              if (fakePerm) {
+                modeler.processPermWithModule(fakePerm, gelamModel);
+              }
+            });
         });
       },
     });
