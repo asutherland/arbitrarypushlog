@@ -197,9 +197,10 @@ LocalLoggestChewer.prototype = {
 
     var self = this;
     console.error("issuing db write");
+    var writeStarted = Date.now();
     when(this._db.putPushStuff(LOCAL_TREE_ID, this._usePushId, setstate),
       function() {
-        console.log("db write completed");
+        console.log("db write completed", Date.now() - writeStarted, 'ms');
         when(self._db.metaLogTreeScrape("Logal", true,
                {timestamp: scrapeStamp, rev: 0, highPushId: self._usePushId}),
              function() {

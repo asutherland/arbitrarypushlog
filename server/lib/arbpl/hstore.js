@@ -299,6 +299,11 @@ HStore.prototype = {
     var db = this._db, self = this;
     this._db.serialize(function() {
       db.run('PRAGMA page_size = 32768');
+      // This is basically the same as what the default is; the expectation is
+      // we are always running on a pretty powerful machine where this is not
+      // really that much of a waste.
+      var PAGES_PER_MEG = 32;
+      db.run('PRAGMA cache_size = ' + (32 * PAGES_PER_MEG));
 
       function errCallback(err) {
         if (err)
@@ -475,6 +480,7 @@ HStore.prototype = {
         if (err)
           console.error('mutation error', err);
       }
+      db.run('BEGIN');
       for (var i = 0; i < mutations.length; i++) {
         var mutation = mutations[i];
         db.run(
@@ -483,6 +489,7 @@ HStore.prototype = {
           { $row: row, $key: mutation.column, $value: mutation.value },
           (i === mutations.length - 1) ? doneso : errcheck);
       }
+      db.run('COMMIT');
     });
   },
   _hb_getRowWithColumns: function(table, rowId, columnFamilies, callback) {
