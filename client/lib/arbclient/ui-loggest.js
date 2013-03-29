@@ -1007,7 +1007,8 @@ wy.defineWidget({
             span.setAttribute('added', '');
           else if (change.removed)
             span.setAttribute('removed', '');
-          text = text.replace(/ /g, '|space|').replace(/\n/g, '|newline|');
+          // spaces are handled by using white-space: pre-wrap
+          text = text.replace(/\n/g, '\\n');
         }
         span.textContent = text;
         node.appendChild(span);

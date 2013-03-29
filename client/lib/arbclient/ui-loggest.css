@@ -397,13 +397,14 @@
   #actualEntry {
     display: block;
   }
+  #diffBlock {
+    white-space: pre-wrap;
+  }
   #diffLine {
     [added] {
-      font-weight: bold;
       background-color: #aaffaa;
     }
     [removed] {
-      font-weight: bold;
       background-color: #ffaaaa;
     }
   }
