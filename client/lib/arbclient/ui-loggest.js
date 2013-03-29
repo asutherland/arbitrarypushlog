@@ -996,7 +996,7 @@ wy.defineWidget({
     _diffAndMakeNodes: function(a, b, node) {
       var colorizedSpanClass = this.__cssClassBaseName + "diffLine";
 
-      var changes = $jsdiff.diffWords(a, b);
+      var changes = $jsdiff.diffChars(a, b);
       for (var i=0; i < changes.length; i++) {
         var change = changes[i];
         var span = document.createElement('span');
