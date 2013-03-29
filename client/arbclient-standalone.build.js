@@ -4,6 +4,7 @@
   paths: {
     "text": "deps/requirejs/text",
     "d3": "deps/d3.min",
+    "jsdiff": "deps/diff",
     "requireLib": "deps/requirejs/require",
     "socket.io/socket.io": "deps/fake-socket-io",
   },
