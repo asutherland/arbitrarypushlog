@@ -399,6 +399,7 @@
   }
   #diffBlock {
     white-space: pre-wrap;
+    font-family: monospace;
   }
   #diffLine {
     [added] {
