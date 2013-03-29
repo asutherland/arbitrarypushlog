@@ -52,6 +52,7 @@ define(
     "wmsy/wmsy",
     'wmsy/wlib/hier',
     "wmsy/wlib/objdict",
+    'jsdiff',
     "arbcommon/chew-loggest",
     "./vis-loggest",
     "./ui-dice-loggest",
@@ -62,6 +63,7 @@ define(
     $wmsy,
     $_wlib_hier, // unused, just a dependency.
     $_wlib_objdict, // unused, just a dependency.
+    $jsdiff,
     $logmodel,
     $_vis_loggest, // unused, just a dep
     $_ui_dice_loggest, // unused, just a dep
@@ -973,7 +975,45 @@ wy.defineWidget({
       versus: "expected but got",
     }),
     actualEntry: wy.widget({type: "entry"}, "actualEntry"),
+    diffLabel: "Diff:",
+    diffBlock: {}
   }, {layer: "layer"}),
+  impl: {
+    postInit: function() {
+      // The arguments are currently (potentially) stringified forms; we don't
+      // really need to do rich diffs at this point, so just pair-wise
+      // diff's of strings (and ignoring objects) should be sufficient.
+      var insertNode = this.diffBlock_element;
+      var expectedArgs = this.obj.expArgs,
+          actualArgs = this.obj.actualEntry.args;
+      for (var i = 0; i < expectedArgs.length; i++) {
+        if (typeof(expectedArgs[i]) !== 'string' ||
+            typeof(actualArgs[i]) !== 'string')
+          continue;
+        this._diffAndMakeNodes(expectedArgs[i], actualArgs[i], insertNode);
+      }
+    },
+    _diffAndMakeNodes: function(a, b, node) {
+      var colorizedSpanClass = this.__cssClassBaseName + "diffLine";
+
+      var changes = $jsdiff.diffChars(a, b);
+      for (var i=0; i < changes.length; i++) {
+        var change = changes[i];
+        var span = document.createElement('span');
+        var text = change.value;
+        if (change.added || change.removed) {
+          span.setAttribute('class', colorizedSpanClass);
+          if (change.added)
+            span.setAttribute('added', '');
+          else if (change.removed)
+            span.setAttribute('removed', '');
+          text = text.replace(/ /g, '|space|').replace(/\n/g, '|newline|');
+        }
+        span.textContent = text;
+        node.appendChild(span);
+      }
+    },
+  }
 });
 
 

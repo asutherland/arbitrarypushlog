@@ -227,7 +227,7 @@
     margin-right: 4px;
 
     [collapsed="false"] {
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAAXNSR0IArs4c6QAAABRJREFUGNNjYBh8gNHFxeU/wxAEAEg0Ac1XyUc8AAAAAElFTkSuQmCC");
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAApXNSR0IArs4c6QAAABRJREFUGNNjYBh8gNHFxeU/wxAEAEg0Ac1XyUc8AAAAAElFTkSuQmCC");
     }
   }
 
@@ -388,7 +388,7 @@
 
 #entry-mismatched-expectation {
   .entryLayerColorization;
-  #errLabel, #versus {
+  #errLabel, #versus, #diffLabel {
     color: red;
   }
   #expLine {
@@ -396,6 +396,16 @@
   }
   #actualEntry {
     display: block;
+  }
+  #diffLine {
+    [added] {
+      font-weight: bold;
+      background-color: #aaffaa;
+    }
+    [removed] {
+      font-weight: bold;
+      background-color: #ffaaaa;
+    }
   }
 }
 
