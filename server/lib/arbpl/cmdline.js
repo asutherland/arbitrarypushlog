@@ -313,7 +313,11 @@ parser.command('logalchew')
     $require(
       ["arbpl/loggestchew"],
       function($loggestchew) {
-        WATCHDOG_TIMEOUT = 20 * 1000;
+        // We have experienced great success in writing unit tests, so it could
+        // actually take a fairly long time to parser and push the logs now,
+        // especially on non-SSDs.  Last value was 20 seconds which proved too
+        // short.
+        WATCHDOG_TIMEOUT = 2 * 60 * 1000;
         deathClock();
         var chewer = new $loggestchew.LocalLoggestChewer(options.bridgePort);
         when(chewer.chew(options.logfile),
