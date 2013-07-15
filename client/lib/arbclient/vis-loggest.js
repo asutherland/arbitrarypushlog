@@ -36,7 +36,10 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- *
+ * Visualization of test scenario topology; originally implemented for deuxdrop
+ * unit tests which could involve interesting networks.  For our current use
+ * case for gaia-email-libs-and-more, this is just wasting screen real estate
+ * and adding processing overhead, so this is no longer going to be used.
  **/
 
 define(

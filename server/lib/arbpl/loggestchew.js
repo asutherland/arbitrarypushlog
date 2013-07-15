@@ -163,9 +163,9 @@ LocalLoggestChewer.prototype = {
       builder: {
         name: "local loggest",
         os: {
-          idiom: "desktop",
+          idiom: null,
           platform: "localhost",
-          arch: "localarch",
+          arch: null,
           ver: null,
         },
         isDebug: false,

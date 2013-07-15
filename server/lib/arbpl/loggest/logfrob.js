@@ -42,20 +42,23 @@
  * Notable things we do versus the mozmill frobber:
  * - We process successes and failures.
  * - We perform a preprocessing pass that is able to contribute derived metadata
- *    from the logs.  We do this so that we can run graphviz
+ *    from the logs.  We used to run graphviz at this point, but that dependency
+ *    was only justifiable for deuxdrop where we had complicated conceptual
+ *    testing topologies (client A talks to server X which talks to servers Y
+ *    and Z which talk to clients B and C, respectively.)
  **/
 
 define(
   [
     "q",
-    "graphviz",
+//    "graphviz",
     "arbcommon/chew-loggest",
     "arbcommon/topo-loggest",
     "exports"
   ],
   function(
     $Q,
-    $graphviz,
+//    $graphviz,
     $chew_loggest,
     $topo_loggest,
     exports
@@ -168,13 +171,16 @@ Frobber.prototype = {
 
       for (var iKid = 0; iKid < definerLog.kids.length; iKid++) {
         var testCaseLog = definerLog.kids[iKid];
+        var testPermLog = testCaseLog.kids[0];
         var testUniqueName = definerLog.semanticIdent + "-" +
                                testCaseLog.semanticIdent;
+        var variant = testPermLog.latched.variant || null;
         summaryObj = {
           fileName: definerLog.semanticIdent,
           testName: testCaseLog.semanticIdent,
           uniqueName: testUniqueName,
           passed: testCaseLog.latched.result === 'pass',
+          variant: variant,
         };
         if (!testCaseLog.latched ||
             (!testCaseLog.latched.result ||
@@ -196,8 +202,10 @@ Frobber.prototype = {
           log: testCaseLog,
           prechewed: null,
         };
-        self.writeCells[self.detailKeyPrefix + ":" + testUniqueName] =
-            detailObj;
+        var cellName = self.detailKeyPrefix + ":" + testUniqueName;
+        if (variant)
+          cellName += ":" + variant;
+        self.writeCells[cellName] = detailObj;
         when(this._prechewCase(schema, definerLog.semanticIdent, testCaseLog,
                                detailObj),
           function() {
@@ -273,6 +281,10 @@ Frobber.prototype = {
   },
   _topoLayoutPrechew: function(perm) {
     var deferred = $Q.defer();
+    deferred.resolve(null);
+    return deferred.promise;
+
+    // ATTENTION!!!!!!! ALL OF THE FOLLOWING IS CURRENTLY DISABLED.
 
     // get the d3-biased node representation
     var topo = $topo_loggest.analyzeRootLoggers(perm.rootLoggers);

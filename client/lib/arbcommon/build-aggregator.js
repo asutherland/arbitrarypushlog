@@ -168,7 +168,9 @@ ResultCluster.prototype = {
    *  up in "foo/baz", we will have the "foo" cluster pointing to child clusters
    *  "bar" and "baz".
    *
-   * This is implemented by performing
+   * @param uniqueName Composite unique name that uniquely identifies the test
+   *    case in question by namespacing it under the file that owns it.  This
+   *    name does not include the variant of the test.
    */
   pathBasedPlacement: function(pathParts, type, name, signature, uniqueName,
                                resultInfoTuple) {
