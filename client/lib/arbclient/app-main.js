@@ -496,6 +496,7 @@ ArbApp.prototype = {
             testName: '$FILE',
             fileName: logDetail.fileName,
             moduleName: logDetail.moduleName,
+            variant: logDetail.variant,
             exceptions:
                 logDetail.exceptions.map($chew_loggest.untransformEx),
           }]
@@ -583,6 +584,7 @@ function TestLogPage(pushId, chewedDetails, autoNew, pathNodes, rstore,
   this.pushId = pushId;
   this.fileName = chewedDetails.failures[0].fileName;
   this.testName = divertedFrom || chewedDetails.failures[0].testName;
+  this.variant = chewedDetails.failures[0].variant;
 
   this.failures = chewedDetails.failures;
   this.pathNodes = pathNodes;
@@ -639,10 +641,15 @@ TestLogPage.prototype = {
         var test = tests[iTest];
         //console.log("considering", test.fileName, test.testName, "versus",
         //            this.fileName, this.testName);
+        var log = build.id + ":" + test.uniqueName;
+        if (test.variant)
+          log += ":" + test.variant;
 
         // - general test run failure?
+        // file level failures currently ignore the variant
         if (test.fileName === this.fileName &&
-            test.testName === '$FILE') {
+            test.testName === '$FILE' &&
+            test.variant === this.variant) {
           APP.navigate({
             pushid: buildPush.push.id,
             log: build.id + ":" + test.uniqueName,
@@ -654,12 +661,13 @@ TestLogPage.prototype = {
 
         // - updated run for this specific test?
         if (test.fileName === this.fileName &&
-            test.testName === this.testName) {
+            test.testName === this.testName &&
+            test.variant === this.variant) {
           //console.log("FOUND NEWER, NAVIGATING", test, buildPush.push.id,
           //           build.id + ":" + test.uniqueName);
           APP.navigate({
             pushid: buildPush.push.id,
-            log: build.id + ":" + test.uniqueName,
+            log: log,
             autonew: true,
           }, false, true);
           return;

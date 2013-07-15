@@ -151,14 +151,19 @@ Frobber.prototype = {
           fileName: fileFailure.fileName,
           moduleName: fileFailure.moduleName,
           testName: '$FILE',
+          variant: fileFailure.variant,
           uniqueName: fileFailure.fileName + '-$FILE',
         };
         this.overview.failureIndicated = true;
         this.overview.failures.push(summaryObj);
-        this.writeCells[this.detailKeyPrefix + ":" + summaryObj.uniqueName] = {
+        var failCellName = this.detailKeyPrefix + ":" + summaryObj.uniqueName;
+        if (fileFailure.variant)
+          failCellName += ":" + fileFailure.variant;
+        this.writeCells[failCellName] = {
           type: "filefail",
           fileName: summaryObj.fileName,
           moduleName: fileFailure.moduleName,
+          variant: fileFailure.variant,
           exceptions: fileFailure.exceptions,
         };
         continue;
