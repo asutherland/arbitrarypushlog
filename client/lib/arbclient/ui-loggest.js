@@ -54,7 +54,7 @@ define(
     "wmsy/wlib/objdict",
     'jsdiff',
     "arbcommon/chew-loggest",
-    "./vis-loggest",
+//    "./vis-loggest",
     "./ui-dice-loggest",
     "text!./ui-loggest.css",
     "exports"
@@ -65,7 +65,7 @@ define(
     $_wlib_objdict, // unused, just a dependency.
     $jsdiff,
     $logmodel,
-    $_vis_loggest, // unused, just a dep
+//    $_vis_loggest, // unused, just a dep
     $_ui_dice_loggest, // unused, just a dep
     $_css,
     exports
@@ -139,14 +139,21 @@ wy.defineWidget({
   },
   structure: {
     whoBlock: {
+      // The top billed loggers was more interesting for deuxdrop; currently
+      // disabling it, especially since it chews up screen real-estate.
+      /*
       loggersBlock: {
         loggersLabel: "Top Billed Loggers:",
         loggers: wy.vertList({type: "hier-top-billed-logger"}, "rootLoggers"),
       },
+      */
+      // removed topology visualization for now
+      /*
       visBlock: {
         visLabel: "Relationship Overview:",
         vis: wy.widget({type: "topo-summary"}, "rootLoggers"),
       },
+      */
       summaryBlock: {
         summaryLabel: "Async Durations by Layer",
         asyncSummary: wy.widget({ type: "async-summary" }, wy.SELF),

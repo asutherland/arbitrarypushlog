@@ -478,13 +478,16 @@ wy.defineWidget({
         var build = buildResultBinding.obj.build;
         if (build.builder.type.subtype === "reftest")
           return;
+        var result = buildResultBinding.obj.result;
         //console.log("context", this.__context, "obj", this.obj);
         var log = (this.__context.subPushId ?
                      (this.__context.subPushId + ":") : "") +
                   build.id + ":" +
                   this.obj.uniqueName;
-        this.emit_navigate({pushid: this.__context.pushId,
-                            log: log});
+        if (result.variant)
+          log += ":" + result.variant;
+
+        this.emit_navigate({ pushid: this.__context.pushId, log: log });
       },
     },
   },
@@ -542,6 +545,7 @@ wy.defineWidget({
 
       var platform = builder.os;
       var type = builder.type;
+
       var buildStr = platform.platform;
       if (platform.ver)
         buildStr += " " + platform.ver;
@@ -550,6 +554,13 @@ wy.defineWidget({
 
       if (builder.isDebug)
         buildStr += " debug";
+
+      var repStr;
+      if (result.variant)
+        repStr = result.variant + " on " + buildStr;
+      else
+        repStr = buildStr;
+
 
       // tests will generally imply a specific subtype and capture, so don't
       //  encode that otherwise redundant information
@@ -561,7 +572,7 @@ wy.defineWidget({
         buildStr += " " + this.obj.builder.capture;
       */
 
-      this.domNode.textContent = buildStr;
+      this.domNode.textContent = repStr;
 
       var passed = Boolean(result.passed);
       var state;

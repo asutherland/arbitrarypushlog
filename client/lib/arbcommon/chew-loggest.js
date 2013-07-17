@@ -183,6 +183,7 @@ function TestCaseLogBundle(fileName, raw) {
 
   this.fileName = fileName;
   this.testName = raw.semanticIdent;
+  this.variant = raw.latched.variant;
 
   /**
    * @listof[TestCasePermutationLogBundle]{
@@ -1291,12 +1292,15 @@ LoggestLogTransformer.prototype = {
       // keep in mind that a failed test may not have run all the way and so
       //  we may not have all the spans.
       for (iSpan = 0, iRow = 0; iSpan < stepTimeSpans.length; iSpan++) {
-        var timeStart = stepTimeSpans[iSpan][0];
+        var timeStart = stepTimeSpans[iSpan][0],
+            seqStart = stepTimeSpans[iSpan][1];
 
         // - before step
         markEntry = iEntry;
         while (iEntry < entries.length &&
-               entries[iEntry].timestamp < timeStart) {
+               (entries[iEntry].timestamp < timeStart ||
+                (entries[iEntry].timestamp === timeStart &&
+                 entries[iEntry].seq < seqStart))) {
           iEntry++;
         }
         if (iEntry > markEntry)
@@ -1306,14 +1310,17 @@ LoggestLogTransformer.prototype = {
 
         // - in step
         markEntry = iEntry;
-        var timeEnd = stepTimeSpans[iSpan][1];
+        var timeEnd = stepTimeSpans[iSpan][2],
+            seqEnd = stepTimeSpans[iSpan][3];
         // unbounded timeEnd means everything goes in there!
         if (timeEnd === null) {
           iEntry = entries.length;
         }
         else {
           while (iEntry < entries.length &&
-                 entries[iEntry].timestamp <= timeEnd) {
+                 (entries[iEntry].timestamp < timeEnd ||
+                  (entries[iEntry].timestamp === timeEnd &&
+                   entries[iEntry].seq <= seqEnd))) {
             iEntry++;
           }
         }
@@ -1432,17 +1439,25 @@ LoggestLogTransformer.prototype = {
           stepEntries[0].name !== 'run')
         throw new Error("Test step's first entry *must* be a run entry if " +
                         "it has any entries!");
-      var timeStart = stepEntries[0].timestamp, timeEnd;
+      var timeStart = stepEntries[0].timestamp,
+          seqStart = stepEntries[0].seq,
+          timeEnd, seqEnd;
       var iLastEntry = stepEntries.length - 1;
       if ((stepEntries[iLastEntry] instanceof AsyncJobEndEntry) &&
-          stepEntries[iLastEntry].name === 'run')
+          stepEntries[iLastEntry].name === 'run') {
         timeEnd = stepEntries[iLastEntry].timestamp;
+        seqEnd = stepEntries[iLastEntry].seq;
+      }
       else if ((stepEntries[iLastEntry] instanceof ErrorEntry) &&
-               stepEntries[iLastEntry].name === 'timeout')
+               stepEntries[iLastEntry].name === 'timeout') {
         timeEnd = stepEntries[iLastEntry].timestamp;
-      else
+        seqEnd = stepEntries[iLastEntry].seq;
+      }
+      else {
         timeEnd = null;
-      stepTimeSpans.push([timeStart, timeEnd]);
+        seqEnd = null;
+      }
+      stepTimeSpans.push([timeStart, seqStart, timeEnd, seqEnd]);
     }
 
     // -- create filtered non-step loggers,
