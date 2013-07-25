@@ -183,7 +183,7 @@ function TestCaseLogBundle(fileName, raw) {
 
   this.fileName = fileName;
   this.testName = raw.semanticIdent;
-  this.variant = raw.latched.variant;
+  this.variant = raw.latched ? raw.latched.variant : null;
 
   /**
    * @listof[TestCasePermutationLogBundle]{
