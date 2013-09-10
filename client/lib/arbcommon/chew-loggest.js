@@ -644,7 +644,9 @@ LoggestLogTransformer.prototype = {
     var args = [];
     for (var key in metaArgs) {
       var def = metaArgs[key];
-      args.push(((iEntry > startFrom) ? ", " : "") + key + ": ");
+      args.push((iEntry > startFrom) ? ", " : "");
+      args.push({ type: 'label', label: key });
+      args.push(': ');
       var arg = entry[iEntry++];
       if (def === 'exception') {
         args.push(this._transformEx(arg));

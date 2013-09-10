@@ -271,6 +271,23 @@
   }
 }
 
+#popup-newline-string {
+  #root {
+    background-color: white;
+  }
+  #str {
+    white-space: pre;
+  }
+}
+
+
+#arg-stream-label {
+  #root {
+    font-style: italic;
+    text-decoration: underline;
+  }
+}
+
 #arg-stream-ex {
   #root {
     .clickabub;

@@ -135,7 +135,22 @@ wy.defineWidget({
         maxWidth: 0.9,
         maxHeight: 0.9,
       }
-    }
+    },
+    // A popup for display a (probably large) string containing newlines.
+    newlineString: {
+      constraint: {
+        type: "popup-newline-string",
+      },
+      clickAway: true,
+      popupWidget: wy.libWidget({ type: "popup" }),
+      position: {
+        centerOn: "root",
+      },
+      size: {
+        maxWidth: 0.9,
+        maxHeight: 0.9,
+      }
+    },
   },
   structure: {
     whoBlock: {
@@ -181,7 +196,7 @@ wy.defineWidget({
      *  that checks if the bindings want to have their data shown in a pop-up
      *  (which is generically parameterized anyways).
      */
-    maybeShowDetailForBinding: function(binding) {
+    maybeShowDetailForBinding: function(binding, event) {
       if ("SHOW_DETAIL" in binding && binding.SHOW_DETAIL) {
         var detailAttr = binding.SHOW_DETAIL;
         var obj = binding.obj;
@@ -189,13 +204,33 @@ wy.defineWidget({
         if (detailAttr !== true)
           obj = obj[detailAttr];
         this.popup_details(obj, binding);
+        return;
+      }
+      // Check if the click coordinate landed exactly on a span containing only
+      // a textNode.
+      var range = event.target.ownerDocument.caretRangeFromPoint(event.clientX,
+                                                                 event.clientY);
+      var elem = event.target.ownerDocument.elementFromPoint(event.clientX,
+                                                             event.clientY);
+      var bounder = range.startContainer;
+      while (bounder.nodeType !== 1) {
+        bounder = bounder.parentNode;
+      }
+      var bounds = bounder.getBoundingClientRect();
+      var overlaps = event.clientX > bounds.left &&
+                     event.clientX < bounds.right;
+
+      if (overlaps &&
+          range && range.startContainer &&
+          range.startContainer.data.indexOf('\n') !== -1) {
+        this.popup_newlineString(range.startContainer.data, binding);
       }
     },
   },
   events: {
     root: {
-      click: function(binding) {
-        this.maybeShowDetailForBinding(binding);
+      click: function(binding, event) {
+        this.maybeShowDetailForBinding(binding, event);
       }
     },
   },
@@ -719,6 +754,28 @@ wy.defineWidget({
   structure: {
     detail: wy.widget({type: "obj-detail"}, wy.SELF),
   },
+});
+
+wy.defineWidget({
+  name: "popup-newline-string",
+  doc: "popup display a multi-line string",
+  constraint: {
+    type: "popup-newline-string",
+  },
+  focus: wy.focus.domain.vertical("str"),
+  structure: {
+    str: wy.bind(wy.SELF),
+  },
+});
+
+wy.defineWidget({
+  name: "arg-stream-label",
+  doc: "rich exception display as a clickable exception message w/popup",
+  constraint: {
+    type: "arg-stream",
+    obj: { type: "label" },
+  },
+  structure: wy.bind("label"),
 });
 
 
