@@ -461,6 +461,40 @@ ArbApp.prototype = {
     this._showLogPageForData(1, sliceProcessor.caseBundle, [], false, null);
   },
 
+  _normalizeLoggestDefiner: function(rawObj) {
+    var definerLog = rawObj.log,
+        schema = rawObj.schema,
+        failures = [];
+    for (var iKid = 0; iKid < definerLog.kids.length; iKid++) {
+      var testCaseLog = definerLog.kids[iKid];
+      console.log('checking log', testCaseLog);
+      var testPermLog = testCaseLog.kids[0];
+      var testUniqueName = definerLog.semanticIdent + "-" +
+                             testCaseLog.semanticIdent;
+      var variant = testPermLog.latched.variant || null;
+
+      var detailObj = {
+        type: "loggest",
+        fileName: definerLog.semanticIdent,
+        schema: schema,
+        log: testCaseLog,
+        prechewed: null,
+      };
+
+      var caseBundle = $chew_loggest.chewLoggestCase(detailObj);
+      $analyze_loggest.runOnPermutations(
+        [
+          $analyze_loggest.SummarizeAsyncTasks,
+        ],
+        caseBundle);
+      failures.push(caseBundle);
+    }
+
+    return {
+      failures: failures
+    };
+  },
+
   _showLogPageForData: function(pushId, logDetail, pathNodes, autoNew,
                                 divertedFrom) {
     var chewedDetails;
@@ -471,6 +505,13 @@ ArbApp.prototype = {
 
       case "mozmill":
         chewedDetails = $chew_loghelper.chewMozmillFailure(logDetail);
+        break;
+
+      // If not specified, assume unprocessed loggest file in JSON form.  This
+      // is a hack right now...
+      default:
+      case "raw-loggest-definer":
+        chewedDetails = this._normalizeLoggestDefiner(logDetail);
         break;
 
       case "loggest":
@@ -500,12 +541,6 @@ ArbApp.prototype = {
             exceptions:
                 logDetail.exceptions.map($chew_loggest.untransformEx),
           }]
-        };
-        break;
-
-      default:
-        chewedDetails = {
-          failures: [logDetail],
         };
         break;
     }
