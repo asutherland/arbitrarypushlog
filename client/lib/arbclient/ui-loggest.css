@@ -263,6 +263,9 @@
     height: 1px;
     border-bottom: 1px dashed gray;
   }
+  #outsideRow {
+    background-color: #ccc;
+  }
 }
 
 #popup-obj-detail {
