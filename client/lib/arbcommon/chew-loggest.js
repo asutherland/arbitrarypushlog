@@ -138,13 +138,15 @@ ErrorEntry.prototype = {
 };
 exports.ErrorEntry = ErrorEntry;
 
-function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, args) {
+function FailedExpectationEntry(timestamp, relstamp, seq, expType, name, stack,
+                                args) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.expType = expType;
   this.name = name;
+  this.stack = stack;
   this.args = args;
 }
 FailedExpectationEntry.prototype = {
@@ -153,12 +155,13 @@ FailedExpectationEntry.prototype = {
 exports.FailedExpectationEntry = FailedExpectationEntry;
 
 function MismatchedExpectationEntry(timestamp, relstamp, seq,
-                                    expName, expArgs, actualEntry) {
+                                    expName, expStack, expArgs, actualEntry) {
   this.layer = null;
   this.timestamp = timestamp;
   this.relstamp = relstamp;
   this.seq = seq;
   this.expName = expName;
+  this.expStack = expStack;
   this.expArgs = expArgs;
   this.actualEntry = actualEntry;
 };
@@ -583,6 +586,10 @@ function untransformEx(rawEx) {
 }
 exports.untransformEx = untransformEx;
 
+function transformCallStack(stack) {
+  return { type: 'exception', name: 'call stack', message: '', frames: stack };
+}
+
 /**
  * Feed it some schemas then feed it logs derived from those schemas and it will
  *  producer richer objects suitable for UI presentation via `ui-loggest.js`.
@@ -777,10 +784,11 @@ LoggestLogTransformer.prototype = {
   },
 
   // ["!failedxp", EXPOBJ, timestamp, seq]
-  // where EXPOBJ is [name, ...args...]
+  // where EXPOBJ is [name, callstack, ...args...]
   _proc_failedExpectation: function(schemaSoup, entry) {
     var exp = entry[1];
     var expName = exp[0];
+    var expStack = transformCallStack(exp[1]);
     var schemaType, schema;
     if (expName !== DIED_EVENTNAME) {
       schemaType = schemaSoup[expName][0];
@@ -791,26 +799,29 @@ LoggestLogTransformer.prototype = {
       schema = DIED_SCHEMA;
     }
 
-    var args = this._transformArgs(schema, exp, 1);
+    var args = this._transformArgs(schema, exp, 2);
     return new FailedExpectationEntry(entry[2], entry[2] - this._baseTime,
                                       entry[3], schemaType,
-                                      expName, args);
+                                      expName, expStack, args);
   },
 
+  // ["!mismatch", EXPOBJ, ACTUALOBJ]
+  // where EXPOBJ is [name, callstack, ...args...]
   _proc_mismatchedExpectation: function(handlers, schemaSoup, aggr) {
     var exp = aggr[1], actual = aggr[2];
 
     var expName = exp[0];
+    var expStack = transformCallStack(exp[1]);
     var schemaType = schemaSoup[expName][0];
     var schema = schemaSoup[expName][1];
-    var args = this._transformArgs(schema, exp);
+    var args = this._transformArgs(schema, exp, 2);
 
     var actualEntry = handlers[actual[0]](actual);
 
     return new MismatchedExpectationEntry(actualEntry.timestamp,
                                           actualEntry.relstamp,
                                           actualEntry.seq,
-                                          expName, args, actualEntry);
+                                          expName, expStack, args, actualEntry);
   },
 
   // ["!unexpected", a normal entry]

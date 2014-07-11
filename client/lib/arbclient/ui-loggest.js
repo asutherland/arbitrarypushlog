@@ -808,7 +808,7 @@ wy.defineWidget({
 
 wy.defineWidget({
   name: "arg-stream-full-obj",
-  doc: "rich exception display as a clickable exception message w/popup",
+  doc: "rich object display as a clickable 'obj' string w/popup",
   constraint: {
     type: "arg-stream",
     obj: { type: "full-obj" },
@@ -818,6 +818,18 @@ wy.defineWidget({
     SHOW_DETAIL: "obj",
   },
 });
+
+wy.defineWidget({
+  name: "explicit-stack",
+  doc: "show the string 'stack' and trigger the SHOW_DETAIL popup mechanism",
+  constraint: {
+    type: "explicit-stack"
+  },
+  structure: "stack",
+  impl: {
+    SHOW_DETAIL: true
+  }
+})
 
 /**
  * Resolve aliases; also, augment things that we think are dates.
@@ -1019,7 +1031,8 @@ wy.defineWidget({
     name: wy.bind("name"),
     lParen: "(",
     args: wy.stream({type: "arg-stream"}, "args"),
-    rParen: ")",
+    rParen: ") ",
+    stack: wy.widget({type: "explicit-stack"}, "stack")
   }, {layer: "layer"}),
 });
 
@@ -1036,6 +1049,7 @@ wy.defineWidget({
       lParen: "! (",
       args: wy.stream({type: "arg-stream"}, "expArgs"),
       rParen: ") ",
+      // we do save off the stack but I'm not sure how to put that in the UI yet
       versus: "expected but got",
     }),
     actualEntry: wy.widget({type: "entry"}, "actualEntry"),

@@ -314,6 +314,12 @@
   }
 }
 
+#explicit-stack {
+  #root {
+    .clickabub;
+  }
+}
+
 #arg-stream-thing {
   #root {
     font-style: italic;
