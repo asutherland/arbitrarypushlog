@@ -591,6 +591,62 @@ function transformCallStack(stack) {
 }
 
 /**
+ * Transformation hacks.  Currently just for 'slog'.
+ */
+var TUNNELED_HACK_JOBS_BY_LOGGER = {
+  console: {
+    events: function(timestamp, relstamp, seq, name, args, testOnlyArgs) {
+      // hm, maybe we should have processed this before transformArgs did its
+      // thing?  Well, doesn't really matter.
+      // "", { label: type}, ": ", <the actual message>
+      var msg = args[3];
+      var match = /^\[slog\] ([^ ]+) (\{.+\})$/.exec(msg);
+      if (!match) {
+        return null;
+      }
+      name = match[1];
+      var obj;
+      try {
+        obj = JSON.parse(match[2]);
+      }
+      catch (ex) {
+        return null;
+      }
+      var extractedArgs = [];
+      for (var key in obj) {
+        if (extractedArgs.length) {
+          extractedArgs.push(', ');
+        }
+
+        extractedArgs.push({ type: 'label', label: key });
+        extractedArgs.push(': ');
+        var arg = obj[key];
+        // copied and pasted BS from _transformArgs now
+        if (arg == null) {
+          extractedArgs.push("null");
+        }
+        else if (typeof(arg) === 'object') {
+          if (Array.isArray(arg) && arg.length === 0) {
+            // 0 length arrays look stupid in popups
+            extractedArgs.push("[]");
+          }
+          else {
+            // this used to only happen for 'jsonable'...
+            extractedArgs.push({type: 'full-obj', obj: arg});
+          }
+        }
+        else {
+          extractedArgs.push(arg + '');
+        }
+      }
+
+      return new EventEntry(timestamp, relstamp, seq, name, extractedArgs,
+                            testOnlyArgs);
+    }
+  }
+};
+
+/**
  * Feed it some schemas then feed it logs derived from those schemas and it will
  *  producer richer objects suitable for UI presentation via `ui-loggest.js`.
  *
@@ -725,11 +781,21 @@ LoggestLogTransformer.prototype = {
   },
 
   // [name, ...args..., timestamp, seq]
-  _proc_event: function(metaArgs, numArgs, metaTestOnlyArgs, entry) {
+  _proc_event: function(metaArgs, numArgs, metaTestOnlyArgs, hackHandler,
+                        entry) {
     var args = this._transformArgs(metaArgs, entry), testOnlyArgs = null;
     if (entry.length > numArgs + 3)
       testOnlyArgs = this._transformArgs(metaTestOnlyArgs, entry,
                                          numArgs + 3);
+
+    if (hackHandler) {
+      var hacked = hackHandler(
+        entry[numArgs+1], entry[numArgs+1] - this._baseTime,
+        entry[numArgs+2], entry[0], args, testOnlyArgs);
+      if (hacked) {
+        return hacked;
+      }
+    }
 
     return new EventEntry(entry[numArgs+1], entry[numArgs+1] - this._baseTime,
                           entry[numArgs+2], entry[0], args, testOnlyArgs);
@@ -897,6 +963,8 @@ LoggestLogTransformer.prototype = {
       var schemaNorm = this._schemaNormMap[schemaName] = {};
       var schemaSoup = {}, testOnlyMeta;
 
+      var hackHandlers = TUNNELED_HACK_JOBS_BY_LOGGER[schemaName];
+
       handlers["!failedexp"] = this._proc_failedExpectation.bind(this,
                                                                  schemaSoup);
       handlers["!mismatch"] = this._proc_mismatchedExpectation.bind(this,
@@ -943,7 +1011,8 @@ LoggestLogTransformer.prototype = {
           handlers[key] = this._proc_event.bind(this,
                             schemaDef.events[key],
                             countArgsInSchema(schemaDef.events[key]),
-                            testOnlyMeta);
+                            testOnlyMeta,
+                            hackHandlers && hackHandlers.events);
         }
       }
       if ("asyncJobs" in schemaDef) {
