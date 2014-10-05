@@ -958,6 +958,11 @@ LoggestLogTransformer.prototype = {
     }
 
     for (var schemaName in schemas) {
+      // ignore the version field that we cram in as metadata
+      if (schemaName === '$v') {
+        continue;
+      }
+
       var key, schemaDef = schemas[schemaName];
       var handlers = this._schemaHandlerMaps[schemaName] = {};
       var schemaNorm = this._schemaNormMap[schemaName] = {};
