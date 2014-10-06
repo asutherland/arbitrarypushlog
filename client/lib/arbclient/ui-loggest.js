@@ -835,7 +835,12 @@ wy.defineWidget({
  * Resolve aliases; also, augment things that we think are dates.
  */
 function aliasTransformer(val, owningKey) {
-  if (owningKey && owningKey === 'date' && typeof(val) === 'number') {
+  // If the name of the key is date or ends with TS (so we match startTS and
+  // endTS), then also provide a human-readable string version of the date.
+  // Worst case we're totally wrong and it's a minor distraction.  Best case
+  // our brains thanks us.
+  if (owningKey && typeof(val) === 'number' &&
+      (owningKey === 'date' || /TS$/.test(owningKey))) {
     return val + ' (' + new Date(val) + ')';
   }
   if (typeof(val) !== "string")
