@@ -438,6 +438,14 @@ ArbApp.prototype = {
     var self = this;
     when($rstore.commonLoad(url, "log-fetch", url),
       function gotLog(text) {
+        var wrapMatch = /^##### LOGGEST-TEST-RUN-BEGIN #####\s+/.exec(text);
+        if (wrapMatch) {
+          text = text.substring(wrapMatch[0].length);
+          var wrapTrail = /\s+##### LOGGEST-TEST-RUN-END #####\s*$/.exec(text);
+          if (wrapTrail) {
+            text = text.substring(0, wrapTrail.index);
+          }
+        }
         var data = JSON.parse(text);
         if (data.hasOwnProperty('type') && data.type === 'backlog')
           self.standaloneLoadLogFromBacklog(data);
